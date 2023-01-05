@@ -36,7 +36,9 @@
         <span>Peer connection</span></h1>
 
     <p>This sample shows how to setup a connection between two peers using
-        <a href="https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection">RTCPeerConnection</a>.
+        <a href="https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection">RTCPeerConnection
+        </a> and a stream from
+        <a href=https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia">getDisplayMedia </a> as source.
     </p>
 
     <video id="localVideo" playsinline autoplay muted></video>
@@ -47,17 +49,30 @@
         <button id="callButton">Call</button>
         <button id="hangupButton">Hang Up</button>
     </div>
+    
+    <section id="constraints">
+        <div id="getDisplayMedia">
+            <div class="input">
+                <h2>Constraints</h2>
+                <div id="minFramerate">
+                    <label>Min frameRate <span>0</span>fps:</label>
+                    <input type="range" min="0" max="60" value="0">
+                </div>
+                <div id="maxFramerate">
+                    <label>Max frameRate <span>0</span>fps:</label>
+                    <input type="range" min="0" max="60" value="0">
+                </div>
+            </div>
+            <div id="getDisplayMediaConstraints" class="output"></div>
+        </div>
+
+    </section>
 
     <p>View the console to see logging. The <code>MediaStream</code> object <code>localStream</code>, and the <code>RTCPeerConnection</code>
         objects <code>pc1</code> and <code>pc2</code> are in global scope, so you can inspect them in the console as
         well.</p>
 
-    <p>For more information about RTCPeerConnection, see <a href="http://www.html5rocks.com/en/tutorials/webrtc/basics/"
-                                                            title="HTML5 Rocks article about WebRTC by Sam Dutton">Getting
-        Started With WebRTC</a>.</p>
-
-
-    <a href="https://github.com/webrtc/samples/tree/gh-pages/src/content/peerconnection/pc1"
+    <a href="https://github.com/henrik-and/henrik-and.github.io/tree/master/pc_capture_constraints"
        title="View source for this page on GitHub" id="viewSource">View source on GitHub</a>
 
 </div>

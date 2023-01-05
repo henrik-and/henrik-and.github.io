@@ -17,9 +17,23 @@ startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
 
+const minFramerateInput = document.querySelector('div#minFramerate input');
+const maxFramerateInput = document.querySelector('div#maxFramerate input');
+
+minFramerateInput.onchange = maxFramerateInput.onchange = displayRangeValue;
+
+const getDisplayMediaConstraintsDiv = document.querySelector('div#getDisplayMediaConstraints');
+
 let startTime;
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+
+
+main();
+
+function main() {
+  showGetDisplayMediaConstraints();
+}
 
 localVideo.addEventListener('loadedmetadata', function() {
   console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
@@ -40,6 +54,47 @@ remoteVideo.addEventListener('resize', () => {
   }
 });
 
+function getDisplayMediaOptions() {
+  const constraints = {};
+  constraints.audio = false;
+  constraints.video = {};
+  if (maxFramerateInput.value !== '0') {
+    constraints.video.frameRate = constraints.video.frameRate || {};
+    constraints.video.frameRate.max = maxFramerateInput.value;
+  }
+
+  return constraints;
+}
+
+function getDisplayMediaConstraints() {
+  const constraints = {};
+  constraints.audio = false;
+  constraints.video = {};
+  if (minFramerateInput.value !== '0') {
+    constraints.video.frameRate = {};
+    constraints.video.frameRate.min = minFramerateInput.value;
+  }
+  if (maxFramerateInput.value !== '0') {
+    constraints.video.frameRate = constraints.video.frameRate || {};
+    constraints.video.frameRate.max = maxFramerateInput.value;
+  }
+
+  return constraints;
+}
+
+function showGetDisplayMediaConstraints() {
+  const constraints = getDisplayMediaConstraints();
+  // console.log('getDisplayMedia constraints', constraints);
+  getDisplayMediaConstraintsDiv.textContent = JSON.stringify(constraints, null, '    ');
+}
+
+// Utility to show the value of a range in a sibling span element
+function displayRangeValue(e) {
+  const span = e.target.parentElement.querySelector('span');
+  span.textContent = e.target.value;
+  showGetDisplayMediaConstraints();
+}
+
 let localStream;
 let pc1;
 let pc2;
@@ -59,20 +114,35 @@ function getOtherPc(pc) {
 async function start() {
   console.log('Requesting local stream');
   startButton.disabled = true;
+  
+  // const supports = navigator.mediaDevices.getSupportedConstraints();
+  // console.log(supports);
 
-  const options = {audio: false, video: {frameRate: 30}};
-  navigator.mediaDevices.getDisplayMedia(options)
+  navigator.mediaDevices.getDisplayMedia(getDisplayMediaOptions())
       .then(handleSuccess, handleError);
 }
 
 function handleSuccess(stream) {
   startButton.disabled = true;
-  stream.getVideoTracks()[0].applyConstraints({frameRate:{exact:30}});
+  
+  const prettyJson = (obj) => JSON.stringify(obj, null, 2);
+  
+  const videoTrack = stream.getVideoTracks()[0]; 
+  const constraints = getDisplayMediaConstraints();
+  console.log('Requested contstraints', prettyJson(constraints));
+  
+  videoTrack
+    .applyConstraints(constraints)
+    .then(() => {
+      console.log('getDisplayMedia.getSettings', prettyJson(videoTrack.getSettings()));
+    })
+    .catch(handleError);
+  
   localVideo.srcObject = stream;
   localStream = stream;
   callButton.disabled = false;
 
-  // demonstrates how to detect that the user has stopped
+  // Demonstrates how to detect that the user has stopped
   // sharing the screen via the browser UI.
   stream.getVideoTracks()[0].addEventListener('ended', () => {
     errorMsg('The user has ended sharing the screen');
