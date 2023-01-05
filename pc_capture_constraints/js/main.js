@@ -28,6 +28,10 @@ let startTime;
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 
+const senderStatsDiv = document.querySelector('div#senderStats');
+const receiverStatsDiv = document.querySelector('div#receiverStats');
+const updateStats = document.querySelector('input#updateStats');
+
 function main() {
   showGetDisplayMediaConstraints();
 }
@@ -299,5 +303,44 @@ function hangup() {
   hangupButton.disabled = true;
   callButton.disabled = false;
 }
+
+function showLocalStats(results) {
+  results.forEach(report => {
+    if (report.type === 'outbound-rtp') {
+      const framesPerSecond = report.framesPerSecond;
+      if (framesPerSecond) {
+        senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+      }
+    }
+  });
+}
+
+function showRemoteStats(results) {
+  results.forEach(report => {
+    if (report.type === 'inbound-rtp') {
+      const framesPerSecond = report.framesPerSecond;
+      if (framesPerSecond) {
+        receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+      }
+    }
+  });
+}
+
+// Display statistics
+setInterval(() => {
+  if (!updateStats.checked) {
+    return;
+  }
+  if (pc1 && pc2) {
+    pc1
+        .getStats(null)
+        .then(showLocalStats, err => console.log(err));
+    pc2
+        .getStats(null)
+        .then(showRemoteStats, err => console.log(err));
+  } else {
+    // console.log('Not connected yet');
+  }
+}, 1000);
 
 main();

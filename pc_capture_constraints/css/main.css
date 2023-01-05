@@ -51,6 +51,20 @@ section#constraints label {
   width: 156px;
 }
 
+section#statistics div {
+  display: inline-block;
+  font-family: 'Inconsolata', 'Courier New', monospace;
+  font-size: 0.9em;
+  background-color: #eee;
+  padding: 10px 10px 10px 25px;
+  vertical-align: top;
+  width: 308px;
+}
+
+section#statistics div#senderStats {
+  margin: 0 20px 0 0;
+}
+
 video {
   --width: 45%;
   width: var(--width);
@@ -82,5 +96,4 @@ asdasd
   video#localVideo {
     margin: 0 10px 20px 0;
   }
-
 }

@@ -67,14 +67,17 @@
         </div>
 
     </section>
-
-    <p>View the console to see logging. The <code>MediaStream</code> object <code>localStream</code>, and the <code>RTCPeerConnection</code>
-        objects <code>pc1</code> and <code>pc2</code> are in global scope, so you can inspect them in the console as
-        well.</p>
-
-    <a href="https://github.com/henrik-and/henrik-and.github.io/tree/master/pc_capture_constraints"
-       title="View source for this page on GitHub" id="viewSource">View source on GitHub</a>
-
+    
+    <section id="statistics">
+        <h2>Statistics</h2>
+        <label>Update statistics every second</label>
+        <input type="checkbox" id="updateStats" checked>
+        <br>
+        <br>
+        <div id="senderStats"></div>
+        <div id="receiverStats"></div>
+    </section>
+    
 </div>
 
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
