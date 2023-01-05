@@ -28,9 +28,6 @@ let startTime;
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 
-
-main();
-
 function main() {
   showGetDisplayMediaConstraints();
 }
@@ -84,7 +81,7 @@ function getDisplayMediaConstraints() {
 
 function showGetDisplayMediaConstraints() {
   const constraints = getDisplayMediaConstraints();
-  // console.log('getDisplayMedia constraints', constraints);
+  console.log('getDisplayMedia constraints', constraints);
   getDisplayMediaConstraintsDiv.textContent = JSON.stringify(constraints, null, '    ');
 }
 
@@ -303,3 +300,5 @@ function hangup() {
   hangupButton.disabled = true;
   callButton.disabled = false;
 }
+
+main();
