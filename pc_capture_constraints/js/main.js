@@ -40,6 +40,8 @@ remoteVideo.addEventListener('loadedmetadata', function() {
   console.log(`Remote video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
 });
 
+const prettyJson = (obj) => JSON.stringify(obj, null, 2);
+
 remoteVideo.addEventListener('resize', () => {
   console.log(`Remote video size changed to ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} - Time since pageload ${performance.now().toFixed(0)}ms`);
   // We'll use the first onsize callback as an indication that video has started
@@ -81,8 +83,8 @@ function getDisplayMediaConstraints() {
 
 function showGetDisplayMediaConstraints() {
   const constraints = getDisplayMediaConstraints();
-  console.log('getDisplayMedia constraints', constraints);
-  getDisplayMediaConstraintsDiv.textContent = JSON.stringify(constraints, null, '    ');
+  // console.log('getDisplayMedia constraints', constraints);
+  getDisplayMediaConstraintsDiv.textContent = prettyJson(constraints);
 }
 
 // Utility to show the value of a range in a sibling span element
@@ -111,23 +113,20 @@ function getOtherPc(pc) {
 async function start() {
   console.log('Requesting local stream');
   startButton.disabled = true;
-  
-  // const supports = navigator.mediaDevices.getSupportedConstraints();
-  // console.log(supports);
-
+ 
+  // Use options to gDM but avoid using min framerate.
   navigator.mediaDevices.getDisplayMedia(getDisplayMediaOptions())
-      .then(handleSuccess, handleError);
+    .then(handleSuccess, handleError);
 }
 
 function handleSuccess(stream) {
   startButton.disabled = true;
   
-  const prettyJson = (obj) => JSON.stringify(obj, null, 2);
-  
   const videoTrack = stream.getVideoTracks()[0]; 
   const constraints = getDisplayMediaConstraints();
   console.log('Requested contstraints', prettyJson(constraints));
   
+  // Apply the complete constraint (including possibly >0 min framerate).
   videoTrack
     .applyConstraints(constraints)
     .then(() => {
@@ -141,7 +140,7 @@ function handleSuccess(stream) {
 
   // Demonstrates how to detect that the user has stopped
   // sharing the screen via the browser UI.
-  stream.getVideoTracks()[0].addEventListener('ended', () => {
+  videoTrack.addEventListener('ended', () => {
     errorMsg('The user has ended sharing the screen');
     startButton.disabled = false;
   });
