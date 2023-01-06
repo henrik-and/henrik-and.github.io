@@ -38,12 +38,17 @@ div.output {
   padding: 10px 10px 10px 25px;
   position: relative;
   top: 10px;
+  vertical-align: top;
   white-space: pre;
-  width: 270px;
+  width: 300px;
 }
 
 section#constraints > div {
   margin: 0 0 20px 0;
+}
+
+div#getDisplayMediaConstraints {
+   margin: 0 20px 0 0;
 }
 
 section#constraints label {
@@ -58,11 +63,25 @@ section#statistics div {
   background-color: #eee;
   padding: 10px 10px 10px 25px;
   vertical-align: top;
-  width: 308px;
+  width: 340px;
 }
 
 section#statistics div#senderStats {
-  margin: 0 20px 0 0;
+  margin: 0 332px 0 0;
+}
+
+section#video div {
+  display: inline-block;
+  font-family: 'Inconsolata', 'Courier New', monospace;
+  font-size: 0.9em;
+  background-color: #eee;
+  padding: 10px 10px 10px 25px;
+  vertical-align: top;
+  width: 340px;
+}
+
+section#video div#localVideoSize {
+  margin: 0 332px 0 0;
 }
 
 video {

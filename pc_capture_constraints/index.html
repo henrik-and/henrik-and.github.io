@@ -32,8 +32,7 @@
 <body>
 
 <div id="container">
-    <h1><a href="//webrtc.github.io/samples/" title="WebRTC samples homepage">WebRTC samples</a>
-        <span>Peer connection</span></h1>
+    <h1>WebRTC PeerConnection and getDisplayMedia</h1>
 
     <p>This sample shows how to setup a connection between two peers using
         <a href="https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection">RTCPeerConnection
@@ -41,8 +40,12 @@
         <a href=https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia">getDisplayMedia </a> as source.
     </p>
 
-    <video id="localVideo" playsinline autoplay muted></video>
-    <video id="remoteVideo" playsinline autoplay></video>
+    <section id="video">
+        <video id="localVideo" playsinline autoplay muted></video>
+        <video id="remoteVideo" playsinline autoplay></video>
+        <div id="localVideoSize"></div>
+        <div id="remoteVideoSize"></div>
+    </section>
 
     <div class="box">
         <button id="startButton">Start</button>
@@ -64,6 +67,7 @@
                 </div>
             </div>
             <div id="getDisplayMediaConstraints" class="output"></div>
+            <div id="getActualDisplayMediaConstraints" class="output"></div>
         </div>
 
     </section>
