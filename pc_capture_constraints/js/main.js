@@ -64,10 +64,8 @@ function getDisplayMediaOptions() {
   const constraints = {};
   constraints.audio = false;
   constraints.video = {};
-  if (maxFramerateInput.value !== '0') {
-    constraints.video.frameRate = constraints.video.frameRate || {};
-    constraints.video.frameRate.max = maxFramerateInput.value;
-  }
+  constraints.video.frameRate = constraints.video.frameRate || {};
+  constraints.video.frameRate.max = maxFramerateInput.value;
 
   return constraints;
 }
@@ -76,14 +74,10 @@ function getDisplayMediaConstraints() {
   const constraints = {};
   constraints.audio = false;
   constraints.video = {};
-  if (minFramerateInput.value !== '0') {
-    constraints.video.frameRate = {};
-    constraints.video.frameRate.min = minFramerateInput.value;
-  }
-  if (maxFramerateInput.value !== '0') {
-    constraints.video.frameRate = constraints.video.frameRate || {};
-    constraints.video.frameRate.max = maxFramerateInput.value;
-  }
+  constraints.video.frameRate = {};
+  constraints.video.frameRate.min = minFramerateInput.value;
+  constraints.video.frameRate = constraints.video.frameRate || {};
+  constraints.video.frameRate.max = maxFramerateInput.value;
 
   return constraints;
 }
