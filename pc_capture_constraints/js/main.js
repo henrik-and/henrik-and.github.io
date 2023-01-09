@@ -26,14 +26,22 @@ const getDisplayMediaConstraintsDiv = document.querySelector('div#getDisplayMedi
 const getActualDisplayMediaConstraintsDiv = document.querySelector('div#getActualDisplayMediaConstraints');
 
 let startTime;
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
-const localVideoSizeDiv = document.querySelector('div#localVideoSize');
-const remoteVideoSizeDiv = document.querySelector('div#remoteVideoSize');
+
+const localVideo = document.querySelector('div#localVideo video');
+const remoteVideo = document.querySelector('div#remoteVideo video');
+const localVideoSizeDiv = document.querySelector('div#localVideo div');
+const remoteVideoSizeDiv = document.querySelector('div#remoteVideo div');
+
+const localVideoFpsDiv = document.querySelector('div#localVideoFramerate');
+const remoteVideoFpsDiv = document.querySelector('div#remoteVideoFramerate');
 
 const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const updateStats = document.querySelector('input#updateStats');
+
+let timeStampPrev;
+let totalLocalVideoFramesPrev;
+let totalRemoteVideoFramesPrev; 
 
 function main() {
   showGetDisplayMediaConstraints();
@@ -166,6 +174,11 @@ async function call() {
   hangupButton.disabled = false;
   console.log('Starting call');
   startTime = window.performance.now();
+  
+  timeStampPrev = 0;
+  totalLocalVideoFramesPrev = 0;
+  totalRemoteVideoFramesPrev = 0; 
+  
   const videoTracks = localStream.getVideoTracks();
   const audioTracks = localStream.getAudioTracks();
   if (videoTracks.length > 0) {
@@ -331,6 +344,39 @@ setInterval(() => {
   if (!updateStats.checked) {
     return;
   }
+  
+  const now = performance.now();
+  
+  const localQuality = localVideo.getVideoPlaybackQuality();
+  if (localQuality && localQuality.totalVideoFrames > 0) {
+    let localVideoFps;
+    if (timeStampPrev) {
+      localVideoFps = 1000 * (localQuality.totalVideoFrames - totalLocalVideoFramesPrev) /
+        (now - timeStampPrev);
+      localVideoFps = Math.round(localVideoFps);
+    }
+    if (localVideoFps) {
+      localVideoFpsDiv.innerHTML = `<strong>Local video framerate:</strong> ${localVideoFps} fps`;
+    }
+    totalLocalVideoFramesPrev = localQuality.totalVideoFrames;
+  }
+  
+  const remoteQuality = remoteVideo.getVideoPlaybackQuality();
+  if (remoteQuality && remoteQuality.totalVideoFrames > 0) {
+    let remoteVideoFps;
+    if (timeStampPrev) {
+      remoteVideoFps = 1000 * (remoteQuality.totalVideoFrames - totalRemoteVideoFramesPrev) /
+        (now - timeStampPrev);
+      remoteVideoFps = Math.round(remoteVideoFps);
+    }
+    if (remoteVideoFps) {
+      remoteVideoFpsDiv.innerHTML = `<strong>Remote video framerate:</strong> ${remoteVideoFps} fps`;
+    }
+    totalRemoteVideoFramesPrev = remoteQuality.totalVideoFrames;
+  }
+  
+  timeStampPrev = now;
+  
   if (localPeerConnection && remotePeerConnection) {
     localPeerConnection
         .getStats(null)

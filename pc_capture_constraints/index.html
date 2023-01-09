@@ -41,11 +41,18 @@
     </p>
 
     <section id="video">
-        <video id="localVideo" playsinline autoplay muted></video>
-        <video id="remoteVideo" playsinline autoplay></video>
-        <div id="localVideoSize"></div>
-        <div id="remoteVideoSize"></div>
+        <div id="localVideo">
+            <video playsinline autoplay muted></video>
+            <div></div>
+            <div id="localVideoFramerate"></div>
+        </div>
+        <div id="remoteVideo">
+            <video playsinline autoplay muted></video>
+            <div></div>
+            <div id="remoteVideoFramerate"></div>
+        </div>
     </section>
+
 
     <div class="box">
         <button id="startButton">Start</button>
