@@ -69,25 +69,11 @@ remoteVideo.addEventListener('resize', () => {
 });
 
 function getDisplayMediaOptions() {
-  const constraints = {};
-  constraints.audio = false;
-  constraints.video = {};
-  constraints.video.frameRate = constraints.video.frameRate || {};
-  constraints.video.frameRate.max = maxFramerateInput.value;
-
-  return constraints;
+  return {video: { frameRate: maxFramerateInput.value}};
 }
 
 function getDisplayMediaConstraints() {
-  const constraints = {};
-  constraints.audio = false;
-  constraints.video = {};
-  constraints.video.frameRate = {};
-  constraints.video.frameRate.min = minFramerateInput.value;
-  constraints.video.frameRate = constraints.video.frameRate || {};
-  constraints.video.frameRate.max = maxFramerateInput.value;
-
-  return constraints;
+ return {frameRate: {min: minFramerateInput.value, max: maxFramerateInput.value}};
 }
 
 function showGetDisplayMediaConstraints() {
@@ -125,7 +111,9 @@ async function start() {
   startButton.disabled = true;
  
   // Use options to gDM but avoid using min framerate.
-  navigator.mediaDevices.getDisplayMedia(getDisplayMediaOptions())
+  const options = getDisplayMediaOptions();
+  console.log(options);
+  navigator.mediaDevices.getDisplayMedia(options)
     .then(handleSuccess, handleError);
 }
 
