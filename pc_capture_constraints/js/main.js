@@ -73,7 +73,7 @@ function getDisplayMediaOptions() {
   constraints.audio = false;
   constraints.video = {};
   constraints.video.frameRate = constraints.video.frameRate || {};
-  constraints.video.frameRate.max = maxFramerateInput.value;
+  constraints.video.frameRate.ideal = maxFramerateInput.value;
 
   return constraints;
 }
@@ -85,7 +85,7 @@ function getDisplayMediaConstraints() {
   constraints.video.frameRate = {};
   constraints.video.frameRate.min = minFramerateInput.value;
   constraints.video.frameRate = constraints.video.frameRate || {};
-  constraints.video.frameRate.max = maxFramerateInput.value;
+  constraints.video.frameRate.ideal = maxFramerateInput.value;
 
   return constraints;
 }
