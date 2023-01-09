@@ -39,11 +39,14 @@ const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const updateStats = document.querySelector('input#updateStats');
 
-let timeStampPrev;
-let totalLocalVideoFramesPrev;
-let totalRemoteVideoFramesPrev; 
+let oldTimestampMs = 0;
+let oldLocalFrames = 0;
+let localFps = 30;
+let oldRemoteFrames = 0;
+let remoteFps = 30;
 
 function main() {
+  setTimeout(updateVideoFps, 30);
   showGetDisplayMediaConstraints();
 }
 
@@ -109,7 +112,7 @@ function getOtherPc(pc) {
 async function start() {
   console.log('Requesting local stream');
   startButton.disabled = true;
- 
+  
   // Use options to gDM but avoid using min framerate.
   const options = getDisplayMediaOptions();
   console.log(options);
@@ -162,10 +165,6 @@ async function call() {
   hangupButton.disabled = false;
   console.log('Starting call');
   startTime = window.performance.now();
-  
-  timeStampPrev = 0;
-  totalLocalVideoFramesPrev = 0;
-  totalRemoteVideoFramesPrev = 0; 
   
   const videoTracks = localStream.getVideoTracks();
   const audioTracks = localStream.getAudioTracks();
@@ -332,39 +331,6 @@ setInterval(() => {
   if (!updateStats.checked) {
     return;
   }
-  
-  const now = performance.now();
-  
-  const localQuality = localVideo.getVideoPlaybackQuality();
-  if (localQuality && localQuality.totalVideoFrames > 0) {
-    let localVideoFps;
-    if (timeStampPrev) {
-      localVideoFps = 1000 * (localQuality.totalVideoFrames - totalLocalVideoFramesPrev) /
-        (now - timeStampPrev);
-      localVideoFps = Math.round(localVideoFps);
-    }
-    if (localVideoFps) {
-      localVideoFpsDiv.innerHTML = `<strong>Local video framerate:</strong> ${localVideoFps} fps`;
-    }
-    totalLocalVideoFramesPrev = localQuality.totalVideoFrames;
-  }
-  
-  const remoteQuality = remoteVideo.getVideoPlaybackQuality();
-  if (remoteQuality && remoteQuality.totalVideoFrames > 0) {
-    let remoteVideoFps;
-    if (timeStampPrev) {
-      remoteVideoFps = 1000 * (remoteQuality.totalVideoFrames - totalRemoteVideoFramesPrev) /
-        (now - timeStampPrev);
-      remoteVideoFps = Math.round(remoteVideoFps);
-    }
-    if (remoteVideoFps) {
-      remoteVideoFpsDiv.innerHTML = `<strong>Remote video framerate:</strong> ${remoteVideoFps} fps`;
-    }
-    totalRemoteVideoFramesPrev = remoteQuality.totalVideoFrames;
-  }
-  
-  timeStampPrev = now;
-  
   if (localPeerConnection && remotePeerConnection) {
     localPeerConnection
         .getStats(null)
@@ -373,18 +339,52 @@ setInterval(() => {
         .getStats(null)
         .then(showRemoteStats, err => console.log(err));
   } else {
-    // console.log('Not connected yet');
+    const framesPerSecond = 0;
+    senderStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+    receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
   }
   if (localVideo.videoWidth) {
     const width = localVideo.videoWidth;
     const height = localVideo.videoHeight;
     localVideoSizeDiv.innerHTML = `<strong>Local video dimensions:</strong> ${width}x${height}px`;
+    localVideoFpsDiv.innerHTML = `<strong>Local video framerate:</strong> ${localFps.toFixed(1)} fps`;
   }
   if (remoteVideo.videoWidth) {
     const width = remoteVideo.videoWidth;
     const height = remoteVideo.videoHeight;
     remoteVideoSizeDiv.innerHTML = `<strong>Remote video dimensions:</strong> ${width}x${height}px`;
+    remoteVideoFpsDiv.innerHTML = `<strong>Remote video framerate:</strong> ${remoteFps.toFixed(1)} fps`;
   }
 }, 1000);
+
+const updateVideoFps = () => {
+  const now = performance.now();
+  const periodMs = now - oldTimestampMs;
+  oldTimestampMs = now;
+  
+  if (localVideo.getVideoPlaybackQuality()) {
+    let newFps;
+    const newFrames = localVideo.getVideoPlaybackQuality().totalVideoFrames;
+    const framesSinceLast = newFrames - oldLocalFrames;
+    oldLocalFrames = newFrames;
+    if (framesSinceLast >= 0) {
+      newFps = 1000 * framesSinceLast / periodMs;
+      localFps = 0.9 * localFps + 0.1 * newFps;
+    }
+  }
+  
+  if (remoteVideo.getVideoPlaybackQuality()) {
+    let newFps;
+    const newFrames = remoteVideo.getVideoPlaybackQuality().totalVideoFrames;
+    const framesSinceLast = newFrames - oldRemoteFrames;
+    oldRemoteFrames = newFrames;
+    if (framesSinceLast >= 0) {
+      newFps = 1000 * framesSinceLast / periodMs;
+      remoteFps = 0.9 * remoteFps + 0.1 * newFps;
+    }
+  }
+  
+  setTimeout(updateVideoFps, 30);
+}
 
 main();
