@@ -3,15 +3,22 @@
 <html>
 <head>
     <title>getDisplayMedia</title>
+    <link rel="stylesheet" href="css/main.css"/>
 </head>
 
 <body>
-
-<div id="container">
-    <h1>getDisplayMedia</h1>
-</div>
-
-<script src="js/main.js" async></script>
-
+  <div id="container">
+      <video id="video" muted autoplay></video>
+      <br>
+      <button id="getDisplayMediaButton">getDisplayMedia</button>
+      <button id="videoPauseButton">Pause</button>
+      <button id="videoPlayButton">Play</button>
+      <div></div>
+      <div id="videoFps"></div>   
+      <br>
+      <textarea id="myConsole"></textarea>
+      <div id="log"></div>
+  </div>
+  <script src="js/main.js" async></script>
 </body>
 </html>
