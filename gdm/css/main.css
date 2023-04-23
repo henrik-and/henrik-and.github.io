@@ -1,6 +1,5 @@
 body {
-  font-family: 'Roboto', monospace;
-  font-weight: 300;
+  font-family: monospace;
   margin: 0;
   padding: 1em;
   word-break: break-word;
@@ -14,18 +13,22 @@ div#container {
 
 video {
   background: #222;
-  margin: 0 0 20px 0;
+  margin: 0 0 0 0;
   --width: 100%;
   width: var(--width);
   height: calc(var(--width) * 0.75);
 }
 
 #myConsole {
-  margin-top: 10px;
+  margin-top: 20px;
   width: 100%;
   min-height: 400px;
 }
 
 #videoFps {
   margin-top: 10px;
+}
+
+button, input, select {
+  font-family: inherit;
 }

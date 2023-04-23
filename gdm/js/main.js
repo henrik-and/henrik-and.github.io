@@ -1,14 +1,16 @@
 'use strict';
 
 const videoElement = document.getElementById("video");
+const videoSize = document.getElementById("videoSize");
+const videoFps = document.getElementById("videoFps");
 const myConsoleTextArea = document.getElementById('myConsole');
 const logElement = document.getElementById("log");
-const videoFpsDiv = document.getElementById("videoFps");
+const startButton = document.getElementById("getDisplayMediaButton");
 const pauseButton = document.getElementById("videoPauseButton");
 const playButton = document.getElementById("videoPlayButton");
 
-pauseButton.setAttribute('disabled','disabled');
-playButton.setAttribute('disabled','disabled');
+pauseButton.disabled = true;
+playButton.disabled = true;
 
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
@@ -17,6 +19,7 @@ let oldLocalFrames = 0;
 let localFps = 30;
 
 let mediaTrackConstraints = {};
+
 
 (()=>{
   const console_log = window.console.log;
@@ -36,11 +39,14 @@ function logError(msg) {
   logElement.innerHTML += `${msg}<br>`;
 }
 
-videoElement.addEventListener('loadedmetadata', function() {
-  console.log(`Video dimensions: ${this.videoWidth}x${this.videoHeight}px`);
-});
+function showScreenProperties() {
+  let screen = window.screen;
+  console.log(`Screen dimensions: ${screen.width}x${screen.height}px`);
+}
 
 function main() {
+  clearConsole();
+  showScreenProperties();
 	setTimeout(updateVideoFps, 30);
 }
 
@@ -54,48 +60,70 @@ function logStream(stream) {
   console.log('Track settings:', videoTrack.getSettings());
 }
 
-document.getElementById("getDisplayMediaButton").onclick = async () => {
-	clearConsole();
+const setStream = async (stream) => {
+  startButton.disabled = true;
+  pauseButton.disabled = false;
+  const videoTrack = stream.getVideoTracks()[0];
+  await videoTrack.applyConstraints(mediaTrackConstraints);
+  videoElement.srcObject = stream;
   
+  videoTrack.addEventListener('ended', () => {
+    videoSize.textContent = '0x0';
+    clearConsole();
+    showScreenProperties();
+    startButton.disabled = false;
+    playButton.disabled = true;
+    pauseButton.disabled = true;
+  });
+  
+  videoElement.onloadedmetadata = (e) => {
+    videoSize.textContent = video.videoWidth + 'x' + video.videoHeight;
+  };
+
+  videoElement.onresize = (e) => {
+    videoSize.textContent = video.videoWidth + 'x' + video.videoHeight;
+  };
+  logStream(stream);
+};
+
+startButton.onclick = async () => {
   let videoConstraints = {};
-  // if (cursor.value !== 'default') {
-  //   mediaTrackConstraints.cursor = cursor.value;
-  //   videoConstraints = {video: mediaTrackConstraints};
-  // }
   
-  mediaTrackConstraints.height = 1440
-  mediaTrackConstraints.width = 2560
+  if (height.value !== 'default') {
+    mediaTrackConstraints.height = height.value;
+  }
+  if (width.value !== 'default') {
+    mediaTrackConstraints.width = width.value;
+  }
+  if (frameRate.value !== 'default') {
+    mediaTrackConstraints.frameRate = frameRate.value;
+  }
   videoConstraints = {video: mediaTrackConstraints};
-  
   console.log('Requested getDisplayMedia constraints:', videoConstraints);
   
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia(videoConstraints);
-    const videoTrack = stream.getVideoTracks()[0];
-    await videoTrack.applyConstraints(mediaTrackConstraints);
-    videoElement.srcObject = stream;
-    logStream(stream);
-    pauseButton.removeAttribute('disabled');
+    await setStream(stream);
   } catch (e) {
     logError(e);
   }
 };
 
 pauseButton.onclick = () => {
-  pauseButton.setAttribute('disabled','disabled');
+  pauseButton.disabled = true;
   playButton.removeAttribute('disabled');
   videoElement.pause();
 };
 
 playButton.onclick = () => {
-  playButton.setAttribute('disabled','disabled');
-  pauseButton.removeAttribute('disabled');
+  playButton.disabled = true;
+  pauseButton.disabled = false;
   videoElement.play();
 };
 
 setInterval(() => {
   if (videoElement.videoWidth) {
-  	videoFpsDiv.innerHTML = `<strong>Video framerate:</strong> ${localFps.toFixed(1)} fps`;
+    videoFps.textContent = localFps.toFixed(1);
   }
 }, 1000);
 

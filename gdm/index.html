@@ -9,13 +9,47 @@
 <body>
   <div id="container">
       <video id="video" muted autoplay></video>
+      <table>
+        <tr>
+          <td>
+            <span id="videoSize">0x0</span>
+            <span id="videoFps">0</span> fps
+          </td>
+      </table>
       <br>
       <button id="getDisplayMediaButton">getDisplayMedia</button>
       <button id="videoPauseButton">Pause</button>
-      <button id="videoPlayButton">Play</button>
-      <div></div>
-      <div id="videoFps"></div>   
-      <br>
+      <button id="videoPlayButton">Play</button> |
+      width:
+      <select id="width">
+        <option value="default" selected>default</option>
+        <option value="3840">3840</option>
+        <option value="2560">2560</option>
+        <option value="2048">2048</option>
+        <option value="1920">1920</option>
+      </select>
+      height:
+      <select id="height">
+        <option value="default" selected>default</option>
+        <option value="2160">2160</option>
+        <option value="1440">1440</option>
+        <option value="1152">1152</option>
+        <option value="1080">1080</option>
+      </select>
+      frameRate:
+      <select id="frameRate">
+        <option value="default" selected>default</option>
+        <option value="60">60</option>
+        <option value="30">30</option>
+        <option value="24">24</option>
+        <option value="20">20</option>
+        <option value="15">15</option>
+        <option value="12">12</option>
+        <option value="10">10</option>
+        <option value="5">5</option>
+        <option value="1">1</option>
+        <option value="0">0</option>
+      </select>
       <textarea id="myConsole"></textarea>
       <div id="log"></div>
   </div>
