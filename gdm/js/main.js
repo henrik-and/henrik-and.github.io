@@ -3,7 +3,7 @@
 const videoElement = document.getElementById("video");
 const videoSize = document.getElementById("videoSize");
 const videoFps = document.getElementById("videoFps");
-const myConsoleTextArea = document.getElementById('myConsole');
+const myConsoleTextArea = document.getElementById("myConsole");
 const logElement = document.getElementById("log");
 const startButton = document.getElementById("getDisplayMediaButton");
 const pauseButton = document.getElementById("videoPauseButton");
@@ -18,6 +18,7 @@ let oldTimestampMs = 0;
 let oldLocalFrames = 0;
 let localFps = 30;
 
+let supportedConstraints = {};
 let mediaTrackConstraints = {};
 
 
@@ -47,6 +48,7 @@ function showScreenProperties() {
 function main() {
   clearConsole();
   showScreenProperties();
+  supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
 	setTimeout(updateVideoFps, 30);
 }
 
@@ -98,6 +100,12 @@ startButton.onclick = async () => {
   if (frameRate.value !== 'default') {
     mediaTrackConstraints.frameRate = frameRate.value;
   }
+  if (supportedConstraints.displaySurface) {
+    if (displaySurface.value !== 'default') {
+      mediaTrackConstraints.displayService = displaySurface.value; 
+    }
+  }
+  
   videoConstraints = {video: mediaTrackConstraints};
   console.log('Requested getDisplayMedia constraints:', videoConstraints);
   
