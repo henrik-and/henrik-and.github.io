@@ -102,11 +102,11 @@ startButton.onclick = async () => {
   }
   if (supportedConstraints.displaySurface) {
     if (displaySurface.value !== 'default') {
-      mediaTrackConstraints.displayService = displaySurface.value; 
+      mediaTrackConstraints.displaySurface = displaySurface.value; 
     }
   }
-  
-  videoConstraints = {video: mediaTrackConstraints};
+ 
+  videoConstraints = {video: mediaTrackConstraints, audio: false};
   console.log('Requested getDisplayMedia constraints:', videoConstraints);
   
   try {
