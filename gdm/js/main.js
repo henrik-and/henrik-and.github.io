@@ -1,3 +1,6 @@
+// https://developer.mozilla.org/en-US/docs/Web/API/Screen_Capture_API/Using_Screen_Capture
+// https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia
+
 'use strict';
 
 const videoElement = document.getElementById("video");
@@ -66,7 +69,7 @@ const setStream = async (stream) => {
   startButton.disabled = true;
   pauseButton.disabled = false;
   const videoTrack = stream.getVideoTracks()[0];
-  await videoTrack.applyConstraints(mediaTrackConstraints);
+  // await videoTrack.applyConstraints(mediaTrackConstraints);
   videoElement.srcObject = stream;
   
   videoTrack.addEventListener('ended', () => {
@@ -89,7 +92,7 @@ const setStream = async (stream) => {
 };
 
 startButton.onclick = async () => {
-  let videoConstraints = {};
+  let displayMediaOptions = {};
   
   if (height.value !== 'default') {
     mediaTrackConstraints.height = height.value;
@@ -106,11 +109,11 @@ startButton.onclick = async () => {
     }
   }
  
-  videoConstraints = {video: mediaTrackConstraints, audio: false};
-  console.log('Requested getDisplayMedia constraints:', videoConstraints);
+  displayMediaOptions = {video: mediaTrackConstraints, audio: false};
+  console.log('Requested getDisplayMedia options:', displayMediaOptions);
   
   try {
-    const stream = await navigator.mediaDevices.getDisplayMedia(videoConstraints);
+    const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
     await setStream(stream);
   } catch (e) {
     logError(e);
