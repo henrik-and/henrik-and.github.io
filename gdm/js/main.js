@@ -1,5 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/Screen_Capture_API/Using_Screen_Capture
 // https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia
+// https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/applyConstraints
 
 'use strict';
 
@@ -11,9 +12,11 @@ const logElement = document.getElementById("log");
 const startButton = document.getElementById("getDisplayMediaButton");
 const pauseButton = document.getElementById("videoPauseButton");
 const playButton = document.getElementById("videoPlayButton");
+const applyButton = document.getElementById("applyConstraintsButton");
 
 pauseButton.disabled = true;
 playButton.disabled = true;
+applyButton.disabled = true;
 
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
@@ -23,6 +26,8 @@ let localFps = 30;
 
 let supportedConstraints = {};
 let mediaTrackConstraints = {};
+
+let videoStream = null;
 
 
 (()=>{
@@ -69,8 +74,8 @@ const setStream = async (stream) => {
   startButton.disabled = true;
   pauseButton.disabled = false;
   const videoTrack = stream.getVideoTracks()[0];
-  // await videoTrack.applyConstraints(mediaTrackConstraints);
   videoElement.srcObject = stream;
+  videoStream = stream;
   
   videoTrack.addEventListener('ended', () => {
     videoSize.textContent = '0x0';
@@ -79,6 +84,8 @@ const setStream = async (stream) => {
     startButton.disabled = false;
     playButton.disabled = true;
     pauseButton.disabled = true;
+    applyButton.disabled = false;
+    videoStream = null;
   });
   
   videoElement.onloadedmetadata = (e) => {
@@ -115,6 +122,8 @@ startButton.onclick = async () => {
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
     await setStream(stream);
+    playButton.disabled = true;
+    applyButton.disabled = false;
   } catch (e) {
     logError(e);
   }
@@ -122,15 +131,36 @@ startButton.onclick = async () => {
 
 pauseButton.onclick = () => {
   pauseButton.disabled = true;
-  playButton.removeAttribute('disabled');
+  playButton.disabled = false;
   videoElement.pause();
 };
 
 playButton.onclick = () => {
   playButton.disabled = true;
   pauseButton.disabled = false;
+  applyButton.disabled = false;
   videoElement.play();
 };
+
+applyButton.onclick = async () => {
+  let constraints = {};
+  
+  if (applyHeight.value !== 'default') {
+    constraints.height = applyHeight.value;
+  }
+  if (applyWidth.value !== 'default') {
+    constraints.width = applyWidth.value;
+  }
+  if (applyFrameRate.value !== 'default') {
+    constraints.frameRate = applyFrameRate.value;
+  }
+ 
+  console.log('Requested applyConstraints:', constraints);
+  if (videoStream) {
+    const videoTrack = videoStream.getVideoTracks()[0];
+    await videoTrack.applyConstraints(constraints);
+  }
+}
 
 setInterval(() => {
   if (videoElement.videoWidth) {

@@ -19,7 +19,7 @@ video {
   height: calc(var(--width) * 0.75);
 }
 
-#constraints {
+#options {
   margin-top: 10px;
 }
 
