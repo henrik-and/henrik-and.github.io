@@ -50,7 +50,12 @@ function logError(msg) {
 
 function showScreenProperties() {
   let screen = window.screen;
-  console.log(`Screen dimensions: ${screen.width}x${screen.height}px`);
+  let pxRatio = window.devicePixelRatio;
+  console.log(`Screen resolution: ${screen.width * pxRatio}x${screen.height * pxRatio}px`);
+  if (pxRatio !== 1.0) {
+    console.log(`Pixel ratio: ${pxRatio}`);
+    console.log(`Screen dimension: ${screen.width}x${screen.height}px`);
+  }
 }
 
 function main() {
