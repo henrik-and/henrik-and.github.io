@@ -13,10 +13,12 @@ const startButton = document.getElementById("getDisplayMediaButton");
 const pauseButton = document.getElementById("videoPauseButton");
 const playButton = document.getElementById("videoPlayButton");
 const applyButton = document.getElementById("applyConstraintsButton");
+const constraintsFieldset = document.getElementById("constraints");
 
 pauseButton.disabled = true;
 playButton.disabled = true;
 applyButton.disabled = true;
+constraintsFieldset.disabled = true;
 
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
@@ -90,6 +92,7 @@ const setStream = async (stream) => {
     playButton.disabled = true;
     pauseButton.disabled = true;
     applyButton.disabled = false;
+    constraintsFieldset.disabled = false;
     videoStream = null;
   });
   
@@ -129,6 +132,7 @@ startButton.onclick = async () => {
     await setStream(stream);
     playButton.disabled = true;
     applyButton.disabled = false;
+    constraintsFieldset.disabled = false;
   } catch (e) {
     logError(e);
   }
@@ -144,6 +148,7 @@ playButton.onclick = () => {
   playButton.disabled = true;
   pauseButton.disabled = false;
   applyButton.disabled = false;
+  constraintsFieldset.disabled = false;
   videoElement.play();
 };
 
