@@ -120,7 +120,7 @@ startButton.onclick = async () => {
     mediaTrackConstraints.width = width.value;
   }
   if (frameRate.value !== 'default') {
-    mediaTrackConstraints.frameRate = frameRate.value;
+    mediaTrackConstraints.frameRate = {ideal: frameRate.value};
   }
   if (supportedConstraints.displaySurface) {
     if (displaySurface.value !== 'default') {
