@@ -106,6 +106,10 @@ const setStream = async (stream) => {
   logStream(stream);
 };
 
+// Note: min and exact values are not permitted in constraints used in MediaDevices.getDisplayMedia()
+// calls — they produce a TypeError — but they are allowed in constraints used in
+// MediaStreamTrack.applyConstraints() calls.
+// See https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#constraindouble.
 startButton.onclick = async () => {
   let displayMediaOptions = {};
   
@@ -152,6 +156,7 @@ playButton.onclick = () => {
   videoElement.play();
 };
 
+// https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints
 applyButton.onclick = async () => {
   let constraints = {};
   
@@ -161,8 +166,14 @@ applyButton.onclick = async () => {
   if (applyWidth.value !== 'default') {
     constraints.width = applyWidth.value;
   }
-  if (applyFrameRate.value !== 'default') {
-    constraints.frameRate = applyFrameRate.value;
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value == 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value};
+  }
+  if (applyFrameRateMin.value == 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {max: applyFrameRateMax.value};
+  }
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value, max: applyFrameRateMax.value};
   }
  
   console.log('Requested applyConstraints:', constraints);
