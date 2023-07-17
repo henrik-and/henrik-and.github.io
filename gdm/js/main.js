@@ -84,6 +84,14 @@ const setStream = async (stream) => {
   videoElement.srcObject = stream;
   videoStream = stream;
   
+  videoTrack.onmute = () => {
+    console.log(`local ${videoTrack.kind} mute (muted = ${videoTrack.muted})`);
+  }
+  
+  videoTrack.onunmute = () => {
+    console.log(`local ${videoTrack.kind} unmute (muted = ${videoTrack.muted})`);
+  }
+  
   videoTrack.addEventListener('ended', () => {
     videoSize.textContent = '0x0';
     clearConsole();
@@ -95,6 +103,10 @@ const setStream = async (stream) => {
     constraintsFieldset.disabled = false;
     videoStream = null;
   });
+  
+  videoElement.ontimeupdate = () => {
+    console.log(videoElement.currentTime);
+  }
   
   videoElement.onloadedmetadata = (e) => {
     videoSize.textContent = video.videoWidth + 'x' + video.videoHeight;
