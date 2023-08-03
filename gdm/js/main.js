@@ -105,7 +105,7 @@ const setStream = async (stream) => {
   });
   
   videoElement.ontimeupdate = () => {
-    console.log(videoElement.currentTime);
+    // console.log(videoElement.currentTime);
   }
   
   videoElement.onloadedmetadata = (e) => {
