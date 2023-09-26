@@ -96,11 +96,6 @@ let localStream;
 let localPeerConnection;
 let remotePeerConnection;
 
-const offerOptions = {
-  offerToReceiveAudio: 1,
-  offerToReceiveVideo: 1
-};
-
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
 }
@@ -191,7 +186,7 @@ async function call() {
 
   try {
     console.log('localPeerConnection createOffer start');
-    const offer = await localPeerConnection.createOffer(offerOptions);
+    const offer = await localPeerConnection.createOffer();
     await onCreateOfferSuccess(offer);
   } catch (e) {
     onCreateSessionDescriptionError(e);
@@ -211,7 +206,6 @@ async function onCreateOfferSuccess(desc) {
   } catch (e) {
     onSetSessionDescriptionError();
   }
-
   console.log('remotePeerConnection setRemoteDescription start');
   try {
     await remotePeerConnection.setRemoteDescription(desc);
@@ -252,6 +246,9 @@ function gotRemoteStream(e) {
 }
 
 async function onCreateAnswerSuccess(desc) {
+  // var lines = desc.sdp.split("\r\n");
+  // lines.splice(lines.length - 1, 0, "a=x-google-flag:conference");
+  // desc.sdp = lines.join("\r\n")
   console.log(`Answer from remotePeerConnection:\n${desc.sdp}`);
   console.log('remotePeerConnection setLocalDescription start');
   try {
