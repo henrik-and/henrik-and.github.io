@@ -127,6 +127,52 @@
       </select>
     </label>
     <br />
+    <button id="applyConstraints">applyConstraints</button>
+    width:
+    <select id="applyWidth">
+      <option value="default" selected>default</option>
+      <option value="3840">3840</option>
+      <option value="2560">2560</option>
+      <option value="2048">2048</option>
+      <option value="1920">1920</option>
+    </select>
+    height:
+    <select id="applyHeight">
+      <option value="default" selected>default</option>
+      <option value="2160">2160</option>
+      <option value="1440">1440</option>
+      <option value="1152">1152</option>
+      <option value="1080">1080</option>
+    </select>
+    frameRate:min:
+    <select id="applyFrameRateMin">
+      <option value="default" selected>default</option>
+      <option value="60">60</option>
+      <option value="30">30</option>
+      <option value="24">24</option>
+      <option value="20">20</option>
+      <option value="15">15</option>
+      <option value="12">12</option>
+      <option value="10">10</option>
+      <option value="5">5</option>
+      <option value="1">1</option>
+      <option value="0">0</option>
+    </select>
+    frameRate:max:
+    <select id="applyFrameRateMax">
+      <option value="default" selected>default</option>
+      <option value="60">60</option>
+      <option value="30">30</option>
+      <option value="24">24</option>
+      <option value="20">20</option>
+      <option value="15">15</option>
+      <option value="12">12</option>
+      <option value="10">10</option>
+      <option value="5">5</option>
+      <option value="1">1</option>
+      <option value="0">0</option>
+    </select>
+    <br />
     <div class="encodingBox" data-layer="0">
       Layer
       <span id="layerId">0</span> <span id="videoSize">0x0</span>
@@ -854,6 +900,37 @@
           }
 
           setupPeerConnection();
+        } catch (e) {
+          log(e);
+        }
+      };
+      
+      // https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints
+      document.querySelector('#applyConstraints').onclick = async () => {
+        let constraints = {};
+        if (applyHeight.value !== 'default') {
+          constraints.height = applyHeight.value;
+        }
+        if (applyHeight.value !== 'default') {
+          constraints.height = applyHeight.value;
+        }
+        if (applyWidth.value !== 'default') {
+          constraints.width = applyWidth.value;
+        }
+        if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value == 'default') {
+          constraints.frameRate = {min: applyFrameRateMin.value};
+        }
+        if (applyFrameRateMin.value == 'default' && applyFrameRateMax.value !== 'default') {
+          constraints.frameRate = {max: applyFrameRateMax.value};
+        }
+        if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value !== 'default') {
+          constraints.frameRate = {min: applyFrameRateMin.value, max: applyFrameRateMax.value};
+        }
+        try {
+          if (stream) {
+            console.log('Requested applyConstraints:', constraints);
+            await stream.getVideoTracks()[0].applyConstraints(constraints);
+          }
         } catch (e) {
           log(e);
         }
