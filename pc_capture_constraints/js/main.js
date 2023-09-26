@@ -120,7 +120,7 @@ function handleSuccess(stream) {
   
   const videoTrack = stream.getVideoTracks()[0]; 
   const constraints = getDisplayMediaConstraints();
-  console.log('Requested contstraints', prettyJson(constraints));
+  console.log('Requested constraints', prettyJson(constraints));
   
   // Apply the complete constraint (including possibly >0 min framerate).
   videoTrack
