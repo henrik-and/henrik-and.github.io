@@ -257,7 +257,7 @@ const insertReceiverReferenceTimeReport = (sdp) => {
       newSdp.push('a=rtcp-fb:' + match[1] + ' rrtr'); 
     }
   }
-  console.log(newSdp.join('\r\n'));
+  // console.log(newSdp.join('\r\n'));
   return newSdp.join('\r\n');
 }
 
