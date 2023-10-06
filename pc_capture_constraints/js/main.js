@@ -197,9 +197,11 @@ function onCreateSessionDescriptionError(error) {
   console.log(`Failed to create session description: ${error.toString()}`);
 }
 
-async function onCreateOfferSuccess(desc) {
-  console.log(`Offer from localPeerConnection\n${desc.sdp}`);
+async function onCreateOfferSuccess(desc) { 
   console.log('localPeerConnection setLocalDescription start');
+  desc.sdp = insertReceiverReferenceTimeReport(desc.sdp);
+  console.log(`Modified offer from localPeerConnection\n${desc.sdp}`)
+  
   try {
     await localPeerConnection.setLocalDescription(desc);
     onSetLocalSuccess(localPeerConnection);
@@ -245,11 +247,23 @@ function gotRemoteStream(e) {
   }
 }
 
+const insertReceiverReferenceTimeReport = (sdp) => {
+  var lines = sdp.split('\r\n');
+  var newSdp = [];
+  for(var i = 0; i < lines.length; i++) {
+    newSdp.push(lines[i])
+    var match = lines[i].match(/([0-9]+) nack pli/);
+    if (match) {
+      newSdp.push('a=rtcp-fb:' + match[1] + ' rrtr'); 
+    }
+  }
+  console.log(newSdp.join('\r\n'));
+  return newSdp.join('\r\n');
+}
+
 async function onCreateAnswerSuccess(desc) {
-  // var lines = desc.sdp.split("\r\n");
-  // lines.splice(lines.length - 1, 0, "a=x-google-flag:conference");
-  // desc.sdp = lines.join("\r\n")
-  console.log(`Answer from remotePeerConnection:\n${desc.sdp}`);
+  desc.sdp = insertReceiverReferenceTimeReport(desc.sdp);
+  console.log(`Modified offer from remotePeerConnection\n${desc.sdp}`)
   console.log('remotePeerConnection setLocalDescription start');
   try {
     await remotePeerConnection.setLocalDescription(desc);
