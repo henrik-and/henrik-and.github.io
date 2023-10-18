@@ -35,6 +35,7 @@ const remoteVideoSizeDiv = document.querySelector('div#remoteVideo div');
 const localVideoFpsDiv = document.querySelector('div#localVideoFramerate');
 const remoteVideoFpsDiv = document.querySelector('div#remoteVideoFramerate');
 
+const localTrackStatsDiv = document.querySelector('div#localTrackStats');
 const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const updateStats = document.querySelector('input#updateStats');
@@ -95,6 +96,7 @@ function displayRangeValue(e) {
 let localStream;
 let localPeerConnection;
 let remotePeerConnection;
+let prevStats = null;
 
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
@@ -257,7 +259,6 @@ const insertReceiverReferenceTimeReport = (sdp) => {
       newSdp.push('a=rtcp-fb:' + match[1] + ' rrtr'); 
     }
   }
-  // console.log(newSdp.join('\r\n'));
   return newSdp.join('\r\n');
 }
 
@@ -342,6 +343,22 @@ setInterval(() => {
   if (!updateStats.checked) {
     return;
   }
+  if (localStream) {
+    const [track] = localStream.getTracks();
+    const currStats = track.stats.toJSON();
+    currStats.droppedFrames = currStats.totalFrames - currStats.deliveredFrames - currStats.discardedFrames;
+    if (prevStats == null)
+    	prevStats = currStats;
+    const deltaStats =
+        Object.assign(currStats,
+    									{fps:{delivered: currStats.deliveredFrames - prevStats.deliveredFrames,
+    									      discarded: currStats.discardedFrames - prevStats.discardedFrames,
+                            dropped: currStats.droppedFrames - prevStats.droppedFrames,
+                            total: currStats.totalFrames - prevStats.totalFrames}});
+    localTrackStatsDiv.textContent = 'localTrack.stats:\n' + prettyJson(deltaStats);
+    // localTrackStatsDiv.innerHTML = prettyJson(deltaStats).replaceAll(' ', '&nbsp;').replaceAll('\n', '<br/>');
+    prevStats = currStats;
+  }
   if (localPeerConnection && remotePeerConnection) {
     localPeerConnection
         .getStats(null)
@@ -351,7 +368,7 @@ setInterval(() => {
         .then(showRemoteStats, err => console.log(err));
   } else {
     const framesPerSecond = 0;
-    senderStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+    senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
     receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
   }
   if (localVideo.videoWidth) {

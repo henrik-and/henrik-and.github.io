@@ -32,13 +32,7 @@
 <body>
 
 <div id="container">
-    <h1>WebRTC PeerConnection and getDisplayMedia</h1>
-
-    <p>This sample shows how to setup a connection between two peers using
-        <a href="https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection">RTCPeerConnection
-        </a> and a stream from
-        <a href=https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia">getDisplayMedia </a> as source.
-    </p>
+    <h2>WebRTC PeerConnection and getDisplayMedia</h2>
 
     <section id="video">
         <div id="localVideo">
@@ -63,7 +57,7 @@
     <section id="constraints">
         <div id="getDisplayMedia">
             <div class="input">
-                <h2>Constraints</h2>
+                <h3>Constraints</h3>
                 <div id="minFramerate">
                     <label>Min frameRate <span>0</span>fps:</label>
                     <input type="range" min="0" max="60" value="0">
@@ -76,13 +70,14 @@
             <div id="getDisplayMediaConstraints" class="output"></div>
             <div id="getActualDisplayMediaConstraints" class="output"></div>
         </div>
-
     </section>
     
     <section id="statistics">
-        <h2>Statistics</h2>
+        <h3>Statistics</h3>
         <label>Update statistics every second</label>
         <input type="checkbox" id="updateStats" checked>
+        <br>
+        <div id="localTrackStats" class="output"></div>
         <br>
         <br>
         <div id="senderStats"></div>

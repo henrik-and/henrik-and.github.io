@@ -34,7 +34,7 @@ div.output {
   background-color: #eee;
   display: inline-block;
   font-family: 'Inconsolata', 'Courier New', monospace;
-  font-size: 0.9em;
+  font-size: 0.8em;
   padding: 10px 10px 10px 25px;
   position: relative;
   top: 10px;
@@ -59,7 +59,7 @@ section#constraints label {
 section#statistics div {
   display: inline-block;
   font-family: 'Inconsolata', 'Courier New', monospace;
-  font-size: 0.9em;
+  font-size: 0.8em;
   background-color: #eee;
   padding: 10px 10px 10px 25px;
   vertical-align: top;
@@ -86,11 +86,6 @@ section#video > div div {
   font-size: 0.9em;
   margin: 0 0 0.5em 0;
   width: 320px;
-}
-
-section {
-  margin: 0 0 20px 0;
-  padding: 0 0 15px 0;
 }
 
 section#video {
