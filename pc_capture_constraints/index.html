@@ -59,11 +59,11 @@
             <div class="input">
                 <h3>Constraints</h3>
                 <div id="minFramerate">
-                    <label>Min frameRate <span>0</span>fps:</label>
+                    <label>Min frameRate <span>0</span> fps:</label>
                     <input type="range" min="0" max="60" value="0">
                 </div>
                 <div id="maxFramerate">
-                    <label>Max frameRate <span>30</span>fps:</label>
+                    <label>Max frameRate <span>30</span> fps:</label>
                     <input type="range" min="0" max="60" value="30">
                 </div>
             </div>
@@ -73,15 +73,13 @@
     </section>
     
     <section id="statistics">
-        <h3>Statistics</h3>
         <label>Update statistics every second</label>
         <input type="checkbox" id="updateStats" checked>
         <br>
         <div id="localTrackStats" class="output"></div>
-        <br>
-        <br>
-        <div id="senderStats"></div>
-        <div id="receiverStats"></div>
+        <div id="senderStats" class="output"></div>
+        <br><br>
+        <div id="receiverStats" class="output"></div>
     </section>
     
 </div>

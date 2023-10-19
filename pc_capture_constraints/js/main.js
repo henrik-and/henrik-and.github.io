@@ -316,13 +316,69 @@ function hangup() {
   callButton.disabled = false;
 }
 
+/*
+{
+  "id": "OT01V2112872935"
+  "timestamp": 1697724536805.958,
+  "type": "outbound-rtp",
+  "codecId": "COT01_96",
+  "kind": "video",
+  "mediaType": "video",
+  "ssrc": 2112872935,
+  "transportId": "T01",
+  "bytesSent": 12303816,
+  "packetsSent": 11961,
+  "active": true,
+  "contentType": "screenshare",
+  "encoderImplementation": "libvpx",
+  "firCount": 0,
+  "frameHeight": 2160,
+  "frameWidth": 3840,
+  "framesEncoded": 1949,
+  "framesPerSecond": 21,
+  "framesSent": 1949,
+  "headerBytesSent": 303189,
+  "hugeFramesSent": 6,
+  "keyFramesEncoded": 1,
+  "mediaSourceId": "SV3",
+  "mid": "0",
+  "nackCount": 0,
+  "pliCount": 0,
+  "powerEfficientEncoder": false,
+  "qpSum": 50481,
+  "qualityLimitationDurations": {
+    "bandwidth": 0,
+    "cpu": 0,
+    "none": 89.696,
+    "other": 0
+  },
+  "qualityLimitationReason": "none",
+  "qualityLimitationResolutionChanges": 0,
+  "remoteId": "RIV2112872935",
+  "retransmittedBytesSent": 0,
+  "retransmittedPacketsSent": 0,
+  "rtxSsrc": 2925010918,
+  "scalabilityMode": "L1T1",
+  "targetBitrate": 2500000,
+  "totalEncodeTime": 34.463,
+  "totalEncodedBytesTarget": 0,
+  "totalPacketSendDelay": 40.278261
+}
+*/
+
 function showLocalStats(results) {
   results.forEach(report => {
     if (report.type === 'outbound-rtp') {
-      const framesPerSecond = report.framesPerSecond;
-      if (framesPerSecond) {
-        senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
-      }
+      const rtcStatsReport = report;
+      const partialStats = {};
+      // partialStats.contentType = rtcStatsReport.contentType;
+      // partialStats.encoderImplementation = rtcStatsReport.encoderImplementation;
+      partialStats.framesSent = rtcStatsReport.framesSent;
+      partialStats.framesPerSecond = rtcStatsReport.framesPerSecond;
+      partialStats.framesEncoded = rtcStatsReport.framesEncoded;
+      partialStats.qualityLimitationDurations = rtcStatsReport.qualityLimitationDurations;
+      partialStats.qualityLimitationReason = rtcStatsReport.qualityLimitationReason;
+      senderStatsDiv.textContent = `${rtcStatsReport.type}:\n` + prettyJson(partialStats);
     }
   });
 }
@@ -330,10 +386,10 @@ function showLocalStats(results) {
 function showRemoteStats(results) {
   results.forEach(report => {
     if (report.type === 'inbound-rtp') {
-      const framesPerSecond = report.framesPerSecond;
-      if (framesPerSecond) {
-        receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
-      }
+      // const framesPerSecond = report.framesPerSecond;
+      // if (framesPerSecond) {
+      //  receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+      // }
     }
   });
 }
@@ -355,7 +411,7 @@ setInterval(() => {
     									      discarded: currStats.discardedFrames - prevStats.discardedFrames,
                             dropped: currStats.droppedFrames - prevStats.droppedFrames,
                             total: currStats.totalFrames - prevStats.totalFrames}});
-    localTrackStatsDiv.textContent = 'localTrack.stats:\n' + prettyJson(deltaStats);
+    localTrackStatsDiv.textContent = 'media-source:\n' + prettyJson(deltaStats);
     // localTrackStatsDiv.innerHTML = prettyJson(deltaStats).replaceAll(' ', '&nbsp;').replaceAll('\n', '<br/>');
     prevStats = currStats;
   }
@@ -367,9 +423,9 @@ setInterval(() => {
         .getStats(null)
         .then(showRemoteStats, err => console.log(err));
   } else {
-    const framesPerSecond = 0;
-    senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
-    receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+    // const framesPerSecond = 0;
+    // senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
+    // receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
   }
   if (localVideo.videoWidth) {
     const width = localVideo.videoWidth;
