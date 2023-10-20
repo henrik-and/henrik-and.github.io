@@ -384,8 +384,8 @@ media-source: {
 
 function showLocalStats(results) {
   results.forEach(report => {
+    const partialStats = {};
     if (report.type === 'media-source') {
-      const partialStats = {};
       partialStats.frames = report.frames;
       partialStats.framesPerSecond = report.framesPerSecond;
       partialStats.height = report.height;
@@ -393,7 +393,6 @@ function showLocalStats(results) {
       mediaSourceStatsDiv.textContent = `${report.type}:\n` + prettyJson(partialStats);
     } else if (report.type === 'outbound-rtp') {
       const currOutStats = report;
-      const partialStats = {};
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
       partialStats.framesEncoded = currOutStats.framesEncoded;
