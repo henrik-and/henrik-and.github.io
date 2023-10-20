@@ -36,6 +36,7 @@ const localVideoFpsDiv = document.querySelector('div#localVideoFramerate');
 const remoteVideoFpsDiv = document.querySelector('div#remoteVideoFramerate');
 
 const localTrackStatsDiv = document.querySelector('div#localTrackStats');
+const mediaSourceStatsDiv = document.querySelector('div#mediaSourceStats');
 const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const updateStats = document.querySelector('input#updateStats');
@@ -367,11 +368,31 @@ function hangup() {
 }
 */
 
+/*
+media-source: {
+  "id": "SV6",
+  "timestamp": 1697815077957.937,
+  "type": "media-source",
+  "kind": "video",
+  "trackIdentifier": "df594376-7266-4a6b-bf2b-7d56f9b9c9f4",
+  "frames": 1129,
+  "framesPerSecond": 29,
+  "height": 1440,
+  "width": 2560
+}
+*/
+
 function showLocalStats(results) {
   results.forEach(report => {
-    if (report.type === 'outbound-rtp') {
+    if (report.type === 'media-source') {
+      const partialStats = {};
+      partialStats.frames = report.frames;
+      partialStats.framesPerSecond = report.framesPerSecond;
+      partialStats.height = report.height;
+      partialStats.width = report.width;
+      mediaSourceStatsDiv.textContent = `${report.type}:\n` + prettyJson(partialStats);
+    } else if (report.type === 'outbound-rtp') {
       const currOutStats = report;
-      
       const partialStats = {};
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
@@ -427,7 +448,7 @@ setInterval(() => {
     									      discarded: currStats.discardedFrames - prevStats.discardedFrames,
                             dropped: currStats.droppedFrames - prevStats.droppedFrames,
                             total: currStats.totalFrames - prevStats.totalFrames}});
-    localTrackStatsDiv.textContent = 'media-source:\n' + prettyJson(deltaStats);
+    localTrackStatsDiv.textContent = 'track.stats:\n' + prettyJson(deltaStats);
     // localTrackStatsDiv.innerHTML = prettyJson(deltaStats).replaceAll(' ', '&nbsp;').replaceAll('\n', '<br/>');
     prevStats = currStats;
   }
@@ -438,10 +459,6 @@ setInterval(() => {
     remotePeerConnection
         .getStats(null)
         .then(showRemoteStats, err => console.log(err));
-  } else {
-    // const framesPerSecond = 0;
-    // senderStatsDiv.innerHTML = `<strong>outbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
-    // receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
   }
   if (localVideo.videoWidth) {
     const width = localVideo.videoWidth;
