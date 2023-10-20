@@ -97,6 +97,7 @@ let localStream;
 let localPeerConnection;
 let remotePeerConnection;
 let prevStats = null;
+let prevOutStats = null;
 
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
@@ -369,16 +370,31 @@ function hangup() {
 function showLocalStats(results) {
   results.forEach(report => {
     if (report.type === 'outbound-rtp') {
-      const rtcStatsReport = report;
+      const currOutStats = report;
+      
       const partialStats = {};
-      // partialStats.contentType = rtcStatsReport.contentType;
-      // partialStats.encoderImplementation = rtcStatsReport.encoderImplementation;
-      partialStats.framesSent = rtcStatsReport.framesSent;
-      partialStats.framesPerSecond = rtcStatsReport.framesPerSecond;
-      partialStats.framesEncoded = rtcStatsReport.framesEncoded;
-      partialStats.qualityLimitationDurations = rtcStatsReport.qualityLimitationDurations;
-      partialStats.qualityLimitationReason = rtcStatsReport.qualityLimitationReason;
-      senderStatsDiv.textContent = `${rtcStatsReport.type}:\n` + prettyJson(partialStats);
+      partialStats.framesSent = currOutStats.framesSent;
+      partialStats.framesPerSecond = currOutStats.framesPerSecond;
+      partialStats.framesEncoded = currOutStats.framesEncoded;
+      partialStats.qualityLimitationDurations = currOutStats.qualityLimitationDurations;
+      partialStats.qualityLimitationReason = currOutStats.qualityLimitationReason;
+      
+      if (prevOutStats == null)
+        prevOutStats = currOutStats;
+      
+      const deltaEncodeTime = currOutStats.totalEncodeTime - prevOutStats.totalEncodeTime;
+      const deltaFramesEncoded = currOutStats.framesEncoded - prevOutStats.framesEncoded;
+      const deltaqpSum = currOutStats.qpSum - prevOutStats.qpSum;  
+      
+      const deltaOutStats =
+          Object.assign(partialStats,
+                        {"[qpSum/framesEncoded]": (deltaqpSum / deltaFramesEncoded).toFixed(1)},
+                        {ms:{"[totalEncodeTime/framesEncoded]": (1000 * deltaEncodeTime / deltaFramesEncoded).toFixed(1)}},
+                        {fps:{framesEncoded: currOutStats.framesEncoded - prevOutStats.framesEncoded,
+                              framesSent: currOutStats.framesSent - prevOutStats.framesSent}});
+      
+      senderStatsDiv.textContent = `${currOutStats.type}:\n` + prettyJson(deltaOutStats);
+      prevOutStats = currOutStats;
     }
   });
 }
