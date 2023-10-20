@@ -393,6 +393,8 @@ function showLocalStats(results) {
       mediaSourceStatsDiv.textContent = `${report.type}:\n` + prettyJson(partialStats);
     } else if (report.type === 'outbound-rtp') {
       const currOutStats = report;
+      partialStats.contentType = currOutStats.contentType;
+      partialStats.encoderImplementation = currOutStats.encoderImplementation;
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
       partialStats.framesEncoded = currOutStats.framesEncoded;
