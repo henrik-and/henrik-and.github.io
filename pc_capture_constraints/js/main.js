@@ -99,6 +99,7 @@ let localPeerConnection;
 let remotePeerConnection;
 let prevStats = null;
 let prevOutStats = null;
+let prevInStats = null;
 
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
@@ -421,13 +422,84 @@ function showLocalStats(results) {
   });
 }
 
+/*
+{
+  "id": "IT01V2294351567",
+  "timestamp": 1697981962773.141,
+  "type": "inbound-rtp",
+  "codecId": "CIT01_96",
+  "kind": "video",
+  "mediaType": "video",
+  "ssrc": 2294351567,
+  "transportId": "T01",
+  "jitter": 0.002,
+  "packetsLost": 0,
+  "packetsReceived": 2836,
+  "bytesReceived": 2703176,
+  "contentType": "screenshare",
+  "firCount": 0,
+  "frameHeight": 1440,
+  "frameWidth": 2560,
+  "framesAssembledFromMultiplePackets": 367,
+  "framesDecoded": 555,
+  "framesDropped": 0,
+  "framesPerSecond": 1,
+  "framesReceived": 555,
+  "freezeCount": 6,
+  "googTimingFrameInfo": "3426605772,539686083,539686119,539686124,539686124,539686124,539686083,539686083,539686125,539686125,539686157,539686161,539686182,0,1",
+  "headerBytesReceived": 107721,
+  "jitterBufferDelay": 22.956317,
+  "jitterBufferEmittedCount": 555,
+  "jitterBufferMinimumDelay": 32.765127,
+  "jitterBufferTargetDelay": 32.765127,
+  "keyFramesDecoded": 1,
+  "lastPacketReceivedTimestamp": 1697981962242.721,
+  "mid": "0",
+  "nackCount": 0,
+  "pauseCount": 0,
+  "pliCount": 0,
+  "qpSum": 16550,
+  "retransmittedBytesReceived": 16069,
+  "retransmittedPacketsReceived": 163,
+  "rtxSsrc": 4090590679,
+  "totalAssemblyTime": 1.229141,
+  "totalDecodeTime": 2.9450589999999996,
+  "totalFreezesDuration": 6.013,
+  "totalInterFrameDelay": 26.295,
+  "totalPausesDuration": 0,
+  "totalProcessingDelay": 25.949949,
+  "totalSquaredInterFrameDelay": 6.934711000000003,
+  "trackIdentifier": "452695f2-fb74-4038-8b9e-818d8fad7780"
+}
+*/
+
 function showRemoteStats(results) {
   results.forEach(report => {
+    const partialStats = {};
     if (report.type === 'inbound-rtp') {
-      // const framesPerSecond = report.framesPerSecond;
-      // if (framesPerSecond) {
-      //  receiverStatsDiv.innerHTML = `<strong>inbound-rtp framesPerSecond:</strong> ${framesPerSecond}`;
-      // }
+      partialStats.framesDecoded = report.framesDecoded;
+      partialStats.framesDropped = report.framesDropped;
+      partialStats.framesPerSecond = report.framesPerSecond;
+      partialStats.framesReceived = report.framesReceived;
+      partialStats.freezeCount = report.freezeCount;
+      partialStats.firCount = report.firCount;
+      
+      if (prevInStats == null)
+        prevInStats = report;
+      
+      const deltaDecodeTime = report.totalDecodeTime - prevInStats.totalDecodeTime;
+      const deltaFramesDecoded = report.framesDecoded - prevInStats.framesDecoded;
+      const deltaqpSum = report.qpSum - prevInStats.qpSum;  
+      
+      const deltaInStats =
+          Object.assign(partialStats,
+                        {"[qpSum/framesDecoded]": (deltaqpSum / deltaFramesDecoded).toFixed(1)},
+                        {ms:{"[totalDecodeTimeTime/framesDecoded]": (1000 * deltaDecodeTime / deltaFramesDecoded).toFixed(1)}},
+                        {fps:{framesDecoded: report.framesDecoded - prevInStats.framesDecoded,
+                              framesReceived: report.framesReceived - prevInStats.framesReceived}});
+      
+      receiverStatsDiv.textContent = 'remote ' + `${report.type}:\n` + prettyJson(deltaInStats);
+      prevInStats = report;
     }
   });
 }
