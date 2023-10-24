@@ -133,7 +133,7 @@ function handleSuccess(stream) {
     .then(() => {
       const settings = videoTrack.getSettings();
       console.log('getDisplayMedia.getSettings', prettyJson(settings));
-      getActualDisplayMediaConstraintsDiv.textContent = 'Actual constraints:\n' + prettyJson(settings);
+      // getActualDisplayMediaConstraintsDiv.textContent = 'Actual constraints:\n' + prettyJson(settings);
     })
     .catch(handleError);
   
@@ -396,13 +396,15 @@ function showLocalStats(results) {
     } else if (report.type === 'outbound-rtp') {
       // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
       const currOutStats = report;
-      partialStats.contentType = currOutStats.contentType;
+      // partialStats.contentType = currOutStats.contentType;
       partialStats.encoderImplementation = currOutStats.encoderImplementation;
       // partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
       partialStats.framesEncoded = currOutStats.framesEncoded;
       partialStats.qualityLimitationDurations = currOutStats.qualityLimitationDurations;
+      // A record of the total time, in seconds, that this stream has spent in each quality
+      // limitation state.
       partialStats.qualityLimitationReason = currOutStats.qualityLimitationReason;
       partialStats.firCount = report.firCount;
       partialStats.pliCount = report.pliCount;
@@ -417,7 +419,9 @@ function showLocalStats(results) {
       const deltaPacketSendDelay = currOutStats.totalPacketSendDelay - prevOutStats.totalPacketSendDelay;
       const deltaPacketsSent = currOutStats.packetsSent - prevOutStats.packetsSent;
       const deltaFramesEncoded = currOutStats.framesEncoded - prevOutStats.framesEncoded;
-      const deltaqpSum = currOutStats.qpSum - prevOutStats.qpSum;  
+      const deltaqpSum = currOutStats.qpSum - prevOutStats.qpSum;
+      const deltaQualityLimitNone = currOutStats.qualityLimitationDurations.none - prevOutStats.qualityLimitationDurations.none;
+      const deltaQualityLimitCpu = currOutStats.qualityLimitationDurations.cpu - prevOutStats.qualityLimitationDurations.cpu;
       
       const deltaOutStats =
           Object.assign(partialStats,
@@ -425,7 +429,8 @@ function showLocalStats(results) {
                         {ms:{"[totalEncodeTime/framesEncoded]": (1000 * deltaEncodeTime / deltaFramesEncoded).toFixed(1),
                              "[totalPacketSendDelay/packetsSent]": (1000 * deltaPacketSendDelay / deltaPacketsSent).toFixed(1)}},
                         {fps:{framesEncoded: currOutStats.framesEncoded - prevOutStats.framesEncoded,
-                              framesSent: currOutStats.framesSent - prevOutStats.framesSent}});
+                              framesSent: currOutStats.framesSent - prevOutStats.framesSent}},
+                        {"%":{"qualityLimitationDurations.cpu": (100 * deltaQualityLimitCpu).toFixed(1)}});
       
       senderStatsDiv.textContent = `${currOutStats.type}:\n` + prettyJson(deltaOutStats);
       prevOutStats = currOutStats;
