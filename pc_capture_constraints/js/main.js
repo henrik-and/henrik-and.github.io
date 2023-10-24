@@ -430,7 +430,7 @@ function showLocalStats(results) {
                              "[totalPacketSendDelay/packetsSent]": (1000 * deltaPacketSendDelay / deltaPacketsSent).toFixed(1)}},
                         {fps:{framesEncoded: currOutStats.framesEncoded - prevOutStats.framesEncoded,
                               framesSent: currOutStats.framesSent - prevOutStats.framesSent}},
-                        {"%":{"qualityLimitationDurations.cpu": (100 * deltaQualityLimitCpu).toFixed(1)}});
+                        {"%":{"qualityLimitationDurations.cpu": Math.min(100, (100 * deltaQualityLimitCpu).toFixed(1))}});
       
       senderStatsDiv.textContent = `${currOutStats.type}:\n` + prettyJson(deltaOutStats);
       prevOutStats = currOutStats;
