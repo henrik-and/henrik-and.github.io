@@ -549,19 +549,21 @@ setInterval(() => {
   }
   if (localStream) {
     const [track] = localStream.getTracks();
-    const currStats = track.stats.toJSON();
-    currStats.droppedFrames = currStats.totalFrames - currStats.deliveredFrames - currStats.discardedFrames;
-    if (prevStats == null)
-    	prevStats = currStats;
-    const deltaStats =
+    if (track.stats != undefined) {
+      const currStats = track.stats.toJSON();
+      currStats.droppedFrames = currStats.totalFrames - currStats.deliveredFrames - currStats.discardedFrames;
+      if (prevStats == null)
+        prevStats = currStats;
+      const deltaStats =
         Object.assign(currStats,
     									{fps:{delivered: currStats.deliveredFrames - prevStats.deliveredFrames,
     									      discarded: currStats.discardedFrames - prevStats.discardedFrames,
                             dropped: currStats.droppedFrames - prevStats.droppedFrames,
                             total: currStats.totalFrames - prevStats.totalFrames}});
-    localTrackStatsDiv.textContent = 'track.stats:\n' + prettyJson(deltaStats);
-    // localTrackStatsDiv.innerHTML = prettyJson(deltaStats).replaceAll(' ', '&nbsp;').replaceAll('\n', '<br/>');
-    prevStats = currStats;
+      localTrackStatsDiv.textContent = 'track.stats:\n' + prettyJson(deltaStats);
+      // localTrackStatsDiv.innerHTML = prettyJson(deltaStats).replaceAll(' ', '&nbsp;').replaceAll('\n', '<br/>');
+      prevStats = currStats;
+    }
   }
   if (localPeerConnection && remotePeerConnection) {
     localPeerConnection
