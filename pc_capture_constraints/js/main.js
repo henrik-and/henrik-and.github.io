@@ -440,16 +440,23 @@ function showLocalStats(results) {
 
 /*
 {
+  // RTCStats
   "id": "IT01V2294351567",
   "timestamp": 1697981962773.141,
   "type": "inbound-rtp",
+  
+  // RTCRtpStreamStats
   "codecId": "CIT01_96",
   "kind": "video",
   "mediaType": "video",
   "ssrc": 2294351567,
+  
+  // RTCReceivedRtpStreamStats
   "transportId": "T01",
   "jitter": 0.002,
   "packetsLost": 0,
+  
+  // RTCInboundRtpStreamStats
   "packetsReceived": 2836,
   "bytesReceived": 2703176,
   "contentType": "screenshare",
@@ -489,6 +496,7 @@ function showLocalStats(results) {
 }
 */
 
+// https://w3c.github.io/webrtc-stats/#summary
 // https://w3c.github.io/webrtc-stats/#dom-rtcinboundrtpstreamstats-jitterbufferdelay
 function showRemoteStats(results) {
   results.forEach(report => {
@@ -507,6 +515,7 @@ function showRemoteStats(results) {
       partialStats.firCount = report.firCount;
       // Counts the total number of Picture Loss Indication (PLI) packets.
       partialStats.pliCount = report.pliCount;
+      
       
       
       if (prevInStats == null)
@@ -532,7 +541,9 @@ function showRemoteStats(results) {
                         {ms:{"[totalProcessingDelay/framesDecoded]": (1000 * deltaProcessingDelay / deltaFramesDecoded).toFixed(1),
                              "[jitterBufferDelay/jitterBufferEmittedCount]": (1000 * deltaJitterBufferDelay / deltaJitterBufferEmittedCount).toFixed(1),
                              "[totalDecodeTimeTime/framesDecoded]": (1000 * deltaDecodeTime / deltaFramesDecoded).toFixed(1),
-                             "[totalAssemblyTime/framesAssembledFromMultiplePackets]": (1000 * deltaAssemblyTime / deltaFramesAssembledFromMultiplePackets).toFixed(1)}},
+                             "[totalAssemblyTime/framesAssembledFromMultiplePackets]": (1000 * deltaAssemblyTime / deltaFramesAssembledFromMultiplePackets).toFixed(1),
+                             // Packet Jitter measured in seconds for this SSRC. Calculated as defined in section 6.4.1. of [RFC3550].
+                             jitter: (1000 * report.jitter).toFixed(1)}},
                         {fps:{framesDecoded: report.framesDecoded - prevInStats.framesDecoded,
                               framesReceived: report.framesReceived - prevInStats.framesReceived}});
       
