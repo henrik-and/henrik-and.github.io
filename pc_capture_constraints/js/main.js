@@ -39,6 +39,7 @@ const localTrackStatsDiv = document.querySelector('div#localTrackStats');
 const mediaSourceStatsDiv = document.querySelector('div#mediaSourceStats');
 const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
+const transportStatsDiv = document.querySelector('div#transportStats');
 const updateStats = document.querySelector('input#updateStats');
 
 let oldTimestampMs = 0;
@@ -501,7 +502,13 @@ function showLocalStats(report) {
 function showRemoteStats(report) {
   report.forEach(stats => {
     const partialStats = {};
-    if (stats.type === 'inbound-rtp') {
+    if (stats.type === 'transport') {
+        const candidatePair = report.get(stats.selectedCandidatePairId);
+        if (candidatePair) {
+          partialStats.currentRoundTripTime = candidatePair.currentRoundTripTime;
+          transportStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
+        }
+    } else if (stats.type === 'inbound-rtp') {
       if (stats.remoteId != undefined) {
         const remoteOutboundRtp = stats.get(report.remoteId);
         console.log(remoteOutboundRtp);
