@@ -383,19 +383,19 @@ media-source: {
 }
 */
 
-function showLocalStats(results) {
-  results.forEach(report => {
+function showLocalStats(report) {
+  report.forEach(stats => {
     const partialStats = {};
-    if (report.type === 'media-source') {
-      partialStats.frames = report.frames;
+    if (stats.type === 'media-source') {
+      partialStats.frames = stats.frames;
       // The number of encoded frames during the last second.
-      partialStats.encodedFramesPerSecond = report.framesPerSecond;
-      partialStats.height = report.height;
-      partialStats.width = report.width;
-      mediaSourceStatsDiv.textContent = `${report.type}:\n` + prettyJson(partialStats);
-    } else if (report.type === 'outbound-rtp') {
+      partialStats.encodedFramesPerSecond = stats.framesPerSecond;
+      partialStats.height = stats.height;
+      partialStats.width = stats.width;
+      mediaSourceStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
+    } else if (stats.type === 'outbound-rtp') {
       // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
-      const currOutStats = report;
+      const currOutStats = stats;
       // partialStats.contentType = currOutStats.contentType;
       partialStats.encoderImplementation = currOutStats.encoderImplementation;
       // partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
@@ -406,8 +406,8 @@ function showLocalStats(results) {
       // A record of the total time, in seconds, that this stream has spent in each quality
       // limitation state.
       partialStats.qualityLimitationReason = currOutStats.qualityLimitationReason;
-      partialStats.firCount = report.firCount;
-      partialStats.pliCount = report.pliCount;
+      partialStats.firCount = stats.firCount;
+      partialStats.pliCount = stats.pliCount;
       
       if (prevOutStats == null)
         prevOutStats = currOutStats;
@@ -498,42 +498,46 @@ function showLocalStats(results) {
 
 // https://w3c.github.io/webrtc-stats/#summary
 // https://w3c.github.io/webrtc-stats/#dom-rtcinboundrtpstreamstats-jitterbufferdelay
-function showRemoteStats(results) {
-  results.forEach(report => {
+function showRemoteStats(report) {
+  report.forEach(stats => {
     const partialStats = {};
-    if (report.type === 'inbound-rtp') {
-      partialStats.framesDecoded = report.framesDecoded;
+    if (stats.type === 'inbound-rtp') {
+      if (stats.remoteId != undefined) {
+        const remoteOutboundRtp = stats.get(report.remoteId);
+        console.log(remoteOutboundRtp);
+      }
+      partialStats.framesDecoded = stats.framesDecoded;
       // The total number of frames dropped prior to decode or dropped because the frame missed its
       // display deadline for this receiver's track.
-      partialStats.framesDropped = report.framesDropped;
+      partialStats.framesDropped = stats.framesDropped;
       // The number of decoded frames in the last second
-      partialStats.decodedFramesPerSecond = report.framesPerSecond;
+      partialStats.decodedFramesPerSecond = stats.framesPerSecond;
       // Represents the total number of complete frames received on this RTP stream.
-      partialStats.framesReceived = report.framesReceived;
-      partialStats.freezeCount = report.freezeCount;
+      partialStats.framesReceived = stats.framesReceived;
+      partialStats.freezeCount = stats.freezeCount;
       // Count the total number of Full Intra Request (FIR) packets sent by this receiver.
-      partialStats.firCount = report.firCount;
+      partialStats.firCount = stats.firCount;
       // Counts the total number of Picture Loss Indication (PLI) packets.
-      partialStats.pliCount = report.pliCount;
+      partialStats.pliCount = stats.pliCount;
       
       
       
       if (prevInStats == null)
-        prevInStats = report;
+        prevInStats = stats;
       
       // It is the sum of the time, in seconds, each video frame takes from the time the first RTP
       // packet is received and to the time the corresponding sample or frame is decoded.
-      const deltaProcessingDelay = report.totalProcessingDelay - prevInStats.totalProcessingDelay;
-      const deltaDecodeTime = report.totalDecodeTime - prevInStats.totalDecodeTime;
+      const deltaProcessingDelay = stats.totalProcessingDelay - prevInStats.totalProcessingDelay;
+      const deltaDecodeTime = stats.totalDecodeTime - prevInStats.totalDecodeTime;
       // The average jitter buffer delay can be calculated by dividing the jitterBufferDelay with
       // the jitterBufferEmittedCount.
-      const deltaJitterBufferDelay = report.jitterBufferDelay - prevInStats.jitterBufferDelay;
-      const deltaJitterBufferEmittedCount = report.jitterBufferEmittedCount - prevInStats.jitterBufferEmittedCount;
-      const deltaAssemblyTime = report.totalAssemblyTime - prevInStats.totalAssemblyTime;
-      const deltaFramesAssembledFromMultiplePackets = report.framesAssembledFromMultiplePackets - prevInStats.framesAssembledFromMultiplePackets;
+      const deltaJitterBufferDelay = stats.jitterBufferDelay - prevInStats.jitterBufferDelay;
+      const deltaJitterBufferEmittedCount = stats.jitterBufferEmittedCount - prevInStats.jitterBufferEmittedCount;
+      const deltaAssemblyTime = stats.totalAssemblyTime - prevInStats.totalAssemblyTime;
+      const deltaFramesAssembledFromMultiplePackets = stats.framesAssembledFromMultiplePackets - prevInStats.framesAssembledFromMultiplePackets;
       
-      const deltaFramesDecoded = report.framesDecoded - prevInStats.framesDecoded;
-      const deltaqpSum = report.qpSum - prevInStats.qpSum;  
+      const deltaFramesDecoded = stats.framesDecoded - prevInStats.framesDecoded;
+      const deltaqpSum = stats.qpSum - prevInStats.qpSum;  
       
       const deltaInStats =
           Object.assign(partialStats,
@@ -543,12 +547,12 @@ function showRemoteStats(results) {
                              "[totalDecodeTimeTime/framesDecoded]": (1000 * deltaDecodeTime / deltaFramesDecoded).toFixed(1),
                              "[totalAssemblyTime/framesAssembledFromMultiplePackets]": (1000 * deltaAssemblyTime / deltaFramesAssembledFromMultiplePackets).toFixed(1),
                              // Packet Jitter measured in seconds for this SSRC. Calculated as defined in section 6.4.1. of [RFC3550].
-                             jitter: (1000 * report.jitter).toFixed(1)}},
-                        {fps:{framesDecoded: report.framesDecoded - prevInStats.framesDecoded,
-                              framesReceived: report.framesReceived - prevInStats.framesReceived}});
+                             jitter: (1000 * stats.jitter).toFixed(1)}},
+                        {fps:{framesDecoded: stats.framesDecoded - prevInStats.framesDecoded,
+                              framesReceived: stats.framesReceived - prevInStats.framesReceived}});
       
-      receiverStatsDiv.textContent = 'remote ' + `${report.type}:\n` + prettyJson(deltaInStats);
-      prevInStats = report;
+      receiverStatsDiv.textContent = 'remote ' + `${stats.type}:\n` + prettyJson(deltaInStats);
+      prevInStats = stats;
     }
   });
 }
