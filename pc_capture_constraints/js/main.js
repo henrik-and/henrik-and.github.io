@@ -11,19 +11,14 @@
 const startButton = document.getElementById('startButton');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
+const applyConstraintsButton = document.getElementById('applyConstraintsButton');
+
 callButton.disabled = true;
 hangupButton.disabled = true;
+applyConstraintsButton.disabled = true;
 startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
-
-const minFramerateInput = document.querySelector('div#minFramerate input');
-const maxFramerateInput = document.querySelector('div#maxFramerate input');
-
-minFramerateInput.onchange = maxFramerateInput.onchange = displayRangeValue;
-
-const getDisplayMediaConstraintsDiv = document.querySelector('div#getDisplayMediaConstraints');
-const getActualDisplayMediaConstraintsDiv = document.querySelector('div#getActualDisplayMediaConstraints');
 
 let startTime;
 
@@ -35,12 +30,13 @@ const remoteVideoSizeDiv = document.querySelector('div#remoteVideo div');
 const localVideoFpsDiv = document.querySelector('div#localVideoFramerate');
 const remoteVideoFpsDiv = document.querySelector('div#remoteVideoFramerate');
 
+const getDisplayMediaConstraintsDiv = document.querySelector('div#getDisplayMediaConstraints');
+
 const localTrackStatsDiv = document.querySelector('div#localTrackStats');
 const mediaSourceStatsDiv = document.querySelector('div#mediaSourceStats');
 const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const transportStatsDiv = document.querySelector('div#transportStats');
-const updateStats = document.querySelector('input#updateStats');
 
 let oldTimestampMs = 0;
 let oldLocalFrames = 0;
@@ -50,7 +46,6 @@ let remoteFps = 30;
 
 function main() {
   setTimeout(updateVideoFps, 30);
-  showGetDisplayMediaConstraints();
 }
 
 localVideo.addEventListener('loadedmetadata', function() {
@@ -74,25 +69,22 @@ remoteVideo.addEventListener('resize', () => {
   }
 });
 
+// Note: min and exact values are not permitted in constraints used in MediaDevices.getDisplayMedia()
+// calls — they produce a TypeError — but they are allowed in constraints used in
+// MediaStreamTrack.applyConstraints() calls.
+// See https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#constraindouble.
 function getDisplayMediaOptions() {
-  return {video: { frameRate: maxFramerateInput.value}};
+  const mediaTrackConstraints = {};
+  // Use the max framerate as ideal frame rate for the gDM options.
+  // Max and min framerates will be set using applyConstraints() later on.
+  if (applyFrameRateMax.value !== 'default') {
+    mediaTrackConstraints.frameRate = {ideal: applyFrameRateMax.value};
+  }
+  return {video: mediaTrackConstraints};
 }
 
 function getDisplayMediaConstraints() {
- return {frameRate: {min: minFramerateInput.value, max: maxFramerateInput.value}};
-}
-
-function showGetDisplayMediaConstraints() {
-  const constraints = getDisplayMediaConstraints();
-  // console.log('getDisplayMedia constraints', constraints);
-  getDisplayMediaConstraintsDiv.textContent = 'Requested constraints:\n' + prettyJson(constraints);
-}
-
-// Utility to show the value of a range in a sibling span element
-function displayRangeValue(e) {
-  const span = e.target.parentElement.querySelector('span');
-  span.textContent = e.target.value;
-  showGetDisplayMediaConstraints();
+  return {frameRate: {min: 0, max: 30}};
 }
 
 let localStream;
@@ -116,13 +108,14 @@ async function start() {
   
   // Use options to gDM but avoid using min framerate.
   const options = getDisplayMediaOptions();
-  console.log(options);
+  console.log('getDisplayMedia options=', prettyJson(options));
   navigator.mediaDevices.getDisplayMedia(options)
     .then(handleSuccess, handleError);
 }
 
 function handleSuccess(stream) {
   startButton.disabled = true;
+  applyConstraintsButton.disabled = false;
   
   const videoTrack = stream.getVideoTracks()[0]; 
   const constraints = getDisplayMediaConstraints();
@@ -148,6 +141,32 @@ function handleSuccess(stream) {
     errorMsg('The user has ended sharing the screen');
     startButton.disabled = false;
   });
+}
+
+applyConstraintsButton.onclick = async () => {
+  let constraints = {};
+  
+  if (applyHeight.value !== 'default') {
+    constraints.height = applyHeight.value;
+  }
+  if (applyWidth.value !== 'default') {
+    constraints.width = applyWidth.value;
+  }
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value == 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value};
+  }
+  if (applyFrameRateMin.value == 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {max: applyFrameRateMax.value};
+  }
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value, max: applyFrameRateMax.value};
+  }
+ 
+  console.log('Requested applyConstraints:', prettyJson(constraints));
+  if (localStream) {
+    const [track] = localStream.getVideoTracks();
+    await track.applyConstraints(constraints);
+  }
 }
 
 function handleError(error) {
@@ -318,6 +337,7 @@ function hangup() {
   remotePeerConnection = null;
   hangupButton.disabled = true;
   callButton.disabled = false;
+  applyConstraintsButton.disabled = true;
 }
 
 /*
@@ -566,9 +586,6 @@ function showRemoteStats(report) {
 
 // Display statistics
 setInterval(() => {
-  if (!updateStats.checked) {
-    return;
-  }
   if (localStream) {
     const [track] = localStream.getTracks();
     if (track.stats != undefined) {

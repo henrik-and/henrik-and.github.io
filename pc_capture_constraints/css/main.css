@@ -6,17 +6,14 @@
  *  tree.
  */
 button {
-  margin: 0 20px 0 0;
-  width: 83px;
+  margin: 0 10px 0 0;
 }
 
+/*
 button#hangupButton {
     margin: 0;
 }
-
-div#getDisplayMedia {
-  padding: 0 0 8px 0;
-}
+*/
 
 div.input {
   display: inline-block;
@@ -43,32 +40,9 @@ div.output {
   max-width: fit-content;
 }
 
-/*
-section#constraints > div {
-  margin: 0 0 20px 0;
+table#constraints {
+  margin: 0px 0px 10px 10px;
 }
-
-div#getDisplayMediaConstraints {
-   margin: 0 20px 0 0;
-}
-*/
-
-section#constraints label {
-  display: inline-block;
-  width: 156px;
-}
-
-/*
-section#statistics div {
-  display: inline-block;
-  font-family: 'Inconsolata', 'Courier New', monospace;
-  font-size: 0.8em;
-  background-color: #eee;
-  padding: 10px 10px 10px 25px;
-  vertical-align: top;
-  width: 340px;
-}
-*/
 
 div.box {
   margin: 1em;
@@ -83,9 +57,7 @@ section#video > div {
 
 section#video > div div {
   font-family: 'Inconsolata', 'Courier New', monospace;
-  font-size: 0.9em;
-  margin: 0 0 0.5em 0;
-  width: 320px;
+  font-size: 0.8em;
 }
 
 section#video {

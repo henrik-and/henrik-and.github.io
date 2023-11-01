@@ -49,33 +49,69 @@
 
 
     <div class="box">
-        <button id="startButton">Start</button>
+        <button id="startButton">getDisplayMedia & applyConstraints</button>
         <button id="callButton">Call</button>
         <button id="hangupButton">Hang Up</button>
     </div>
     
-    <section id="constraints">
-        <div id="getDisplayMedia">
-            <div class="input">
-                <h3>Constraints</h3>
-                <div id="minFramerate">
-                    <label>Min frameRate <span>0</span> fps:</label>
-                    <input type="range" min="0" max="60" value="0">
-                </div>
-                <div id="maxFramerate">
-                    <label>Max frameRate <span>30</span> fps:</label>
-                    <input type="range" min="0" max="60" value="30">
-                </div>
-            </div>
-            <div id="getDisplayMediaConstraints" class="output"></div>
-            <div id="getActualDisplayMediaConstraints" class="output"></div>
-        </div>
-    </section>
+    <table id="constraints">
+        <h3>Constraints</h3>
+        <p>These contraints are used as input to <strong>applyConstraints</strong> and are always applied in combination with the <strong>getDisplayMedia</strong> call.<br>
+        It is also possible to perform additional <strong>applyConstraints</strong> calls to modify the initial constraints while capturing is active.</p>
+        <tr>
+            <td>
+              <button id="applyConstraintsButton">applyConstraints</button>
+            </td>
+            <td>
+              width:
+              <select id="applyWidth">
+                <option value="default" selected>default</option>
+                <option value="3840">3840</option>
+                <option value="2560">2560</option>
+                <option value="2048">2048</option>
+                <option value="1920">1920</option>
+              </select>
+              height:
+              <select id="applyHeight">
+                <option value="default" selected>default</option>
+                <option value="2160">2160</option>
+                <option value="1440">1440</option>
+                <option value="1152">1152</option>
+                <option value="1080">1080</option>
+              </select>
+              frameRate:min:
+              <select id="applyFrameRateMin">
+                <option value="default">default</option>
+                <option value="60">60</option>
+                <option value="30">30</option>
+                <option value="24">24</option>
+                <option value="20">20</option>
+                <option value="15">15</option>
+                <option value="12">12</option>
+                <option value="10">10</option>
+                <option value="5">5</option>
+                <option value="1">1</option>
+                <option value="0" selected>0</option>
+              </select>
+              frameRate:max:
+              <select id="applyFrameRateMax">
+                <option value="default" selected>default</option>
+                <option value="60">60</option>
+                <option value="30" selected>30</option>
+                <option value="24">24</option>
+                <option value="20">20</option>
+                <option value="15">15</option>
+                <option value="12">12</option>
+                <option value="10">10</option>
+                <option value="5">5</option>
+                <option value="1">1</option>
+                <option value="0">0</option>
+              </select>
+            </td>            
+        </tr>
+    </table>
     
     <section id="statistics">
-        <label>Update statistics every second</label>
-        <input type="checkbox" id="updateStats" checked>
-        <br>
         <div id="localTrackStats" class="output"></div>
         <div id="mediaSourceStats" class="output"></div>
         <div id="senderStats" class="output"></div>
