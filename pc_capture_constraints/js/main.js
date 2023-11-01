@@ -84,7 +84,24 @@ function getDisplayMediaOptions() {
 }
 
 function getDisplayMediaConstraints() {
-  return {frameRate: {min: 0, max: 30}};
+  let constraints = {};
+  
+  if (applyHeight.value !== 'default') {
+    constraints.height = applyHeight.value;
+  }
+  if (applyWidth.value !== 'default') {
+    constraints.width = applyWidth.value;
+  }
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value == 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value};
+  }
+  if (applyFrameRateMin.value == 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {max: applyFrameRateMax.value};
+  }
+  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value !== 'default') {
+    constraints.frameRate = {min: applyFrameRateMin.value, max: applyFrameRateMax.value};
+  }
+  return constraints;
 }
 
 let localStream;
@@ -144,24 +161,7 @@ function handleSuccess(stream) {
 }
 
 applyConstraintsButton.onclick = async () => {
-  let constraints = {};
-  
-  if (applyHeight.value !== 'default') {
-    constraints.height = applyHeight.value;
-  }
-  if (applyWidth.value !== 'default') {
-    constraints.width = applyWidth.value;
-  }
-  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value == 'default') {
-    constraints.frameRate = {min: applyFrameRateMin.value};
-  }
-  if (applyFrameRateMin.value == 'default' && applyFrameRateMax.value !== 'default') {
-    constraints.frameRate = {max: applyFrameRateMax.value};
-  }
-  if (applyFrameRateMin.value !== 'default' && applyFrameRateMax.value !== 'default') {
-    constraints.frameRate = {min: applyFrameRateMin.value, max: applyFrameRateMax.value};
-  }
- 
+  const constraints = getDisplayMediaConstraints();
   console.log('Requested applyConstraints:', prettyJson(constraints));
   if (localStream) {
     const [track] = localStream.getVideoTracks();
