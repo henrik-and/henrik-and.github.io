@@ -110,6 +110,8 @@ let remotePeerConnection;
 let prevStats = null;
 let prevOutStats = null;
 let prevInStats = null;
+let numInboundRtpReports = 0;
+let totalgoogTimingFrameInfoDiff = 0;
 
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
@@ -529,6 +531,7 @@ function showRemoteStats(report) {
           transportStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
         }
     } else if (stats.type === 'inbound-rtp') {
+      numInboundRtpReports++;
       if (stats.remoteId != undefined) {
         const remoteOutboundRtp = stats.get(report.remoteId);
         console.log(remoteOutboundRtp);
@@ -549,7 +552,13 @@ function showRemoteStats(report) {
       // Counts the total number of Picture Loss Indication (PLI) packets.
       partialStats.pliCount = stats.pliCount;
       
-      
+      const info = stats.googTimingFrameInfo;
+      let infos;
+      if (info != undefined) { 
+      const infos = info.split(',');
+        partialStats.googTimingFrameInfoDiff = infos[2] - infos[1];  
+        totalgoogTimingFrameInfoDiff += infos[2] - infos[1];
+      }
       
       if (prevInStats == null)
         prevInStats = stats;
@@ -578,7 +587,8 @@ function showRemoteStats(report) {
                              // Packet Jitter measured in seconds for this SSRC. Calculated as defined in section 6.4.1. of [RFC3550].
                              jitter: (1000 * stats.jitter).toFixed(1)}},
                         {fps:{framesDecoded: stats.framesDecoded - prevInStats.framesDecoded,
-                              framesReceived: stats.framesReceived - prevInStats.framesReceived}});
+                              framesReceived: stats.framesReceived - prevInStats.framesReceived}},
+                        {"[totalgoogTimingFrameInfoDiff/numInboundRtpReports]": (totalgoogTimingFrameInfoDiff / numInboundRtpReports).toFixed(1)});
       
       receiverStatsDiv.textContent = 'remote ' + `${stats.type}:\n` + prettyJson(deltaInStats);
       prevInStats = stats;
