@@ -417,9 +417,9 @@ function showLocalStats(report) {
     } else if (stats.type === 'outbound-rtp') {
       // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
       const currOutStats = stats;
-      // partialStats.contentType = currOutStats.contentType;
+      partialStats.contentType = currOutStats.contentType;
       partialStats.encoderImplementation = currOutStats.encoderImplementation;
-      // partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
+      partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
       partialStats.framesEncoded = currOutStats.framesEncoded;
@@ -533,6 +533,8 @@ function showRemoteStats(report) {
         const remoteOutboundRtp = stats.get(report.remoteId);
         console.log(remoteOutboundRtp);
       }
+      partialStats.decoderImplementation = stats.decoderImplementation;
+      partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
       partialStats.framesDecoded = stats.framesDecoded;
       // The total number of frames dropped prior to decode or dropped because the frame missed its
       // display deadline for this receiver's track.
