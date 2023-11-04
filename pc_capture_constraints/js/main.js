@@ -111,7 +111,15 @@ let prevStats = null;
 let prevOutStats = null;
 let prevInStats = null;
 let numInboundRtpReports = 0;
-let totalgoogTimingFrameInfoDiff = 0;
+let totalCaptureToEncodeDelay = 0;
+let totalEncodeDelay = 0;
+let totalPacketizationDelay = 0;
+let totalPacerDelay = 0;
+let totalPacketReceiveDelay = 0;
+let totalJitterBufferDelay = 0;
+let totalDecodeDelay = 0;
+let totalE2EDelay = 0;
+let oldReportTimeMs = 0;
 
 function getName(pc) {
   return (pc === localPeerConnection) ? 'localPeerConnection' : 'remotePeerConnection';
@@ -519,25 +527,63 @@ function showLocalStats(report) {
 }
 */
 
+/*
+googTimingFrameInfo
+
+Timing frames are reported via old GetStats() by the name “GoogTimingFrameInfo” for video receive
+stream. On each call the frame with the longest e2e delay received during last 1 seconds is returned.
+If NTP time estimation is not yet available, last available frame is returned. If no frames were
+caught since last call nothing is returned. Timestamps are reported as a single comma separated
+string: rtp timestamp (32-bit) + 12 timestamps (64-bit each) + 2 flags (0 or 1) indicating if this
+timing frame was caused by abnormal size or/and timer (in that order). If sender clock is not
+estimated yet, first 7 timestamps after rtp will be negative (capture, encode start/finish,
+packetization done, pacer exit and 2 network timestamps),
+e.g., “194057,-28,-17,-5,-5,-1,-28,-28,775795001,775795001,775795020,775795021,775795032, 0, 1”. 
+Even in that case 5 timestamps will be relatively correct: capture, encode start and finish,
+packetization and pacer timestamps. All receiver timestamps will always be positive.
+
+The following timestamps are recorded for the frame:
+
+1 Capture time
+2 Encode start
+3 Encode complete
+4 Frame packetization end
+5 Last packet left pacer (may be incorrect if the last packet is recovered by FEC)
+6 Reflector timestamp in
+7 Reflector timestamp out
+8 First packet of frame received
+9 Last packet of frame received
+10 Decode start
+11 Decode complete
+12 Smooth predicted render time (WebRTC estimates at what time frame should be rendered to balance delay vs smooth playback).
+*/
+
 // https://w3c.github.io/webrtc-stats/#summary
 // https://w3c.github.io/webrtc-stats/#dom-rtcinboundrtpstreamstats-jitterbufferdelay
 function showRemoteStats(report) {
+  
+  if (oldReportTimeMs == 0)
+    oldReportTimeMs = performance.now();
+  const now = performance.now();
+  const deltaReportTimeMs = now - oldReportTimeMs;
+  oldReportTimeMs = now;
+  // console.log(deltaReportTimeMs);
+  
   report.forEach(stats => {
     const partialStats = {};
     if (stats.type === 'transport') {
-        const candidatePair = report.get(stats.selectedCandidatePairId);
-        if (candidatePair) {
-          partialStats.currentRoundTripTime = candidatePair.currentRoundTripTime;
-          transportStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
-        }
+        // const candidatePair = report.get(stats.selectedCandidatePairId);
+        // if (candidatePair) {
+        //  partialStats.currentRoundTripTime = candidatePair.currentRoundTripTime;
+        //  transportStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
+        // }
     } else if (stats.type === 'inbound-rtp') {
-      numInboundRtpReports++;
       if (stats.remoteId != undefined) {
         const remoteOutboundRtp = stats.get(report.remoteId);
         console.log(remoteOutboundRtp);
       }
-      partialStats.decoderImplementation = stats.decoderImplementation;
-      partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
+      // partialStats.decoderImplementation = stats.decoderImplementation;
+      // partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
       partialStats.framesDecoded = stats.framesDecoded;
       // The total number of frames dropped prior to decode or dropped because the frame missed its
       // display deadline for this receiver's track.
@@ -552,13 +598,27 @@ function showRemoteStats(report) {
       // Counts the total number of Picture Loss Indication (PLI) packets.
       partialStats.pliCount = stats.pliCount;
       
-      const info = stats.googTimingFrameInfo;
-      let infos;
-      if (info != undefined) { 
-      const infos = info.split(',');
-        partialStats.googTimingFrameInfoDiff = infos[2] - infos[1];  
-        totalgoogTimingFrameInfoDiff += infos[2] - infos[1];
-      }
+      const timingFrameInfo = stats.googTimingFrameInfo;
+      let infos = [];
+      let currentE2Edelay = 0;
+      if (timingFrameInfo != undefined) { 
+        const infos = timingFrameInfo.split(',');
+        if (infos[1] >= 0 && infos[2] >= 0 && infos[3] >= 0
+            && infos[4] >= 0 && infos[5] >= 0 && infos[6] >= 0
+            && infos[7] >= 0) {
+          numInboundRtpReports++;
+          totalCaptureToEncodeDelay += infos[2] - infos[1];
+          totalEncodeDelay += infos[3] - infos[2];
+          totalPacketizationDelay += infos[4] - infos[3];
+          totalPacerDelay += infos[5] - infos[4];
+          totalPacketReceiveDelay += infos[9] - infos[8];
+          totalJitterBufferDelay += infos[10] - infos[9];
+          totalDecodeDelay += infos[11] - infos[10];
+          const e2e = infos[11] - infos[1];
+          totalE2EDelay += e2e;
+          currentE2Edelay = e2e;
+        }
+      } 
       
       if (prevInStats == null)
         prevInStats = stats;
@@ -585,10 +645,18 @@ function showRemoteStats(report) {
                              "[totalDecodeTimeTime/framesDecoded]": (1000 * deltaDecodeTime / deltaFramesDecoded).toFixed(1),
                              "[totalAssemblyTime/framesAssembledFromMultiplePackets]": (1000 * deltaAssemblyTime / deltaFramesAssembledFromMultiplePackets).toFixed(1),
                              // Packet Jitter measured in seconds for this SSRC. Calculated as defined in section 6.4.1. of [RFC3550].
-                             jitter: (1000 * stats.jitter).toFixed(1)}},
+                             jitter: (1000 * stats.jitter).toFixed(1),
+                             currentE2Edelay: currentE2Edelay}},
                         {fps:{framesDecoded: stats.framesDecoded - prevInStats.framesDecoded,
                               framesReceived: stats.framesReceived - prevInStats.framesReceived}},
-                        {"[totalgoogTimingFrameInfoDiff/numInboundRtpReports]": (totalgoogTimingFrameInfoDiff / numInboundRtpReports).toFixed(1)});
+                        {avg_tx_ms:{captureToEncodeDelay: (totalCaptureToEncodeDelay / numInboundRtpReports).toFixed(1),
+                                encodeDelay: (totalEncodeDelay / numInboundRtpReports).toFixed(1),
+                                packetizationDelay: (totalPacketizationDelay / numInboundRtpReports).toFixed(1),
+                                pacerDelay: (totalPacerDelay / numInboundRtpReports).toFixed(1)}},
+                        {avg_rx_ms:{packetReceiveDelay: (totalPacketReceiveDelay / numInboundRtpReports).toFixed(1),
+                                jitterBufferDelay: (totalJitterBufferDelay / numInboundRtpReports).toFixed(1),
+                                decodeDelay: (totalDecodeDelay / numInboundRtpReports).toFixed(1)}},
+                        {avg_e2e_ms:{E2Edelay: (totalE2EDelay / numInboundRtpReports).toFixed(1)}});
       
       receiverStatsDiv.textContent = 'remote ' + `${stats.type}:\n` + prettyJson(deltaInStats);
       prevInStats = stats;
