@@ -12,10 +12,12 @@ const startButton = document.getElementById('startButton');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
 const applyConstraintsButton = document.getElementById('applyConstraintsButton');
+const resetDelayStatsButton = document.getElementById('resetDelayStatsButton');
 
 callButton.disabled = true;
 hangupButton.disabled = true;
 applyConstraintsButton.disabled = true;
+resetDelayStatsButton.disabled = true;
 startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
@@ -170,13 +172,30 @@ function handleSuccess(stream) {
   });
 }
 
+let resetDelayStats = () => {
+  numInboundRtpReports = 0;
+  totalCaptureToEncodeDelay = 0;
+  totalEncodeDelay = 0;
+  totalPacketizationDelay = 0;
+  totalPacerDelay = 0;
+  totalPacketReceiveDelay = 0;
+  totalJitterBufferDelay = 0;
+  totalDecodeDelay = 0;
+  totalE2EDelay = 0;
+}
+
 applyConstraintsButton.onclick = async () => {
+  resetDelayStats();
   const constraints = getDisplayMediaConstraints();
   console.log('Requested applyConstraints:', prettyJson(constraints));
   if (localStream) {
     const [track] = localStream.getVideoTracks();
     await track.applyConstraints(constraints);
   }
+}
+
+resetDelayStatsButton.onclick = async () => {
+  resetDelayStats();
 }
 
 function handleError(error) {
@@ -193,6 +212,7 @@ function errorMsg(msg, error) {
 async function call() {
   callButton.disabled = true;
   hangupButton.disabled = false;
+  resetDelayStatsButton.disabled = false;
   console.log('Starting call');
   startTime = window.performance.now();
   
@@ -348,6 +368,7 @@ function hangup() {
   hangupButton.disabled = true;
   callButton.disabled = false;
   applyConstraintsButton.disabled = true;
+  resetDelayStatsButton.disabled = true;
 }
 
 /*
@@ -649,14 +670,14 @@ function showRemoteStats(report) {
                              currentE2Edelay: currentE2Edelay}},
                         {fps:{framesDecoded: stats.framesDecoded - prevInStats.framesDecoded,
                               framesReceived: stats.framesReceived - prevInStats.framesReceived}},
-                        {avg_tx_ms:{captureToEncodeDelay: (totalCaptureToEncodeDelay / numInboundRtpReports).toFixed(1),
+                        {"[TX mean] ms":{captureToEncodeDelay: (totalCaptureToEncodeDelay / numInboundRtpReports).toFixed(1),
                                 encodeDelay: (totalEncodeDelay / numInboundRtpReports).toFixed(1),
                                 packetizationDelay: (totalPacketizationDelay / numInboundRtpReports).toFixed(1),
                                 pacerDelay: (totalPacerDelay / numInboundRtpReports).toFixed(1)}},
-                        {avg_rx_ms:{packetReceiveDelay: (totalPacketReceiveDelay / numInboundRtpReports).toFixed(1),
+                        {"[RX mean] ms":{packetReceiveDelay: (totalPacketReceiveDelay / numInboundRtpReports).toFixed(1),
                                 jitterBufferDelay: (totalJitterBufferDelay / numInboundRtpReports).toFixed(1),
                                 decodeDelay: (totalDecodeDelay / numInboundRtpReports).toFixed(1)}},
-                        {avg_e2e_ms:{E2Edelay: (totalE2EDelay / numInboundRtpReports).toFixed(1)}});
+                        {"[E2E mean] ms":{E2Edelay: (totalE2EDelay / numInboundRtpReports).toFixed(1)}});
       
       receiverStatsDiv.textContent = 'remote ' + `${stats.type}:\n` + prettyJson(deltaInStats);
       prevInStats = stats;
