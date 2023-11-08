@@ -451,6 +451,7 @@ function showLocalStats(report) {
       partialStats.contentType = currOutStats.contentType;
       partialStats.encoderImplementation = currOutStats.encoderImplementation;
       partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
+      partialStats.scalabilityMode = currOutStats.scalabilityMode;
       partialStats.framesSent = currOutStats.framesSent;
       partialStats.framesPerSecond = currOutStats.framesPerSecond;
       partialStats.framesEncoded = currOutStats.framesEncoded;
