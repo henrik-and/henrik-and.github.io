@@ -40,6 +40,9 @@ const senderStatsDiv = document.querySelector('div#senderStats');
 const receiverStatsDiv = document.querySelector('div#receiverStats');
 const transportStatsDiv = document.querySelector('div#transportStats');
 
+const codecSelector = document.querySelector('#codec');
+codecSelector.disabled = true;
+
 let oldTimestampMs = 0;
 let oldLocalFrames = 0;
 let localFps = 30;
@@ -145,6 +148,7 @@ async function start() {
 function handleSuccess(stream) {
   startButton.disabled = true;
   applyConstraintsButton.disabled = false;
+  codecSelector.disabled = false;
   
   const videoTrack = stream.getVideoTracks()[0]; 
   const constraints = getDisplayMediaConstraints();
@@ -209,10 +213,18 @@ function errorMsg(msg, error) {
   }
 }
 
+codecSelector.onchange = () => {
+  console.log('New codec selected:', codec.value);
+  // if (stream) {
+  //   setupPeerConnection();
+  // }
+};
+
 async function call() {
   callButton.disabled = true;
   hangupButton.disabled = false;
   resetDelayStatsButton.disabled = false;
+  codecSelector.disabled = true;
   console.log('Starting call');
   startTime = window.performance.now();
   
@@ -238,6 +250,14 @@ async function call() {
 
   localStream.getTracks().forEach(track => localPeerConnection.addTrack(track, localStream));
   console.log('Added local stream to localPeerConnection');
+  
+  const transceiver = localPeerConnection.getTransceivers()[0];
+  if (transceiver.setCodecPreferences) {
+    const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
+      (c) => c.mimeType.includes(codec.value),
+    );
+    transceiver.setCodecPreferences(codecs);
+  }
 
   try {
     console.log('localPeerConnection createOffer start');
@@ -369,6 +389,7 @@ function hangup() {
   callButton.disabled = false;
   applyConstraintsButton.disabled = true;
   resetDelayStatsButton.disabled = true;
+  codecSelector.disabled = false;
 }
 
 /*
@@ -449,6 +470,8 @@ function showLocalStats(report) {
       // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
       const currOutStats = stats;
       partialStats.contentType = currOutStats.contentType;
+      const mimeType = report.get(currOutStats.codecId).mimeType;
+      partialStats.codec = mimeType.split('/')[1];
       partialStats.encoderImplementation = currOutStats.encoderImplementation;
       partialStats.powerEfficientEncoder = currOutStats.powerEfficientEncoder;
       partialStats.scalabilityMode = currOutStats.scalabilityMode;
