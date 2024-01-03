@@ -462,7 +462,7 @@ function showLocalStats(report) {
     if (stats.type === 'media-source') {
       partialStats.frames = stats.frames;
       // The number of encoded frames during the last second.
-      partialStats.encodedFramesPerSecond = stats.framesPerSecond;
+      partialStats.framesPerSecond = stats.framesPerSecond;
       partialStats.height = stats.height;
       partialStats.width = stats.width;
       mediaSourceStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
