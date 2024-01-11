@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>getDisplayMedia loopback</title>
+  </head>
+  
+  <body>
+    <div>
+      <video id="local" width="64" height="64" autoplay></video>
+    </div>
+    <div>
+      <video id="remote" width="124" height="124" autoplay></video>
+    </div>
+    <button onclick="doGetStats()">
+      getStats()
+    </button>
+  
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
