@@ -1,4 +1,5 @@
-// Based on https://jsfiddle.net/henbos/m08wjqtk/
+// Based on https://jsfiddle.net/henbos/m08wjqtk/ and
+// https://jsfiddle.net/5ve4gbjx/3/.
 
 let pc1 = null;
 let pc2 = null;
@@ -6,6 +7,7 @@ let pc2 = null;
 const localVideo = document.getElementById('local');
 const remoteVideo = document.getElementById('remote');
 
+/*
 (async () => {
   pc1 = new RTCPeerConnection();
   pc2 = new RTCPeerConnection();
@@ -59,3 +61,5 @@ function exchangeIceCandidates(pc1, pc2) {
   doExchange(pc1, pc2);
   doExchange(pc2, pc1);
 }
+/*
+

@@ -2,21 +2,27 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>getDisplayMedia loopback</title>
+    <link rel="stylesheet" href="css/main.css"/>
   </head>
   
   <body>
-    <div>
-      <video id="local" width="64" height="64" autoplay></video>
+    <h2>getDisplayMedia and PeerConnection Demo</h2>
+    
+    <div class="video-container">
+      <video id="local" autoplay playsinline muted></video>
+      <video id="remote" autoplay playsinline muted></video>
     </div>
-    <div>
-      <video id="remote" width="124" height="124" autoplay></video>
+    
+    <div class="button-container">
+      <button id="start">getDisplayMedia & applyConstraints</button>
+      <button id="call">Call</button>
+      <button id="hangup">Hang Up</button>
+      <button id="reset">Reset Delay Stats</button>
     </div>
-    <button onclick="doGetStats()">
-      getStats()
-    </button>
   
     <script src="js/main.js" defer></script>
   </body>
 </html>
+

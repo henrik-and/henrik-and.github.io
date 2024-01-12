@@ -1,0 +1,44 @@
+/* https://mailchimp.com/resources/padding-vs-margin/ */
+
+body {
+  margin: 0 5px 0 5px;  /* top | right | bottom | left */
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.video-container {
+  display: flex; /* Arrange videos side by side */
+  width: 100%; /* Occupy full width of parent container */
+}
+
+.video-container video {
+  width: 50%; /* Each video takes up 50% of available width */
+  margin: 5px; /* Add margin between videos */
+  height: auto; /* Automatically adjust height to maintain aspect ratio */
+  box-sizing: border-box; /* Padding and border included within width and height */
+}
+
+.button-container {
+  display: flex; /* Arrange buttons side by side */
+  justify-content: space-between; /* Evenly distribute space */
+  margin-top: 10px; /* Add spacing above buttons */
+}
+
+.button-container button {
+  margin: 5px 5px;  /* top and bottom | left and right */
+  padding: 5px 5px;  
+}
+
+/*
+.button-container button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}
+*/
