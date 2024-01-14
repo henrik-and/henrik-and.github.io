@@ -94,6 +94,7 @@ startButton.onclick = async () => {
       // Triggers when the user has stopped sharing the screen via the browser UI.
       localTrack.addEventListener('ended', () => {
         startButton.disabled = false;
+        callButton.disabled = true;
       });
       
       startButton.disabled = true;
@@ -117,19 +118,20 @@ applyConstraintsButton.onclick = async () => {
   }
 };
 
-callButton.onclick = () => {
+callButton.onclick = async () => {
+  
+  await setupPeerConnection();
+  
   callButton.disabled = true;
   hangupButton.disabled = false;
   resetDelayStatsButton.disabled = false;
+  
   // codecSelector.disabled = true;
   // startTime = window.performance.now();
 };
 
 hangupButton.onclick = () => {
-  // localPeerConnection.close();
-  // remotePeerConnection.close();
-  // localPeerConnection = null; 
-  // remotePeerConnection = null;
+  closePeerConnection();
   hangupButton.disabled = true;
   callButton.disabled = false;
   applyConstraintsButton.disabled = true;
@@ -138,10 +140,55 @@ hangupButton.onclick = () => {
 };
 
 const setupPeerConnection = async () => {
+  if (!stream) {
+    return;
+  }
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  const [localTrack] = stream.getVideoTracks();
+  let remoteTrack = null;
+  let remoteStream = null;
+  pc1.addTrack(localTrack, stream);
+  pc2.addTrack(localTrack, stream);
+  pc2.ontrack = (e) => {
+    remoteTrack = e.track;
+    remoteStream = e.streams[0];
+    remoteVideo.srcObject = remoteStream;
+  };
+  exchangeIceCandidates(pc1, pc2);
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  const answer = await pc2.createAnswer();
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  await new Promise(resolve => setTimeout(resolve, 1000));
 };
 
-const closePeerConnection = async () => {
+const closePeerConnection = () => {
+  if (pc1) {
+    pc1.close();
+    pc1 = null;
+  }
+  if (pc2) {
+    remoteVideo.srcObject = null;
+    pc2.close();
+    pc2 = null;
+  }
 };
+
+function exchangeIceCandidates(pc1, pc2) {
+  function doExchange(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      const { candidate } = event;
+      if (candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(candidate);
+      }
+    });
+  }
+  doExchange(pc1, pc2);
+  doExchange(pc2, pc1);
+}
 
 /*
 (async () => {
