@@ -5,14 +5,13 @@ body {
 
 .video-container {
   display: flex; /* Arrange videos side by side */
-  width: 100%; /* Occupy full width of parent container */
+  width: 99%; /* Don't use 100% since it will remove the right margin */
 }
 
 .video-container video {
   width: 50%; /* Each video takes up 50% of available width */
-  margin: 5px; /* Add margin between videos */
+  margin: 5px; /* Add margin between videos */ 
   height: auto; /* Automatically adjust height to maintain aspect ratio */
-  box-sizing: border-box; /* Padding and border included within width and height */
 }
 
 .button-container {
