@@ -1,10 +1,6 @@
-/* https://mailchimp.com/resources/padding-vs-margin/ */
-
 body {
   margin: 0 5px 0 5px;  /* top | right | bottom | left */
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
 }
 
 .video-container {
@@ -20,14 +16,34 @@ body {
 }
 
 .button-container {
-  display: flex; /* Arrange buttons side by side */
-  justify-content: space-between; /* Evenly distribute space */
   margin-top: 10px; /* Add spacing above buttons */
 }
 
 .button-container button {
   margin: 5px 5px;  /* top and bottom | left and right */
-  padding: 5px 5px;  
+  padding: 3px 3px;  
+}
+
+.codec-container {
+  margin-top: 10px;
+  margin-left: 5px;
+}
+
+.constraints-container {
+  margin-top: 10px;
+}
+
+.constraints-container button {
+  margin: 5px 5px;
+  padding: 3px 3px;  
+}
+
+#error-message {
+  position: fixed;      /* Fix position to the viewport */
+  bottom: 0;            /* Place at the bottom */
+  left: 50%;            /* Optionally center horizontally */
+  transform: translateX(-50%); /* Centering */
+  color: red;
 }
 
 /*
