@@ -13,6 +13,11 @@
       <video id="remote" autoplay playsinline muted></video>
     </div>
     
+    <div class="video-rate-container">
+      <div id="localVideoRate"></div>
+      <div id="remoteVideoRate"></div>
+    </div>
+    
     <div class="button-container">
       <button id="start">getDisplayMedia & applyConstraints</button>
       <button id="call">Call</button>
@@ -77,6 +82,10 @@
         <option value="1">1</option>
         <option value="0">0</option>
       </select>
+    </div>
+    
+    <div class="stats-container">
+      <div id="trackStats"></div>
     </div>
     
     <div id="error-message"></div>

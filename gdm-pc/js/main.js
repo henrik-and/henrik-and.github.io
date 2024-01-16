@@ -6,15 +6,29 @@
 let stream;
 let pc1 = null;
 let pc2 = null;
+let prevTrackStats = null;
+
+let trackStatsIntervalId;
+let videoRateIntervalId;
+
+let oldTimestampMs = 0;
+let oldLocalFrames = 0;
+let localFps = 30;
+let oldRemoteFrames = 0;
+let remoteFps = 30;
 
 const localVideo = document.getElementById('local');
 const remoteVideo = document.getElementById('remote');
+const localVideoRateDiv = document.getElementById('localVideoRate');
+const remoteVideoRateDiv = document.getElementById('remoteVideoRate');
 
 const startButton = document.getElementById('start');
 const callButton = document.getElementById('call');
 const hangupButton = document.getElementById('hangup');
 const resetDelayStatsButton = document.getElementById('reset');
 const applyConstraintsButton = document.getElementById('applyConstraints');
+
+const trackStats = document.getElementById('trackStats');
 
 callButton.disabled = true;
 hangupButton.disabled = true;
@@ -36,7 +50,7 @@ const loge = (error) => {
   const errorElement = document.getElementById('error-message');
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
-};
+}; 
 
 // Note: min and exact values are not permitted in constraints used in MediaDevices.getDisplayMedia()
 // calls — they produce a TypeError — but they are allowed in constraints used in
@@ -93,9 +107,82 @@ startButton.onclick = async () => {
       
       // Triggers when the user has stopped sharing the screen via the browser UI.
       localTrack.addEventListener('ended', () => {
+        localVideoRateDiv.textContent = '';
         startButton.disabled = false;
         callButton.disabled = true;
+        if (videoRateIntervalId) {
+          clearInterval(videoRateIntervalId);
+        }
+        if (trackStatsIntervalId) {
+          clearInterval(trackStatsIntervalId);
+        }  
       });
+      
+      // Start timer which updates track.stats on the local track.
+      // https://w3c.github.io/mediacapture-extensions/#the-mediastreamtrackvideostats-interface
+      // This timer also updates the filtered frame rates for local and remote screenshare streams.
+      trackStatsIntervalId = setInterval(() => {
+        if (stream) {
+          if (localTrack.stats != undefined) {
+            const currStats = localTrack.stats.toJSON();
+            currStats.droppedFrames = currStats.totalFrames - currStats.deliveredFrames - currStats.discardedFrames;
+            if (prevTrackStats == null) {
+              prevTrackStats = currStats;
+            }
+            const deltaStats =
+              Object.assign(currStats,
+    									      {fps:{delivered: currStats.deliveredFrames - prevTrackStats.deliveredFrames,
+    									            discarded: currStats.discardedFrames - prevTrackStats.discardedFrames,
+                                  dropped: currStats.droppedFrames - prevTrackStats.droppedFrames,
+                                  total: currStats.totalFrames - prevTrackStats.totalFrames}});
+            trackStats.textContent = 'track.stats:\n' + prettyJson(deltaStats);
+            prevTrackStats = currStats; 
+          }
+        }
+        
+        if (localVideo.videoWidth) {
+          const width = localVideo.videoWidth;
+          const height = localVideo.videoHeight;
+          localVideoRateDiv.textContent = `[${width}x${height} px]  ${localFps.toFixed(1)} fps`;
+        }
+        
+        if (remoteVideo.videoWidth) {
+          const width = remoteVideo.videoWidth;
+          const height = remoteVideo.videoHeight;
+          remoteVideoRateDiv.textContent = `[${width}x${height} px]  ${remoteFps.toFixed(1)} fps`;
+        }
+        
+      }, 1000);
+      
+      // Calculates frame rates for local and remote video streams using exponential moving average
+      // (EMA) filters.
+      videoRateIntervalId = setInterval(() => {
+        const now = performance.now();
+        const periodMs = now - oldTimestampMs;
+        oldTimestampMs = now;
+        
+        if (localVideo.getVideoPlaybackQuality()) {
+          let newFps;
+          const newFrames = localVideo.getVideoPlaybackQuality().totalVideoFrames;
+          const framesSinceLast = newFrames - oldLocalFrames;
+          oldLocalFrames = newFrames;
+          if (framesSinceLast >= 0) {
+            newFps = 1000 * framesSinceLast / periodMs;
+            localFps = 0.9 * localFps + 0.1 * newFps;
+          }
+        }
+        
+        if (remoteVideo.getVideoPlaybackQuality()) {
+          let newFps;
+          const newFrames = remoteVideo.getVideoPlaybackQuality().totalVideoFrames;
+          const framesSinceLast = newFrames - oldRemoteFrames;
+          oldRemoteFrames = newFrames;
+          if (framesSinceLast >= 0) {
+            newFps = 1000 * framesSinceLast / periodMs;
+            remoteFps = 0.9 * remoteFps + 0.1 * newFps;
+          }
+        }
+      }, 30);
       
       startButton.disabled = true;
       callButton.disabled = false;
@@ -132,6 +219,7 @@ callButton.onclick = async () => {
 
 hangupButton.onclick = () => {
   closePeerConnection();
+  remoteVideoRateDiv.textContent = '';
   hangupButton.disabled = true;
   callButton.disabled = false;
   applyConstraintsButton.disabled = true;
@@ -162,7 +250,6 @@ const setupPeerConnection = async () => {
   const answer = await pc2.createAnswer();
   await pc2.setLocalDescription(answer);
   await pc1.setRemoteDescription(answer);
-  await new Promise(resolve => setTimeout(resolve, 1000));
 };
 
 const closePeerConnection = () => {
