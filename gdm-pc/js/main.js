@@ -4,6 +4,7 @@
 'use strict';
 
 let stream;
+let deviceId;
 let pc1 = null;
 let pc2 = null;
 let prevTrackStats = null;
@@ -25,14 +26,12 @@ const remoteVideoRateDiv = document.getElementById('remoteVideoRate');
 const startButton = document.getElementById('start');
 const callButton = document.getElementById('call');
 const hangupButton = document.getElementById('hangup');
-const resetDelayStatsButton = document.getElementById('reset');
 const applyConstraintsButton = document.getElementById('applyConstraints');
 
 const trackStats = document.getElementById('trackStats');
 
 callButton.disabled = true;
 hangupButton.disabled = true;
-resetDelayStatsButton.disabled = true;
 applyConstraintsButton.disabled = true;
 
 
@@ -87,6 +86,111 @@ function getDisplayMediaConstraints() {
   return constraints;
 };
 
+const dumpStats1 = () => {
+  console.log('dumpStats1');
+  pc1.getStats().then(
+    (report) => {
+      report.forEach((stats) => {
+        console.log(prettyJson(stats));
+      });
+    }
+  );
+};
+
+const dumpStats2 = async () => {
+  console.log('dumpStats2');
+  const report = await pc1.getStats();
+  console.log(report);
+  for (let stats of report.values()) {
+    console.log(stats.type);
+    console.log('  id: ' + stats.id);
+    console.log('  timestamp: ' + stats.timestamp);
+    Object.keys(stats).forEach(key => {
+      if (key != 'type' && key != 'id' && key != 'timestamp')
+        console.log('  ' + key + ': ' + stats[key]);
+    });
+  }
+}
+
+const applyConstraints = async () => {
+  if (stream) {
+    const constraints = getDisplayMediaConstraints();
+    console.log('Requested constraints:', prettyJson(constraints));
+    const [track] = stream.getVideoTracks();
+    await track.applyConstraints(constraints);
+    const actualConstraints = track.getConstraints();
+    console.log('Actual constraints:', prettyJson(actualConstraints));
+  }
+};
+
+const setupPeerConnection = async () => {
+  if (!stream) {
+    return;
+  }
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  const [localTrack] = stream.getVideoTracks();
+  let remoteTrack = null;
+  let remoteStream = null;
+  pc1.addTrack(localTrack, stream);
+  pc2.addTrack(localTrack, stream);
+  pc2.ontrack = (e) => {
+    remoteTrack = e.track;
+    remoteStream = e.streams[0];
+    remoteVideo.srcObject = remoteStream;
+  };
+  exchangeIceCandidates(pc1, pc2);
+  
+  pc1.oniceconnectionstatechange = (e) => {
+    console.log('pc1 ICE state: ' + pc1.iceConnectionState)
+  }
+  
+  pc2.oniceconnectionstatechange = (e) => {
+    console.log('pc2 ICE state: ' + pc2.iceConnectionState)
+  }
+  
+  // codec...
+  
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  console.log('pc1 offer: ', offer.sdp);
+  
+  const answer = await pc2.createAnswer();
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  console.log('pc2 answer: ', answer.sdp);
+  
+  // TODO(henrika): select best method.
+  dumpStats1();
+  dumpStats2();
+};
+
+const closePeerConnection = () => {
+  if (pc1) {
+    pc1.close();
+    pc1 = null;
+  }
+  if (pc2) {
+    remoteVideo.srcObject = null;
+    pc2.close();
+    pc2 = null;
+  }
+};
+
+const exchangeIceCandidates = (pc1, pc2) => {
+  function doExchange(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      const { candidate } = event;
+      if (candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(candidate);
+      }
+    });
+  }
+  doExchange(pc1, pc2);
+  doExchange(pc2, pc1);
+};
+
 startButton.onclick = async () => { 
   try {
     if (stream) {
@@ -100,13 +204,19 @@ startButton.onclick = async () => {
       const options = getDisplayMediaOptions();
       console.log('getDisplayMedia options=', prettyJson(options));
       
+      // getDisplayMedia and an initial applyConstraints.
       stream = await navigator.mediaDevices.getDisplayMedia(options);
-      const [localTrack] = stream.getTracks();
-      console.log(localTrack);
+      applyConstraints();
       localVideo.srcObject = stream;
+      
+      const [localTrack] = stream.getVideoTracks();
+      const settings = localTrack.getSettings();
+      console.log('MediaStreamTrack: getSettings: ', settings);
+      deviceId = settings.deviceId;
       
       // Triggers when the user has stopped sharing the screen via the browser UI.
       localTrack.addEventListener('ended', () => {
+        console.log('User stopped sharing content');
         localVideoRateDiv.textContent = '';
         startButton.disabled = false;
         callButton.disabled = true;
@@ -115,7 +225,8 @@ startButton.onclick = async () => {
         }
         if (trackStatsIntervalId) {
           clearInterval(trackStatsIntervalId);
-        }  
+        }
+        hangup();
       });
       
       // Start timer which updates track.stats on the local track.
@@ -143,13 +254,15 @@ startButton.onclick = async () => {
         if (localVideo.videoWidth) {
           const width = localVideo.videoWidth;
           const height = localVideo.videoHeight;
-          localVideoRateDiv.textContent = `[${width}x${height} px]  ${localFps.toFixed(1)} fps`;
+          localVideoRateDiv.innerHTML =
+              `[${deviceId}][${width}x${height} px] <strong>${localFps.toFixed(1)} fps</strong>`;
         }
         
         if (remoteVideo.videoWidth) {
           const width = remoteVideo.videoWidth;
           const height = remoteVideo.videoHeight;
-          remoteVideoRateDiv.textContent = `[${width}x${height} px]  ${remoteFps.toFixed(1)} fps`;
+          remoteVideoRateDiv.innerHTML =
+              `[${width}x${height} px] <strong>${remoteFps.toFixed(1)} fps</strong>`;
         }
         
       }, 1000);
@@ -193,143 +306,28 @@ startButton.onclick = async () => {
   }
 };
 
-applyConstraintsButton.onclick = async () => {
-  // resetDelayStats();
-  if (stream) {
-    const constraints = getDisplayMediaConstraints();
-    console.log('Requested constraints:', prettyJson(constraints));
-    const [track] = stream.getVideoTracks();
-    await track.applyConstraints(constraints);
-    const actualConstraints = track.getConstraints();
-    console.log('Actual constraints:', prettyJson(actualConstraints));
-  }
-};
+applyConstraintsButton.onclick = applyConstraints;
 
 callButton.onclick = async () => {
-  
   await setupPeerConnection();
   
   callButton.disabled = true;
   hangupButton.disabled = false;
-  resetDelayStatsButton.disabled = false;
   
   // codecSelector.disabled = true;
   // startTime = window.performance.now();
 };
 
-hangupButton.onclick = () => {
+const hangup = () => {
+  console.log('hangup');
   closePeerConnection();
   remoteVideoRateDiv.textContent = '';
   hangupButton.disabled = true;
   callButton.disabled = false;
   applyConstraintsButton.disabled = true;
-  resetDelayStatsButton.disabled = true;
   // codecSelector.disabled = false;
 };
 
-const setupPeerConnection = async () => {
-  if (!stream) {
-    return;
-  }
-  pc1 = new RTCPeerConnection();
-  pc2 = new RTCPeerConnection();
-  const [localTrack] = stream.getVideoTracks();
-  let remoteTrack = null;
-  let remoteStream = null;
-  pc1.addTrack(localTrack, stream);
-  pc2.addTrack(localTrack, stream);
-  pc2.ontrack = (e) => {
-    remoteTrack = e.track;
-    remoteStream = e.streams[0];
-    remoteVideo.srcObject = remoteStream;
-  };
-  exchangeIceCandidates(pc1, pc2);
-  const offer = await pc1.createOffer();
-  await pc1.setLocalDescription(offer);
-  await pc2.setRemoteDescription(offer);
-  const answer = await pc2.createAnswer();
-  await pc2.setLocalDescription(answer);
-  await pc1.setRemoteDescription(answer);
-};
+hangupButton.onclick = hangup;
 
-const closePeerConnection = () => {
-  if (pc1) {
-    pc1.close();
-    pc1 = null;
-  }
-  if (pc2) {
-    remoteVideo.srcObject = null;
-    pc2.close();
-    pc2 = null;
-  }
-};
-
-function exchangeIceCandidates(pc1, pc2) {
-  function doExchange(localPc, remotePc) {
-    localPc.addEventListener('icecandidate', event => {
-      const { candidate } = event;
-      if (candidate && remotePc.signalingState !== 'closed') {
-        remotePc.addIceCandidate(candidate);
-      }
-    });
-  }
-  doExchange(pc1, pc2);
-  doExchange(pc2, pc1);
-}
-
-/*
-(async () => {
-  pc1 = new RTCPeerConnection();
-  pc2 = new RTCPeerConnection();
-  const stream = await navigator.mediaDevices.getUserMedia({video:true});
-  const [localTrack] = stream.getTracks();
-
-  localVideo.srcObject = stream;
-
-  let remoteTrack = null;
-  let remoteStream = null;
-  pc1.addTrack(localTrack, stream);
-  pc2.addTrack(localTrack, stream);
-  pc2.ontrack = e => {
-    remoteTrack = e.track;
-    remoteStream = e.streams[0];
-    remoteVideo.srcObject = remoteStream;
-  };
-  exchangeIceCandidates(pc1, pc2);
-  const offer = await pc1.createOffer();
-  await pc1.setLocalDescription(offer);
-  await pc2.setRemoteDescription(offer);
-  const answer = await pc2.createAnswer();
-  await pc2.setLocalDescription(answer);
-  await pc1.setRemoteDescription(answer);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-})();
-
-async function doGetStats() {
-  const report = await pc1.getStats();
-  console.log(report);
-  for (let stats of report.values()) {
-    console.log(stats.type);
-    console.log('  id: ' + stats.id);
-    console.log('  timestamp: ' + stats.timestamp);
-    Object.keys(stats).forEach(key => {
-      if (key != 'type' && key != 'id' && key != 'timestamp')
-        console.log('  ' + key + ': ' + stats[key]);
-    });
-  }
-}
-
-function exchangeIceCandidates(pc1, pc2) {
-  function doExchange(localPc, remotePc) {
-    localPc.addEventListener('icecandidate', event => {
-      const { candidate } = event;
-      if(candidate && remotePc.signalingState !== 'closed') {
-        remotePc.addIceCandidate(candidate);
-      }
-    });
-  }
-  doExchange(pc1, pc2);
-  doExchange(pc2, pc1);
-}
-*/
 
