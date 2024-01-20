@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gUM to canvas</title>
+    <link rel="stylesheet" href="css/main.css"/>
+  </head>
+  
+  <body>
+    <div class="video-container">
+      <video id="local" autoplay playsinline></video>
+      <video id="remote" autoplay playsinline></video>
+    </div>
+    
+    <div class="canvas-container">
+      <canvas></canvas>
+    </div>
+
+    <div class="button-container">
+      <div class="button-group">
+        <button id="gum">getUserMedia</button>
+        <button id="draw">drawImage</button>
+        <button id="capture">captureStream</button>
+      </div>
+      <button id="stop">Stop</button>
+    </div>
+    
+    <div class="checkbox-container">
+      <input id="crop" type="checkbox">Crop and Scale</input>
+    </div>
+    
+    <div id="error-message"></div>
+    
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
+

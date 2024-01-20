@@ -1,0 +1,29 @@
+body {
+  margin: 0px 0px 0px 0px;  /* top | right | bottom | left */
+  padding: 0;
+}
+
+.video-container {
+}
+
+.video-container video {
+  height: auto;
+}
+
+.button-container {
+  margin-left: 10px;
+}
+
+.button-group button {
+  margin-bottom: 10px;
+}
+
+.checkbox-container {
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+#error-message {
+  margin-top: 10px;
+  color: red;
+}
