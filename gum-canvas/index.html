@@ -30,6 +30,20 @@
       <input id="crop" type="checkbox">Crop and Scale</input>
     </div>
     
+    <div class="smoothing-container">
+    imageSmoothingQuality:
+      <select id="quality">
+        <option value="low">low</option>
+        <option value="medium" selected>medium</option>
+        <option value="high">high</option>
+      </select>
+    </div>
+    
+    <div id="container">
+      <p>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.</p>
+      <p>It is an attempt to emulate the framing (or "center me") effect used in Meet.</p>
+    </div>
+    
     <div id="error-message"></div>
     
     <script src="js/main.js" defer></script>

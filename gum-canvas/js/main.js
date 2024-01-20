@@ -8,6 +8,7 @@ const captureButton = document.getElementById('capture');
 const stopButton = document.getElementById('stop');
 const canvas = document.querySelector('canvas');
 const crop = document.getElementById('crop');
+const qualitySelector = document.getElementById('quality');
 
 drawButton.disabled = true;
 captureButton.disabled = true;
@@ -71,6 +72,9 @@ drawButton.onclick = async () => {
     }
     console.log(`Update rate: ${updateFps} fps`);
     context2d = canvas.getContext('2d');
+    // This is expected to cause bilinear filtering to be used.
+    console.log(`imageSmoothingQuality=${quality.value}`);
+    context2d.imageSmoothingQuality = quality.value;
     canvas.width = localVideo.videoWidth;
     canvas.height = localVideo.videoHeight;
     intervalId = setInterval(() => {
@@ -99,6 +103,13 @@ drawButton.onclick = async () => {
 crop.onchange = () => {
   if (crop.checked) {
     console.log(`Crop and scale: {left=${originLeft}, top=${originTop}, scaledWidth=${scaledWidth}, scaledHeight=${scaledHeight}}`);
+  }
+};
+
+qualitySelector.onchange = () => {
+  if (context2d) {
+    console.log(`imageSmoothingQuality=${quality.value}`);
+    context2d.imageSmoothingQuality = quality.value;
   }
 };
 

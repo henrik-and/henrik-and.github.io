@@ -1,6 +1,5 @@
-body {
-  margin: 0px 0px 0px 0px;  /* top | right | bottom | left */
-  padding: 0;
+.container {
+  margin-left: 10px;
 }
 
 .video-container {
@@ -19,6 +18,11 @@ body {
 }
 
 .checkbox-container {
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+.smoothing-container {
   margin-left: 10px;
   margin-top: 10px;
 }
