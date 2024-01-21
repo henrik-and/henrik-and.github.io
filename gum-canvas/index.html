@@ -53,8 +53,13 @@
     </div>
     
     <div id="container">
-      <pre>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.
-It is an attempt to emulate the framing (or "center me") effect used in Meet.</pre>
+      <p>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.<br>
+         It is an attempt to emulate the framing (or "center me") effect used in Meet.</p>
+      <ul>
+        <li><strong>getUserMedia:</strong> Starts a camera/video stream in the selected resolution (VGA or HD) at 30 fps and renders it on a local video tag.</li>
+        <li><strong>drawImage:</strong> Uses the video element as image source and draws it on a canvas. It is possible to enable crop/scale, change the rate and the smoothing quality. 
+        <li><strong>captureStream:</strong> Uses the captureStream(0) method of the canvas element and renders the resulting CanvasCaptureMediaStreamTrack on a second video tag. 
+      </ul>
     </div>
     
     <div id="error-message"></div>
