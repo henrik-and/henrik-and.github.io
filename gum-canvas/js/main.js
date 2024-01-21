@@ -93,6 +93,7 @@ function startCropAndScaleTimer() {
         // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
         context2d.drawImage(localVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
     } else {
+      // Pass through without cropping.
       context2d.drawImage(localVideo, 0, 0);
     }
     if (canvasStream) {
