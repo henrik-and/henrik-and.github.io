@@ -9,6 +9,8 @@ const stopButton = document.getElementById('stop');
 const canvas = document.querySelector('canvas');
 const crop = document.getElementById('crop');
 const qualitySelector = document.getElementById('quality');
+const rateSelector = document.getElementById('rate');
+const resolutionSelector = document.getElementById('resolution');
 
 drawButton.disabled = true;
 captureButton.disabled = true;
@@ -20,14 +22,7 @@ let canvasStreamstream;
 let context2d;
 let canvasStream;
 let intervalId;
-
-const updateFps = 10;
-
-// Crop and scale settings
-const originLeft = 320;
-const originTop = 240;
-const scaledWidth = 320;
-const scaledHeight = 240;
+let params;
 
 const vgaConstraints = {
   video: {width: {exact: 640}, height: {exact: 480}}
@@ -47,17 +42,43 @@ const loge = (error) => {
 
 localVideo.addEventListener('loadedmetadata', function() {
   console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
+  console.log(`Local video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);
 });
+
+function getCropAndScaleParameters() {
+  if (resolution.value === 'VGA') {
+    return {
+      originLeft: 320,
+      originTop: 240,
+      scaledWidth: 320,
+      scaledHeight: 240
+    }
+  } else {
+    return {
+      originLeft: 640,
+      originTop: 360,
+      scaledWidth: 640,
+      scaledHeight: 360
+    }
+  }  
+};
 
 gumButton.onclick = async () => {
   try {
     const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
     // console.log(prettyJson(supportedConstraints));
-    stream = await navigator.mediaDevices.getUserMedia(vgaConstraints);
+    let constraints = {};
+    if (resolution.value === 'VGA') {
+      constraints = vgaConstraints;
+    } else {
+      constraints = hdConstraints;
+    }
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
     const [videoTrack] = stream.getVideoTracks();
     console.log('Active constraints: ', videoTrack.getConstraints());
     localVideo.srcObject = stream;
     gumButton.disabled = true;
+    resolutionSelector.disabled = true;
     stopButton.disabled = false;
     drawButton.disabled = false;
   } catch (e) {
@@ -65,34 +86,40 @@ gumButton.onclick = async () => {
   }
 };
 
+function startCropAndScaleTimer() {
+  intervalId = setInterval(() => {
+    if (crop.checked) {
+        // Cut out a section of the source image, then scale and draw it on our canvas.
+        // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
+        context2d.drawImage(localVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
+    } else {
+      context2d.drawImage(localVideo, 0, 0);
+    }
+    if (canvasStream) {
+      const [track] = canvasStream.getVideoTracks();
+      if (track) {
+        // Send the current state of the canvas as a frame to the stream.
+        track.requestFrame();
+      }
+    }
+  }, 1000 / rate.value);
+  return intervalId;
+};
+
 drawButton.onclick = async () => {
   try {
     if (crop.checked) {
-      console.log(`Crop and scale: {left=${originLeft}, top=${originTop}, scaledWidth=${scaledWidth}, scaledHeight=${scaledHeight}}`);
+      params = getCropAndScaleParameters();
+      console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
     }
-    console.log(`Update rate: ${updateFps} fps`);
+    console.log(`Update rate: ${rate.value} fps`);
     context2d = canvas.getContext('2d');
     // This is expected to cause bilinear filtering to be used.
     console.log(`imageSmoothingQuality=${quality.value}`);
     context2d.imageSmoothingQuality = quality.value;
     canvas.width = localVideo.videoWidth;
     canvas.height = localVideo.videoHeight;
-    intervalId = setInterval(() => {
-      if (crop.checked) {
-          // Cut out a section of the source image, then scale and draw it on our canvas.
-          // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
-          context2d.drawImage(localVideo, originLeft, originTop, scaledWidth, scaledHeight, 0, 0, canvas.width, canvas.height);
-      } else {
-        context2d.drawImage(localVideo, 0, 0);
-      }
-      if (canvasStream) {
-        const [track] = canvasStream.getVideoTracks();
-        if (track) {
-          // Send the current state of the canvas as a frame to the stream.
-          track.requestFrame();
-        }
-      }
-    }, 1000 / updateFps);
+    intervalId = startCropAndScaleTimer();
     drawButton.disabled = true;
     captureButton.disabled = false;
   } catch (e) {
@@ -102,7 +129,18 @@ drawButton.onclick = async () => {
 
 crop.onchange = () => {
   if (crop.checked) {
-    console.log(`Crop and scale: {left=${originLeft}, top=${originTop}, scaledWidth=${scaledWidth}, scaledHeight=${scaledHeight}}`);
+    params = getCropAndScaleParameters();
+    console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
+  }
+};
+
+rateSelector.onchange = () => {
+  console.log(`Crop/Capture rate=${rate.value} fps`);
+  if (context2d) {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = startCropAndScaleTimer();
+    }
   }
 };
 
@@ -146,6 +184,7 @@ stopButton.onclick = () => {
     canvasStream = null;
   }
   gumButton.disabled = false;
+  resolutionSelector.disabled = false;
   drawButton.disabled = true;
   captureButton.disabled = true;
   stopButton.disabled = true;

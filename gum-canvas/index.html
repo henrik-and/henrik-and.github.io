@@ -19,6 +19,11 @@
 
     <div class="button-container">
       <div class="button-group">
+        Resolution:
+        <select id="resolution">
+          <option value="VGA" selected>VGA</option>
+          <option value="HD">HD</option>
+        </select>
         <button id="gum">getUserMedia</button>
         <button id="draw">drawImage</button>
         <button id="capture">captureStream</button>
@@ -30,7 +35,15 @@
       <input id="crop" type="checkbox">Crop and Scale</input>
     </div>
     
-    <div class="smoothing-container">
+    <div class="select-container">
+    Crop/Capture rate [fps]:
+      <select id="rate">
+        <option value="1">1</option>
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+      </select>
     imageSmoothingQuality:
       <select id="quality">
         <option value="low">low</option>
@@ -40,8 +53,8 @@
     </div>
     
     <div id="container">
-      <p>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.</p>
-      <p>It is an attempt to emulate the framing (or "center me") effect used in Meet.</p>
+      <pre>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.
+It is an attempt to emulate the framing (or "center me") effect used in Meet.</pre>
     </div>
     
     <div id="error-message"></div>
