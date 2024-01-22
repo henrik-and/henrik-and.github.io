@@ -41,7 +41,7 @@ const loge = (error) => {
   console.error(error);
 };
 
-localVideo.addEventListener('loadedmetadata', function() {
+remoteVideo.addEventListener('loadedmetadata', function() {
   console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
   console.log(`Local video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);
 });

@@ -6,7 +6,9 @@
 }
 
 .video-container video {
-  height: auto;
+  width: 236px;
+  height: 134px;
+  object-fit: cover;
   border-radius: 10px;
 }
 
