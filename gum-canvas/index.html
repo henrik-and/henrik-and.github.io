@@ -9,7 +9,7 @@
   
   <body>
     <div class="video-container">
-      <video id="remote" autoplay playsinline controls></video>
+      <video id="remote" autoplay playsinline></video>
     </div>
 
     <div class="button-container">
@@ -49,8 +49,14 @@
     
     <div id="container">
       <p>This demo renders a cropped region of MediaStream on a canvas and captures from the canvas element to a video element.<br>
-         It is an attempt to emulate the framing (or "center me") effect used in Meet.</p>
+         It is an attempt to emulate the framing (or "center me") effect used in Meet.<br>
+         If crop and scale is disabled, we simply render the track locally.</p>
+      <p>Simple path (no crop or scale):</p>
       <ul>
+        <li><strong>getUserMedia:</strong> Starts a camera/video stream in the selected resolution (VGA or HD) at 30 fps and renders it on a video tag added to the DOM.</li>
+      </ul>
+      <p>Complex path (crop and scale):</p>
+      <ul>   
         <li><strong>getUserMedia:</strong> Starts a camera/video stream in the selected resolution (VGA or HD) at 30 fps and renders it on a local video tag not added to the DOM.</li>
         <li><strong>drawImage:</strong> Uses the video element as image source and draws it on a hidden canvas. It is possible to enable crop/scale, change the rate and the smoothing quality. 
         <li><strong>captureStream:</strong> Uses the captureStream(0) method of the canvas element and renders the resulting CanvasCaptureMediaStreamTrack on a second video tag added to the DOM. 

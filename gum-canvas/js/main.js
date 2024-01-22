@@ -13,7 +13,12 @@ const resolutionSelector = document.getElementById('resolution');
 drawButton.disabled = true;
 captureButton.disabled = true;
 stopButton.disabled = true;
-crop.checked = true;
+crop.checked = false;
+rateSelector.disabled = true;
+qualitySelector.disabled = true;
+
+drawButton.style.display = 'none';
+captureButton.style.display = 'none';
 
 let stream;
 let canvasStreamstream;
@@ -88,9 +93,10 @@ gumButton.onclick = async () => {
       drawButton.disabled = false;
     } else {
       console.log('Using path without canvas and extra video tag');
-      remoteVideo.scrObject = stream;
+      remoteVideo.srcObject = stream;
     }
     
+    crop.disabled = true;
     gumButton.disabled = true;
     resolutionSelector.disabled = true;
     stopButton.disabled = false;
@@ -137,11 +143,19 @@ drawButton.onclick = async () => {
   }
 };
 
-// TODO(henrika)
 crop.onchange = () => {
   if (crop.checked) {
+    drawButton.style.display = 'inline-block';
+    captureButton.style.display = 'inline-block';
+    rateSelector.disabled = false;
+    qualitySelector.disabled = false;
     params = getCropAndScaleParameters();
     console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
+  } else {
+    drawButton.style.display = 'none';
+    captureButton.style.display = 'none';
+    rateSelector.disabled = true;
+    qualitySelector.disabled = true;
   }
 };
 
@@ -194,6 +208,7 @@ stopButton.onclick = () => {
     }
     canvasStream = null;
   }
+  crop.disabled = false;
   gumButton.disabled = false;
   resolutionSelector.disabled = false;
   drawButton.disabled = true;
