@@ -1,12 +1,10 @@
 'use strict';
 
-const localVideo = document.getElementById('local');
 const remoteVideo = document.getElementById('remote');
 const gumButton = document.getElementById('gum');
 const drawButton = document.getElementById('draw');
 const captureButton = document.getElementById('capture');
 const stopButton = document.getElementById('stop');
-const canvas = document.querySelector('canvas');
 const crop = document.getElementById('crop');
 const qualitySelector = document.getElementById('quality');
 const rateSelector = document.getElementById('rate');
@@ -23,6 +21,9 @@ let context2d;
 let canvasStream;
 let intervalId;
 let params;
+
+const canvas = document.createElement('canvas');
+const localVideo = document.createElement('video');
 
 const vgaConstraints = {
   video: {width: {exact: 640}, height: {exact: 480}}
@@ -76,7 +77,9 @@ gumButton.onclick = async () => {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const [videoTrack] = stream.getVideoTracks();
     console.log('Active constraints: ', videoTrack.getConstraints());
+    // localVideo.style.display = "none";
     localVideo.srcObject = stream;
+    localVideo.play();
     gumButton.disabled = true;
     resolutionSelector.disabled = true;
     stopButton.disabled = false;
@@ -114,6 +117,7 @@ drawButton.onclick = async () => {
       console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
     }
     console.log(`Update rate: ${rate.value} fps`);
+    // canvas.style.opacity = 0;
     context2d = canvas.getContext('2d');
     // This is expected to cause bilinear filtering to be used.
     console.log(`imageSmoothingQuality=${quality.value}`);
