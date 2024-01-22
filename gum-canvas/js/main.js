@@ -22,8 +22,8 @@ let canvasStream;
 let intervalId;
 let params;
 
-const canvas = document.createElement('canvas');
-const localVideo = document.createElement('video');
+let canvas;
+let localVideo;
 
 const vgaConstraints = {
   video: {width: {exact: 640}, height: {exact: 480}}
@@ -77,13 +77,23 @@ gumButton.onclick = async () => {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const [videoTrack] = stream.getVideoTracks();
     console.log('Active constraints: ', videoTrack.getConstraints());
-    // localVideo.style.display = "none";
-    localVideo.srcObject = stream;
-    localVideo.play();
+    console.log('videoTrack:', videoTrack);
+    
+    if (crop.checked) {
+      console.log('Using path with canvas and extra video tag');
+      localVideo = document.createElement('video');
+      canvas = document.createElement('canvas');
+      localVideo.srcObject = stream;
+      localVideo.play();
+      drawButton.disabled = false;
+    } else {
+      console.log('Using path without canvas and extra video tag');
+      remoteVideo.scrObject = stream;
+    }
+    
     gumButton.disabled = true;
     resolutionSelector.disabled = true;
     stopButton.disabled = false;
-    drawButton.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -91,14 +101,11 @@ gumButton.onclick = async () => {
 
 function startCropAndScaleTimer() {
   intervalId = setInterval(() => {
-    if (crop.checked) {
-        // Cut out a section of the source image, then scale and draw it on our canvas.
-        // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
-        context2d.drawImage(localVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
-    } else {
-      // Pass through without cropping.
-      context2d.drawImage(localVideo, 0, 0);
-    }
+    // Cut out a section of the source image, then scale and draw it on our canvas.
+    // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
+    context2d.drawImage(localVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
+    // Pass through without cropping.
+    // context2d.drawImage(localVideo, 0, 0);
     if (canvasStream) {
       const [track] = canvasStream.getVideoTracks();
       if (track) {
@@ -112,10 +119,8 @@ function startCropAndScaleTimer() {
 
 drawButton.onclick = async () => {
   try {
-    if (crop.checked) {
-      params = getCropAndScaleParameters();
-      console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
-    }
+    params = getCropAndScaleParameters();
+    console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
     console.log(`Update rate: ${rate.value} fps`);
     // canvas.style.opacity = 0;
     context2d = canvas.getContext('2d');
@@ -132,6 +137,7 @@ drawButton.onclick = async () => {
   }
 };
 
+// TODO(henrika)
 crop.onchange = () => {
   if (crop.checked) {
     params = getCropAndScaleParameters();
