@@ -1,9 +1,10 @@
 'use strict';
 
-const remoteVideo = document.getElementById('remote');
+const localVideo = document.getElementById('local');
 const gumButton = document.getElementById('gum');
 const drawButton = document.getElementById('draw');
 const captureButton = document.getElementById('capture');
+const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
 const crop = document.getElementById('crop');
 const qualitySelector = document.getElementById('quality');
@@ -13,6 +14,7 @@ const resolutionSelector = document.getElementById('resolution');
 drawButton.disabled = true;
 captureButton.disabled = true;
 stopButton.disabled = true;
+callButton.disabled = true;
 crop.checked = false;
 rateSelector.disabled = true;
 qualitySelector.disabled = true;
@@ -21,14 +23,16 @@ drawButton.style.display = 'none';
 captureButton.style.display = 'none';
 
 let stream;
-let canvasStreamstream;
-let context2d;
 let canvasStream;
+let context2d;
 let intervalId;
 let params;
 
 let canvas;
-let localVideo;
+let canvasVideo;
+
+let pc1;
+let pc2;
 
 const vgaConstraints = {
   video: {width: {exact: 640}, height: {exact: 480}}
@@ -46,7 +50,7 @@ const loge = (error) => {
   console.error(error);
 };
 
-remoteVideo.addEventListener('loadedmetadata', function() {
+localVideo.addEventListener('loadedmetadata', function() {
   console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
   console.log(`Local video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);
 });
@@ -86,20 +90,21 @@ gumButton.onclick = async () => {
     
     if (crop.checked) {
       console.log('Using path with canvas and extra video tag');
-      localVideo = document.createElement('video');
+      canvasVideo = document.createElement('video');
       canvas = document.createElement('canvas');
-      localVideo.srcObject = stream;
-      localVideo.play();
+      canvasVideo.srcObject = stream;
+      canvasVideo.play();
       drawButton.disabled = false;
     } else {
       console.log('Using path without canvas and extra video tag');
-      remoteVideo.srcObject = stream;
+      localVideo.srcObject = stream;
     }
     
     crop.disabled = true;
     gumButton.disabled = true;
     resolutionSelector.disabled = true;
     stopButton.disabled = false;
+    callButton.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -109,9 +114,9 @@ function startCropAndScaleTimer() {
   intervalId = setInterval(() => {
     // Cut out a section of the source image, then scale and draw it on our canvas.
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
-    context2d.drawImage(localVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
+    context2d.drawImage(canvasVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
     // Pass through without cropping.
-    // context2d.drawImage(localVideo, 0, 0);
+    // context2d.drawImage(canvasVideo, 0, 0);
     if (canvasStream) {
       const [track] = canvasStream.getVideoTracks();
       if (track) {
@@ -133,8 +138,8 @@ drawButton.onclick = async () => {
     // This is expected to cause bilinear filtering to be used.
     console.log(`imageSmoothingQuality=${quality.value}`);
     context2d.imageSmoothingQuality = quality.value;
-    canvas.width = localVideo.videoWidth;
-    canvas.height = localVideo.videoHeight;
+    canvas.width = canvasVideo.videoWidth;
+    canvas.height = canvasVideo.videoHeight;
     intervalId = startCropAndScaleTimer();
     drawButton.disabled = true;
     captureButton.disabled = false;
@@ -180,7 +185,7 @@ captureButton.onclick = () => {
   if (context2d) {
     try {
       canvasStream = canvas.captureStream(0);
-      remoteVideo.srcObject = canvasStream;
+      localVideo.srcObject = canvasStream;
       console.log(canvasStream.getVideoTracks());
       captureButton.disabled = true;
     } catch (e) {
@@ -208,10 +213,85 @@ stopButton.onclick = () => {
     }
     canvasStream = null;
   }
+  closePeerConnection();
   crop.disabled = false;
   gumButton.disabled = false;
   resolutionSelector.disabled = false;
   drawButton.disabled = true;
   captureButton.disabled = true;
+  callButton.disabled = true;
   stopButton.disabled = true;
+};
+
+callButton.onclick = async () => {
+  await setupPeerConnection();
+  callButton.disabled = true;
+};
+
+const setupPeerConnection = async () => {
+  let activeStream;
+  if (!crop.checked) {
+    console.log('Using local stream from gUM');
+    activeStream = stream;
+  } else {
+    console.log('Using canvas stream');
+    activeStream = canvasStream;
+  }
+  console.log('activeStream:', activeStream); 
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  const [localTrack] = activeStream.getVideoTracks();
+  let remoteTrack = null;
+  let remoteStream = null;
+  pc1.addTrack(localTrack, activeStream);
+  pc2.addTrack(localTrack, activeStream);
+  pc2.ontrack = (e) => {
+    remoteTrack = e.track;
+    remoteStream = e.streams[0];
+    // remoteVideo.srcObject = remoteStream;
+  };
+  exchangeIceCandidates(pc1, pc2);
+  
+  pc1.oniceconnectionstatechange = (e) => {
+    console.log('pc1 ICE state: ' + pc1.iceConnectionState)
+  }
+  
+  pc2.oniceconnectionstatechange = (e) => {
+    console.log('pc2 ICE state: ' + pc2.iceConnectionState)
+  }
+  
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  console.log('pc1 offer: ', offer.sdp);
+  
+  const answer = await pc2.createAnswer();
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  console.log('pc2 answer: ', answer.sdp);
+};
+
+const closePeerConnection = () => {
+  if (pc1) {
+    pc1.close();
+    pc1 = null;
+  }
+  if (pc2) {
+    // remoteVideo.srcObject = null;
+    pc2.close();
+    pc2 = null;
+  }
+};
+
+const exchangeIceCandidates = (pc1, pc2) => {
+  function doExchange(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      const { candidate } = event;
+      if (candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(candidate);
+      }
+    });
+  }
+  doExchange(pc1, pc2);
+  doExchange(pc2, pc1);
 };
