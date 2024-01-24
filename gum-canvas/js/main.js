@@ -248,6 +248,7 @@ callButton.onclick = async () => {
             partialStats.codec = mimeType.split('/')[1];
             partialStats.encoderImplementation = stats.encoderImplementation;
             partialStats.powerEfficientEncoder = stats.powerEfficientEncoder;
+            partialStats.scalabilityMode= stats.scalabilityMode;
             partialStats.framesPerSecond = stats.framesPerSecond;
             statsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
           }
@@ -274,12 +275,13 @@ const setupPeerConnection = async () => {
   const [localTrack] = activeStream.getVideoTracks();
   let remoteTrack = null;
   let remoteStream = null;
-  pc1.addTrack(localTrack, activeStream);
-  pc2.addTrack(localTrack, activeStream);
+  const sender = pc1.addTrack(localTrack, activeStream);
+  const parameters = sender.getParameters();
+  parameters.encodings[0].scalabiltyMode = 'L1T1';
+  await sender.setParameters(parameters);
   pc2.ontrack = (e) => {
     remoteTrack = e.track;
     remoteStream = e.streams[0];
-    // remoteVideo.srcObject = remoteStream;
   };
   exchangeIceCandidates(pc1, pc2);
   
