@@ -23,7 +23,7 @@
         <button id="draw">drawImage</button>
         <button id="capture">captureStream</button>
       </div>
-      <button id="call">Call</button>
+      <button id="call">Call with VP9</button>
       <button id="stop">Stop</button>
     </div>
     
@@ -62,6 +62,11 @@
         <li><strong>drawImage:</strong> Uses the video element as image source and draws it on a hidden canvas. It is possible to enable crop/scale, change the rate and the smoothing quality. 
         <li><strong>captureStream:</strong> Uses the captureStream(0) method of the canvas element and renders the resulting CanvasCaptureMediaStreamTrack on a second video tag added to the DOM. 
       </ul>
+      <p>For both paths, <strong>Call with VP9</strong> adds a loopback Peerconnection session using VP9. The remote stream is not rendered on any video tag.
+    </div>
+    
+    <div class="stats-container">
+      <div id="stats"></div>
     </div>
     
     <div id="error-message"></div>

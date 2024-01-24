@@ -10,6 +10,7 @@ const crop = document.getElementById('crop');
 const qualitySelector = document.getElementById('quality');
 const rateSelector = document.getElementById('rate');
 const resolutionSelector = document.getElementById('resolution');
+const statsDiv = document.getElementById('stats');
 
 drawButton.disabled = true;
 captureButton.disabled = true;
@@ -26,6 +27,7 @@ let stream;
 let canvasStream;
 let context2d;
 let intervalId;
+let trackStatsIntervalId;
 let params;
 
 let canvas;
@@ -198,6 +200,9 @@ stopButton.onclick = () => {
   if (intervalId) {
     clearInterval(intervalId);
   }
+  if (trackStatsIntervalId) {
+    clearInterval(trackStatsIntervalId);
+  }
   if (stream) {
     for (const track of stream.getVideoTracks()) {
       track.stop();
@@ -213,6 +218,7 @@ stopButton.onclick = () => {
     }
     canvasStream = null;
   }
+  statsDiv.textContent = "";
   closePeerConnection();
   crop.disabled = false;
   gumButton.disabled = false;
@@ -224,8 +230,33 @@ stopButton.onclick = () => {
 };
 
 callButton.onclick = async () => {
-  await setupPeerConnection();
-  callButton.disabled = true;
+  try {
+    await setupPeerConnection();
+    callButton.disabled = true;
+
+    // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
+    trackStatsIntervalId = setInterval(async () => {
+      if (pc1) {
+        const report = await pc1.getStats();
+        for (const stats of report.values()) {
+          if (stats.type === 'outbound-rtp') {
+            const partialStats = {};
+            partialStats.contentType = stats.contentType;
+            partialStats.frameWidth = stats.frameWidth;
+            partialStats.frameHeight = stats.frameHeight;
+            const mimeType = report.get(stats.codecId).mimeType;
+            partialStats.codec = mimeType.split('/')[1];
+            partialStats.encoderImplementation = stats.encoderImplementation;
+            partialStats.powerEfficientEncoder = stats.powerEfficientEncoder;
+            partialStats.framesPerSecond = stats.framesPerSecond;
+            statsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
+          }
+        }
+      }
+    }, 1000);
+  } catch (e) {
+    loge(e);
+  }
 };
 
 const setupPeerConnection = async () => {
@@ -258,6 +289,18 @@ const setupPeerConnection = async () => {
   
   pc2.oniceconnectionstatechange = (e) => {
     console.log('pc2 ICE state: ' + pc2.iceConnectionState)
+  }
+  
+  // TODO(henrika): We should also include all of the following, otherwise we'd
+  // turn off features like RTX etc:
+  // mimeType == 'video/ulpfec' || mimeType == 'video/red' || mimeType == 'video/rtx'.
+  // See https://jsfiddle.net/henbos/c2zqb1yw/.
+  const transceiver = pc1.getTransceivers()[0];
+  if (transceiver.setCodecPreferences) {
+    const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
+      (c) => c.mimeType.includes('VP9'),
+    );
+    transceiver.setCodecPreferences(codecs);
   }
   
   const offer = await pc1.createOffer();
