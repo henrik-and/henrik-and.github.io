@@ -8,6 +8,11 @@
 
 'use strict';
 
+const hdConstraints = {
+  audio: false,
+  video: {width: {exact: 1280}, height: {exact: 720}}
+};
+
 /* global VideoMirrorHelper */ // defined in video-mirror-helper.js
 
 /**
@@ -40,10 +45,12 @@ class CameraSource { // eslint-disable-line no-unused-vars
     if (this.stream_) return this.stream_;
     console.log('[CameraSource] Requesting camera.');
     this.stream_ =
-        await navigator.mediaDevices.getUserMedia({audio: false, video: true});
+        await navigator.mediaDevices.getUserMedia(hdConstraints);
     console.log(
         '[CameraSource] Received camera stream.',
         `${this.debugPath_}.stream_ =`, this.stream_);
+    const [track] = this.stream_.getVideoTracks();
+    console.log('[CameraSource] Active constraints: ', track.getConstraints());
     this.videoMirrorHelper_.setStream(this.stream_);
     return this.stream_;
   }

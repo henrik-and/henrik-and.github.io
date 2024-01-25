@@ -72,15 +72,33 @@ class PeerConnectionPipe { // eslint-disable-line no-unused-vars
         }
       };
     });
-    inputStream.getTracks().forEach(track => {
-      this.caller_.addTransceiver(track, {direction: 'sendonly'});
-    });
-    await this.caller_.setLocalDescription();
-    await this.callee_.setRemoteDescription(
-        /** @type {!RTCSessionDescription} */ (this.caller_.localDescription));
-    await this.callee_.setLocalDescription();
-    await this.caller_.setRemoteDescription(
-        /** @type {!RTCSessionDescription} */ (this.callee_.localDescription));
+    const transceiver = this.caller_.addTransceiver(
+        inputStream.getTracks()[0], {direction: 'sendonly'});
+       
+    // L1T1
+    const sender = transceiver.sender;
+    const parameters = sender.getParameters();
+    parameters.encodings[0].scalabiltyMode = 'L1T1';
+    await sender.setParameters(parameters);
+    
+    // VP9
+    if (transceiver.setCodecPreferences) {
+      const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
+        (c) => c.mimeType.includes('VP9'),
+      );
+      transceiver.setCodecPreferences(codecs);
+    }
+    
+    const offer = await this.caller_.createOffer();
+    await this.caller_.setLocalDescription(offer);
+    await this.callee_.setRemoteDescription(offer);
+    console.log('[PeerConnectionPipe] Caller offer:', offer.sdp);
+    
+    const answer = await this.callee_.createAnswer();
+    await this.callee_.setLocalDescription(answer);
+    await this.caller_.setRemoteDescription(answer);
+    console.log('[PeerConnectionPipe] Callee answer:', answer.sdp);
+    
     await receiverStreamPromise;
     console.log(
         '[PeerConnectionPipe] Peer connection established.',
