@@ -9,7 +9,7 @@ function transform(frame, controller) {
       x: 640,
       width: 640,
       y: 360,
-      height: 360,
+      height: 200,
     }
   });
   controller.enqueue(newFrame);
