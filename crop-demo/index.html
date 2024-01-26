@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Demo</title>
+    <link rel="stylesheet" href="css/main.css"/>
+  </head>
+  
+  <body>
+    <div class="video-container">
+      <video id="local" autoplay playsinline></video>
+    </div>
+
+    <div class="button-container">
+      <div class="button-group">
+        Resolution:
+        <select id="resolution">
+          <option value="VGA">VGA</option>
+          <option value="HD" selected>HD</option>
+        </select>
+        <button id="gum">getUserMedia</button>
+      </div>
+    </div>
+    
+    <div class="select-container">
+    Crop method:
+      <select id="crop">
+        <option value="none" selected>none</option>
+        <option value="canvas" >canvas</option>
+        <option value="visibleRect">[BB] visibleRect</option>
+      </select>
+    </div>
+    
+    <div class="button-container">
+      <button id="call">Call with VP9</button>
+      <button id="stop">Stop</button>
+     </div>
+    
+    <div class="stats-container">
+      <div id="stats"></div>
+    </div>
+    
+    <div id="error-message"></div>
+    
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
+

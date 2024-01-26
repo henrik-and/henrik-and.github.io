@@ -1,0 +1,52 @@
+.container {
+  margin-left: 10px;
+}
+
+.video-container {
+}
+
+.video-container video {
+  width: 236px;
+  height: 134px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.button-container {
+  margin-top: 15px;
+  margin-left: 10px;
+}
+
+.checkbox-container {
+  margin-top: 10px;
+  margin-left: 10px;
+}
+
+.select-container {
+  margin-top: 15px;
+  margin-left: 10px;
+}
+
+.select-container select {
+  margin-right: 10px;
+}
+
+.stats-container {
+  margin-top: 5px;
+  margin-left: 5px;
+}
+
+.stats-container div {
+  background-color: white;  /* Use #eee for gray */
+  display: inline-block;
+  font-family: 'Inconsolata', 'Courier New', monospace;
+  font-size: 0.8em;
+  top: 10px;
+  vertical-align: top;
+  white-space: pre;
+}
+
+#error-message {
+  margin-top: 10px;
+  color: red;
+}
