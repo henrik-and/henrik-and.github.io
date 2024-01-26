@@ -1,17 +1,26 @@
 'use strict';
 
+if (typeof MediaStreamTrackProcessor === 'undefined' ||
+    typeof MediaStreamTrackGenerator === 'undefined') {
+  alert(
+      'Your browser does not support the experimental MediaStreamTrack API ');
+}
+
 const localVideo = document.getElementById('local');
+const encodedVideo = document.getElementById('encoded');
 const gumButton = document.getElementById('gum');
 const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
 const cropMethod = document.getElementById('crop');
 const resolutionSelector = document.getElementById('resolution');
 const statsDiv = document.getElementById('stats');
+const renderCheckbox = document.getElementById('renderEncoded');
 
 stopButton.disabled = true;
 callButton.disabled = true;
 
 let stream;
+let remoteStream;
 let canvasStream;
 let context2d;
 let intervalId;
@@ -20,6 +29,10 @@ let params;
 
 let canvas;
 let canvasVideo;
+
+let worker;
+let processor;
+let generator;
 
 let pc1;
 let pc2;
@@ -110,6 +123,16 @@ function startCropAndScaleTimer() {
   return intervalId;
 };
 
+renderCheckbox.onchange = () => {
+  if (renderEncoded.checked) {
+  } else {
+    if (encodedVideo.srcObject) {
+      encodedVideo.pause();
+      encodedVideo.srcObject = null;
+    }
+  }
+};
+
 crop.onchange = async () => {
   await activateSelectedCropMethod();
 };
@@ -158,6 +181,7 @@ const activateCanvas = async () => {
     let resolvePromise;
     const promise = new Promise(r => resolvePromise = r);
     
+    // TODO(henrika): do we need removeEventListener?
     canvasVideo.addEventListener('loadedmetadata', function() {
       // The duration and dimensions of the media tracks are now known.
       console.log(`Canvas video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
@@ -190,21 +214,58 @@ const activateCanvas = async () => {
 
 const activateVisibleRect = () => {
   console.log('activateVisibleRect');
+  if (!stream) {
+    console.log('No MediaStreamTrack exists yet');
+    return;
+  }
+  if (worker) {
+    console.log('[ERROR] worker is still active');
+    return;
+  }
+  worker = new Worker('./js/worker.js', {name: 'Crop worker'});
+  
+  const [track] = stream.getVideoTracks();
+  processor = new MediaStreamTrackProcessor({track});
+  const {readable} = processor;
+
+  // Creates a WritableStream that acts as a MediaStreamTrack source.
+  // The object consumes a stream of video frames as input.
+  generator = new MediaStreamTrackGenerator({kind: 'video'});
+  const {writable} = generator;
+  localVideo.srcObject = new MediaStream([generator]);
+
+  worker.postMessage({
+    operation: 'crop',
+    readable,
+    writable,
+  }, [readable, writable]);
+  
 };
 
 const clearActiveCropping = async () => {
   console.log('clearActiveCropping');
-  if (intervalId) {
-    clearInterval(intervalId);
-  }
-  if (context2d) {
-    context2d.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  if (canvasStream) {
-    for (const track of canvasStream.getVideoTracks()) {
-      track.stop();
+  try {
+    if (intervalId) {
+      clearInterval(intervalId);
     }
-    canvasStream = null;
+    if (context2d) {
+      context2d.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    if (canvasStream) {
+      for (const track of canvasStream.getVideoTracks()) {
+        track.stop();
+      }
+      canvasStream = null;
+    }
+    if (worker) {
+      processor.readable.cancel();
+      worker.terminate();
+      processor = null;
+      generator = null;
+      worker = null;
+    }
+  } catch (e) {
+    loge(e);
   }
 }  
 
@@ -219,17 +280,31 @@ stopButton.onclick = async () => {
     }
     stream = null;
   }
+  if (remoteStream) {
+    for (const track of remoteStream.getVideoTracks()) {
+      track.stop();
+    }
+    remoteStream = null;
+  }
+  if (localVideo.srcObject) {
+    localVideo.srcObject = null;
+  }
+  if (encodedVideo.srcObject) {
+    encodedVideo.srcObject = null;
+  }
   statsDiv.textContent = "";
   closePeerConnection();
   gumButton.disabled = false;
   callButton.disabled = true;
   stopButton.disabled = true;
+  renderCheckbox.disabled = false;
 };
 
 callButton.onclick = async () => {
   try {
     await setupPeerConnection();
     callButton.disabled = true;
+    renderCheckbox.disabled = true;
 
     // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
     trackStatsIntervalId = setInterval(async () => {
@@ -261,18 +336,18 @@ const setupPeerConnection = async () => {
   console.log('setupPeerConnection');
   if (canvasStream) {
     console.log('Using canvas stream as source to PC');
-    activeSourceStream = canvasStream;
+  } else if (worker) {
+    console.log('Using breakout-box stream as source to PC');
   } else {
     console.log('Using local stream from gUM as source to PC');
-    activeSourceStream = stream;
   }
+  activeSourceStream = localVideo.srcObject;
   console.log('activeSourceStream:', activeSourceStream);
   
   pc1 = new RTCPeerConnection();
   pc2 = new RTCPeerConnection();
   const [localTrack] = activeSourceStream.getVideoTracks();
   let remoteTrack = null;
-  let remoteStream = null;
   const sender = pc1.addTrack(localTrack, activeSourceStream);
   const parameters = sender.getParameters();
   parameters.encodings[0].scalabiltyMode = 'L1T1';
@@ -280,6 +355,9 @@ const setupPeerConnection = async () => {
   pc2.ontrack = (e) => {
     remoteTrack = e.track;
     remoteStream = e.streams[0];
+    if (renderEncoded.checked) {
+      encodedVideo.srcObject = remoteStream;
+    }
   };
   exchangeIceCandidates(pc1, pc2);
   

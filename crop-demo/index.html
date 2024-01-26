@@ -10,6 +10,7 @@
   <body>
     <div class="video-container">
       <video id="local" autoplay playsinline></video>
+      <video id="encoded" autoplay playsinline></video>
     </div>
 
     <div class="button-container">
@@ -20,6 +21,7 @@
           <option value="HD" selected>HD</option>
         </select>
         <button id="gum">getUserMedia</button>
+        <input id="renderEncoded" type="checkbox">Render the encoded stream</input>
       </div>
     </div>
     
@@ -28,7 +30,7 @@
       <select id="crop">
         <option value="none" selected>none</option>
         <option value="canvas" >canvas</option>
-        <option value="visibleRect">[BB] visibleRect</option>
+        <option value="visibleRect">visibleRect</option>
       </select>
     </div>
     
