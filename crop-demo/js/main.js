@@ -109,7 +109,11 @@ function startCropAndScaleTimer() {
   intervalId = setInterval(() => {
     // Cut out a section of the source image, then scale and draw it on our canvas.
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
-    context2d.drawImage(canvasVideo, params.originLeft, params.originTop, params.scaledWidth, params.scaledHeight, 0, 0, canvas.width, canvas.height);
+    context2d.drawImage(
+        canvasVideo,
+        params.originLeft, params.originTop,
+        params.scaledWidth, params.scaledHeight,
+        0, 0, canvas.width, canvas.height);
     // Pass through without cropping.
     // context2d.drawImage(canvasVideo, 0, 0);
     if (canvasStream) {
