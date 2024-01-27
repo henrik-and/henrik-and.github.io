@@ -6,11 +6,15 @@ function transform(frame, controller) {
   // Cropping from an existing video frame is supported by the API in Chrome 94+.
   // https://www.w3.org/TR/webcodecs/#videoframe-interface
   // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/VideoFrame#visiblerect
-  const newFrame = new VideoFrame(frame, {
-    visibleRect: cropRect
-  });
-  controller.enqueue(newFrame);
-  frame.close();
+  try {
+    const newFrame = new VideoFrame(frame, {
+      visibleRect: cropRect
+    });
+    controller.enqueue(newFrame);
+    frame.close();
+  } catch (e) {
+    console.error(`DOMException: ${e.name} [${e.message}]`);
+  }
 }
 
 onmessage = async (event) => {

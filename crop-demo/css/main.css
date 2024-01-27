@@ -28,21 +28,23 @@
 }
 
 .select-container {
-  margin-top: 15px;
   margin-left: 10px;
+  margin-top: 15px;
 }
 
 .select-container select {
   margin-right: 10px;
 }
 
-.stats-container {
-  margin-top: 5px;
-  margin-left: 5px;
+.info-container {
+  margin-top: 15px;
 }
 
-.stats-container div {
-  background-color: white;  /* Use #eee for gray */
+.info-container div {
+  margin-left: 10px;
+  padding-left: 5px;
+  padding-right: 5px;
+  background-color: #eee;  /* Use #eee for gray */
   display: inline-block;
   font-family: 'Inconsolata', 'Courier New', monospace;
   font-size: 0.8em;

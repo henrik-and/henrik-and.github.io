@@ -13,11 +13,15 @@ const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
 const cropMethod = document.getElementById('crop');
 const statsDiv = document.getElementById('stats');
+const videoSizeDiv = document.getElementById('videoSize');
+const constraintsDiv = document.getElementById('constraints');
 const renderCheckbox = document.getElementById('renderEncoded');
+const getStatsCheckbox = document.getElementById('getStats');
 const inputs = document.getElementsByTagName('input');
 
 stopButton.disabled = true;
 callButton.disabled = true;
+getStatsCheckbox.disabled = true;
 
 let stream;
 let remoteStream;
@@ -54,11 +58,6 @@ const loge = (error) => {
   console.error(error);
 };
 
-localVideo.addEventListener('loadedmetadata', function() {
-  console.log(`Local video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
-  console.log(`Local video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);
-});
-
 function getCropRect() {
   const inputValues = {};
   for (const input of inputs) {
@@ -73,6 +72,12 @@ function getCropRect() {
 
 function handleInputChange() {
   cropRect = getCropRect();
+  if (worker) {
+    worker.postMessage({
+      operation: 'change',
+      cropRect: cropRect,
+    });
+  }
 };
 
 gumButton.onclick = async () => {
@@ -81,8 +86,17 @@ gumButton.onclick = async () => {
     // console.log(prettyJson(supportedConstraints));
     stream = await navigator.mediaDevices.getUserMedia(hdConstraints);
     const [videoTrack] = stream.getVideoTracks();
-    console.log('Active constraints: ', videoTrack.getConstraints());
     console.log('videoTrack:', videoTrack);
+    constraintsDiv.textContent = 'constraints:\n' + prettyJson(videoTrack.getConstraints());
+    
+    localVideo.addEventListener('resize', function() {
+      let videoSize = {};
+      videoSize.videoWidth = this.videoWidth;
+      videoSize.videoHeight = this.videoHeight;
+      videoSize.offsetWidth = this.offsetWidth;
+      videoSize.offsetHeight = this.offsetHeight;
+      videoSizeDiv.textContent = 'video size:\n' + prettyJson(videoSize);
+    });
     
     await activateSelectedCropMethod();
     
@@ -95,6 +109,7 @@ gumButton.onclick = async () => {
     gumButton.disabled = true;
     stopButton.disabled = false;
     callButton.disabled = false;
+    getStatsCheckbox.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -128,6 +143,14 @@ renderCheckbox.onchange = () => {
       encodedVideo.pause();
       encodedVideo.srcObject = null;
     }
+  }
+};
+
+getStatsCheckbox.onchange = () => {
+  if (getStats.checked) {
+    startGetStats();
+  } else {
+    stopGetStats();
   }
 };
 
@@ -304,6 +327,7 @@ stopButton.onclick = async () => {
   closePeerConnection();
   gumButton.disabled = false;
   callButton.disabled = true;
+  getStatsCheckbox.disabled = true;
   stopButton.disabled = true;
   renderCheckbox.disabled = false;
 };
@@ -314,30 +338,43 @@ callButton.onclick = async () => {
     callButton.disabled = true;
     renderCheckbox.disabled = true;
 
-    // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
-    trackStatsIntervalId = setInterval(async () => {
-      if (pc1) {
-        const report = await pc1.getStats();
-        for (const stats of report.values()) {
-          if (stats.type === 'outbound-rtp') {
-            const partialStats = {};
-            partialStats.contentType = stats.contentType;
-            partialStats.frameWidth = stats.frameWidth;
-            partialStats.frameHeight = stats.frameHeight;
-            const mimeType = report.get(stats.codecId).mimeType;
-            partialStats.codec = mimeType.split('/')[1];
-            partialStats.encoderImplementation = stats.encoderImplementation;
-            partialStats.powerEfficientEncoder = stats.powerEfficientEncoder;
-            partialStats.scalabilityMode= stats.scalabilityMode;
-            partialStats.framesPerSecond = stats.framesPerSecond;
-            statsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
-          }
-        }
-      }
-    }, 1000);
+    if (getStats.checked) {
+      startGetStats();
+    }
   } catch (e) {
     loge(e);
   }
+};
+
+const startGetStats = () => {
+  // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
+  trackStatsIntervalId = setInterval(async () => {
+    if (pc1) {
+      const report = await pc1.getStats();
+      for (const stats of report.values()) {
+        if (stats.type === 'outbound-rtp') {
+          const partialStats = {};
+          partialStats.contentType = stats.contentType;
+          partialStats.frameWidth = stats.frameWidth;
+          partialStats.frameHeight = stats.frameHeight;
+          const mimeType = report.get(stats.codecId).mimeType;
+          partialStats.codec = mimeType.split('/')[1];
+          partialStats.encoderImplementation = stats.encoderImplementation;
+          partialStats.powerEfficientEncoder = stats.powerEfficientEncoder;
+          partialStats.scalabilityMode= stats.scalabilityMode;
+          partialStats.framesPerSecond = stats.framesPerSecond;
+          statsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
+        }
+      }
+    }
+  }, 1000);
+};
+
+const stopGetStats = () => {
+  if (trackStatsIntervalId) {
+    clearInterval(trackStatsIntervalId);
+  }
+  statsDiv.textContent = '';
 };
 
 const setupPeerConnection = async () => {
