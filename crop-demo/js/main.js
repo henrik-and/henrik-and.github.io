@@ -12,9 +12,9 @@ const gumButton = document.getElementById('gum');
 const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
 const cropMethod = document.getElementById('crop');
-const resolutionSelector = document.getElementById('resolution');
 const statsDiv = document.getElementById('stats');
 const renderCheckbox = document.getElementById('renderEncoded');
+const inputs = document.getElementsByTagName('input');
 
 stopButton.disabled = true;
 callButton.disabled = true;
@@ -25,7 +25,6 @@ let canvasStream;
 let context2d;
 let intervalId;
 let trackStatsIntervalId;
-let params;
 
 let canvas;
 let canvasVideo;
@@ -39,11 +38,9 @@ let pc2;
 
 let activeSourceStream;
 
-const rateFps = 30;
+let cropRect = {};
 
-const vgaConstraints = {
-  video: {width: {exact: 640}, height: {exact: 480}}
-};
+const rateFps = 30;
 
 const hdConstraints = {
   video: {width: {exact: 1280}, height: {exact: 720}}
@@ -62,40 +59,38 @@ localVideo.addEventListener('loadedmetadata', function() {
   console.log(`Local video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);
 });
 
-function getCropAndScaleParameters() {
-  if (resolution.value === 'VGA') {
-    return {
-      originLeft: 320,
-      originTop: 240,
-      scaledWidth: 320,
-      scaledHeight: 240
+function getCropRect() {
+  const inputValues = {};
+  for (const input of inputs) {
+    if (input.type === 'number') {
+      const inputId = input.id;
+      const inputValue = input.value;
+      inputValues[inputId] = inputValue;
     }
-  } else {
-    return {
-      originLeft: 640,
-      originTop: 360,
-      scaledWidth: 640,
-      scaledHeight: 360
-    }
-  }  
+  }
+  return inputValues;
+};
+
+function handleInputChange() {
+  cropRect = getCropRect();
 };
 
 gumButton.onclick = async () => {
   try {
     const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
     // console.log(prettyJson(supportedConstraints));
-    let constraints = {};
-    if (resolution.value === 'VGA') {
-      constraints = vgaConstraints;
-    } else {
-      constraints = hdConstraints;
-    }
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream = await navigator.mediaDevices.getUserMedia(hdConstraints);
     const [videoTrack] = stream.getVideoTracks();
     console.log('Active constraints: ', videoTrack.getConstraints());
     console.log('videoTrack:', videoTrack);
     
     await activateSelectedCropMethod();
+    
+    for (const input of inputs) {
+      if (input.type === 'number') {
+        input.addEventListener('change', handleInputChange);
+      }
+    }
        
     gumButton.disabled = true;
     stopButton.disabled = false;
@@ -111,8 +106,7 @@ function startCropAndScaleTimer() {
     // https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images#slicing
     context2d.drawImage(
         canvasVideo,
-        params.originLeft, params.originTop,
-        params.scaledWidth, params.scaledHeight,
+        cropRect.x, cropRect.y, cropRect.width, cropRect.height,
         0, 0, canvas.width, canvas.height);
     // Pass through without cropping.
     // context2d.drawImage(canvasVideo, 0, 0);
@@ -191,8 +185,8 @@ const activateCanvas = async () => {
       console.log(`Canvas video videoWidth: ${this.videoWidth}px,  videoHeight: ${this.videoHeight}px`);
       console.log(`Canvas video offsetWidth: ${this.offsetWidth}px,  videoHeight: ${this.offsetHeight}px`);      
       try {
-        params = getCropAndScaleParameters();
-        console.log(`Crop and scale: {left=${params.originLeft}, top=${params.originTop}, scaledWidth=${params.scaledWidth}, scaledHeight=${params.scaledHeight}}`);
+        cropRect = getCropRect();
+        console.log(`Crop and scale: {x=${cropRect.x}, y=${cropRect.y}, width=${cropRect.width}, height=${cropRect.height}}`);
         context2d = canvas.getContext('2d');
         context2d.imageSmoothingQuality = 'medium';
         canvas.width = canvasVideo.videoWidth;
@@ -226,6 +220,7 @@ const activateVisibleRect = () => {
     console.log('[ERROR] worker is still active');
     return;
   }
+  try {
   worker = new Worker('./js/worker.js', {name: 'Crop worker'});
   
   const [track] = stream.getVideoTracks();
@@ -237,6 +232,8 @@ const activateVisibleRect = () => {
   generator = new MediaStreamTrackGenerator({kind: 'video'});
   const {writable} = generator;
   localVideo.srcObject = new MediaStream([generator]);
+  
+  cropRect = getCropRect();
 
   worker.postMessage({
     operation: 'crop',
@@ -244,6 +241,13 @@ const activateVisibleRect = () => {
     writable,
   }, [readable, writable]);
   
+  worker.postMessage({
+    operation: 'change',
+    cropRect: cropRect,
+  });
+  } catch (e) {
+    loge(e);
+  }
 };
 
 const clearActiveCropping = async () => {

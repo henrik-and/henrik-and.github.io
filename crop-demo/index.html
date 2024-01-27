@@ -15,14 +15,23 @@
 
     <div class="button-container">
       <div class="button-group">
-        Resolution:
-        <select id="resolution">
-          <option value="VGA">VGA</option>
-          <option value="HD" selected>HD</option>
-        </select>
         <button id="gum">getUserMedia</button>
         <input id="renderEncoded" type="checkbox">Render the encoded stream</input>
       </div>
+    </div>
+    
+    <div class="form-container">
+      <form>
+        Crop rect:
+        <label for="x">x:</label>
+        <input type="number" id="x" name="quantity" min="0" max="1280" style="width: 6ch;" value="640">
+        <label for="y">y:</label>
+        <input type="number" id="y" name="quantity" min="0" max="720" style="width: 6ch;" value="360">
+        <label for="width">width:</label>
+        <input type="number" id="width" name="quantity" min="0" max="1280" style="width: 6ch;" value="640">
+        <label for="height">height:</label>
+        <input type="number" id="height" name="quantity" min="0" max="720" style="width: 6ch;" value="360">
+      </form>
     </div>
     
     <div class="select-container">

@@ -1,27 +1,14 @@
 'use strict';
 
-let logAdded = false;
+let cropRect;
 
 function transform(frame, controller) {
   // Cropping from an existing video frame is supported by the API in Chrome 94+.
   // https://www.w3.org/TR/webcodecs/#videoframe-interface
   // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/VideoFrame#visiblerect
   const newFrame = new VideoFrame(frame, {
-    visibleRect: {
-      x: 640,
-      width: 640,
-      y: 360,
-      height: 360,
-    }
+    visibleRect: cropRect
   });
-  if (!logAdded) {
-    console.log('VideoFrame');
-    console.log('.visibleRect.x: ' + newFrame.visibleRect.x);
-    console.log('.visibleRect.y: ' + newFrame.visibleRect.y);
-    console.log('.visibleRect.width: ' + newFrame.visibleRect.width)
-    console.log('.visibleRect.height: ' + newFrame.visibleRect.height);
-    logAdded = true;
-  }
   controller.enqueue(newFrame);
   frame.close();
 }
@@ -35,6 +22,9 @@ onmessage = async (event) => {
     readable
         .pipeThrough(new TransformStream({transform}))
         .pipeTo(writable);
+  } else if (operation === 'change') {
+    cropRect = event.data.cropRect;
+    console.log('visibleRect: ', cropRect);
   } else {
     console.error('Unknown operation', operation);
   }
