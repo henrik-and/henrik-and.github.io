@@ -2,6 +2,8 @@
 
 let cropRect;
 
+const defaultVisibleRect = {x: 640, y: 360, width: 640, height: 360};
+
 function transform(frame, controller) {
   // Cropping from an existing video frame is supported by the API in Chrome 94+.
   // https://www.w3.org/TR/webcodecs/#videoframe-interface
@@ -14,6 +16,10 @@ function transform(frame, controller) {
     frame.close();
   } catch (e) {
     console.error(`DOMException: ${e.name} [${e.message}]`);
+    frame.close();
+    // TODO(henrika): improve recovery here. For now, retsoring a visibleRect
+    // which we know works.
+    cropRect = defaultVisibleRect;
   }
 }
 
