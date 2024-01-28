@@ -8,6 +8,7 @@ if (typeof MediaStreamTrackProcessor === 'undefined' ||
 
 const localVideo = document.getElementById('local');
 const encodedVideo = document.getElementById('encoded');
+const pauseCheckbox = document.getElementById('pause');
 const gumButton = document.getElementById('gum');
 const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
@@ -19,6 +20,7 @@ const renderCheckbox = document.getElementById('renderEncoded');
 const getStatsCheckbox = document.getElementById('getStats');
 const inputs = document.getElementsByTagName('input');
 
+pauseCheckbox.disabled = true;
 stopButton.disabled = true;
 callButton.disabled = true;
 getStatsCheckbox.disabled = true;
@@ -95,7 +97,7 @@ gumButton.onclick = async () => {
       videoSize.videoHeight = this.videoHeight;
       videoSize.offsetWidth = this.offsetWidth;
       videoSize.offsetHeight = this.offsetHeight;
-      videoSizeDiv.textContent = 'video size:\n' + prettyJson(videoSize);
+      videoSizeDiv.textContent = 'local video:\n' + prettyJson(videoSize);
     });
     
     await activateSelectedCropMethod();
@@ -107,6 +109,7 @@ gumButton.onclick = async () => {
     }
        
     gumButton.disabled = true;
+    pauseCheckbox.disabled = false;
     stopButton.disabled = false;
     callButton.disabled = false;
     getStatsCheckbox.disabled = false;
@@ -134,6 +137,24 @@ function startCropAndScaleTimer() {
     }
   }, 1000 / rateFps);
   return intervalId;
+};
+
+pauseCheckbox.onchange = () => {
+  if (pause.checked) {
+    if (!localVideo.paused) {
+      localVideo.pause();
+    }
+    if (!encodedVideo.paused) {
+      encodedVideo.pause();
+    }
+  } else {
+    if (localVideo.paused) {
+      localVideo.play();
+    }
+    if (encodedVideo.paused) {
+      encodedVideo.play();
+    }
+  }
 };
 
 renderCheckbox.onchange = () => {
@@ -324,12 +345,15 @@ stopButton.onclick = async () => {
     encodedVideo.srcObject = null;
   }
   statsDiv.textContent = "";
+  videoSizeDiv.textContent = "";
+  constraintsDiv.textContent = "";
   closePeerConnection();
   gumButton.disabled = false;
   callButton.disabled = true;
   getStatsCheckbox.disabled = true;
   stopButton.disabled = true;
   renderCheckbox.disabled = false;
+  pauseCheckbox.disabled = true;
 };
 
 callButton.onclick = async () => {
