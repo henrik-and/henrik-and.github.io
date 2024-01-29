@@ -17,7 +17,7 @@
       <input id="pause" type="checkbox">Pause rendering</input>
     </div>
 
-    <div class="button-container">
+    <div class="gum-container">
       <div class="button-group">
         <button id="gum">getUserMedia</button>
         <input id="renderEncoded" type="checkbox">Render the encoded stream</input>
@@ -39,7 +39,7 @@
     </div>
     
     <div class="select-container">
-    Crop method:
+      Crop method:
       <select id="crop">
         <option value="none" selected>none</option>
         <option value="canvas" >canvas</option>
@@ -48,8 +48,14 @@
       </select>
     </div>
     
-    <div class="button-container">
-      <button id="call">Call with VP9</button>
+    <div class="peerconnection-container">
+      Codec:
+      <select id="codec">
+        <option value="VP8">VP8</option>
+        <option value="VP9" selected>VP9</option>
+        <option value="H264">H264</option>
+       </select>
+      <button id="call">Call</button>
       <input id="getStats" type="checkbox" checked>getStats</input>
       <button id="stop">Stop</button>
      </div>

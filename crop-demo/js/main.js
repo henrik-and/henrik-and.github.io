@@ -465,7 +465,7 @@ const setupPeerConnection = async () => {
   const transceiver = pc1.getTransceivers()[0];
   if (transceiver.setCodecPreferences) {
     const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
-      (c) => c.mimeType.includes('VP9'),
+      (c) => c.mimeType.includes(codec.value),
     );
     transceiver.setCodecPreferences(codecs);
   }
@@ -473,7 +473,7 @@ const setupPeerConnection = async () => {
   const offer = await pc1.createOffer();
   await pc1.setLocalDescription(offer);
   await pc2.setRemoteDescription(offer);
-  // console.log('pc1 offer: ', offer.sdp);
+  console.log('pc1 offer: ', offer.sdp);
   
   const answer = await pc2.createAnswer();
   await pc2.setLocalDescription(answer);
