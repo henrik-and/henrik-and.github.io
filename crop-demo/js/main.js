@@ -188,7 +188,9 @@ const activateSelectedCropMethod = async () => {
   } else if (crop.value === 'canvas') {
     await activateCanvas();
   } else if (crop.value === 'visibleRect') {
-    activateVisibleRect();
+    activateVisibleRect(/*addUpscaling*/ false);
+  } else if (crop.value === 'visibleRectwithUpscale') {
+    activateVisibleRect(/*addUpscaling*/ true);
   } else {
     console.log('[ERROR] Invalid selection');
   }
@@ -254,8 +256,8 @@ const activateCanvas = async () => {
   }  
 };
 
-const activateVisibleRect = () => {
-  console.log('activateVisibleRect');
+const activateVisibleRect = addUpscaling => {
+  console.log(`activateVisibleRect(addUpscaling=${addUpscaling})`);
   if (!stream) {
     console.log('No MediaStreamTrack exists yet');
     return;
@@ -266,6 +268,12 @@ const activateVisibleRect = () => {
   }
   try {
   worker = new Worker('./js/worker.js', {name: 'Crop worker'});
+  
+  // Worker will post back if/when we fail to construct a VideoFrame.
+  worker.onmessage = async (event) => {
+    const {operation, error} = event.data;
+    console.log('[main] message=' + operation);
+  };
   
   const [track] = stream.getVideoTracks();
   processor = new MediaStreamTrackProcessor({track});
@@ -279,11 +287,19 @@ const activateVisibleRect = () => {
   
   cropRect = getCropRect();
 
-  worker.postMessage({
-    operation: 'crop',
-    readable,
-    writable,
-  }, [readable, writable]);
+  if (!addUpscaling) {
+    worker.postMessage({
+      operation: 'crop',
+      readable,
+      writable,
+    }, [readable, writable]);
+  } else {
+    worker.postMessage({
+      operation: 'cropscale',
+      readable,
+      writable,
+    }, [readable, writable]);
+  }
   
   worker.postMessage({
     operation: 'change',
@@ -343,6 +359,10 @@ stopButton.onclick = async () => {
   }
   if (encodedVideo.srcObject) {
     encodedVideo.srcObject = null;
+  }
+  if (worker) {
+    worker.terminate();
+    worker = null;
   }
   statsDiv.textContent = "";
   videoSizeDiv.textContent = "";
