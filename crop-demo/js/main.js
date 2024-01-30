@@ -18,12 +18,14 @@ const videoSizeDiv = document.getElementById('videoSize');
 const constraintsDiv = document.getElementById('constraints');
 const renderCheckbox = document.getElementById('renderEncoded');
 const getStatsCheckbox = document.getElementById('getStats');
+const codecSelect = document.getElementById('codec');
 const inputs = document.getElementsByTagName('input');
 
 pauseCheckbox.disabled = true;
 stopButton.disabled = true;
 callButton.disabled = true;
 getStatsCheckbox.disabled = true;
+codecSelect.disabled = false;
 
 let stream;
 let remoteStream;
@@ -374,6 +376,7 @@ stopButton.onclick = async () => {
   stopButton.disabled = true;
   renderCheckbox.disabled = false;
   pauseCheckbox.disabled = true;
+  codecSelect.disabled = false;
 };
 
 callButton.onclick = async () => {
@@ -381,6 +384,7 @@ callButton.onclick = async () => {
     await setupPeerConnection();
     callButton.disabled = true;
     renderCheckbox.disabled = true;
+    codecSelect.disabled = true;
 
     if (getStats.checked) {
       startGetStats();
