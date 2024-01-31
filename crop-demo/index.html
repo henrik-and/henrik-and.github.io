@@ -26,7 +26,7 @@
     
     <div class="form-container">
       <form>
-        Crop rect:
+        <span>Crop rect:</span>
         <label for="x">x:</label>
         <input type="number" id="x" name="quantity" min="0" max="1280" style="width: 6ch;" value="640">
         <label for="y">y:</label>
@@ -39,17 +39,18 @@
     </div>
     
     <div class="crop-container">
-      Crop method:
+      <span>Crop method:</span>
       <select id="crop">
         <option value="none" selected>none</option>
         <option value="canvas" >canvas</option>
-        <option value="visibleRect">visibleRect: crop</option>
-        <option value="visibleRectwithUpscale">visibleRect: crop & upscale</option>
+        <option value="bbMainCropUpscale">Breakout Box (main): crop & upscale</option>
+        <option value="bbWorkerCrop">Breakout Box (worker): crop</option>
+        <option value="bbWorkerCropUpscale">Breakout Box (worker): crop & upscale</option>
       </select>
     </div>
     
     <div class="peerconnection-container">
-      Codec:
+      <span>Codec:</span>
       <select id="codec">
         <option value="VP8">VP8</option>
         <option value="VP9" selected>VP9</option>

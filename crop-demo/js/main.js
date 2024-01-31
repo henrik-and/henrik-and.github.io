@@ -50,6 +50,8 @@ let cropRect = {};
 
 const rateFps = 30;
 
+const defaultVisibleRect = {x: 640, y: 360, width: 640, height: 360};
+
 const hdConstraints = {
   video: {width: {exact: 1280}, height: {exact: 720}}
 };
@@ -60,6 +62,23 @@ const loge = (error) => {
   const errorElement = document.getElementById('error-message');
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
+};
+
+function transform(frame, controller) {
+  try {
+    const newFrame = new VideoFrame(frame, {
+        visibleRect: cropRect,
+        displayWidth: 1280,
+        displayHeight: 720,
+      });
+    controller.enqueue(newFrame);
+    frame.close();
+  } catch (e) {
+    const message = `DOMException: ${e.name} [${e.message}]`; 
+    console.error(message);
+    frame.close();
+    cropRect = defaultVisibleRect;
+  }
 };
 
 function getCropRect() {
@@ -189,10 +208,12 @@ const activateSelectedCropMethod = async () => {
     activateNone();
   } else if (crop.value === 'canvas') {
     await activateCanvas();
-  } else if (crop.value === 'visibleRect') {
-    activateVisibleRect(/*addUpscaling*/ false);
-  } else if (crop.value === 'visibleRectwithUpscale') {
-    activateVisibleRect(/*addUpscaling*/ true);
+  } else if (crop.value === 'bbWorkerCrop') {
+    activateBreakoutBoxWorker(/*addUpscaling*/ false);
+  } else if (crop.value === 'bbWorkerCropUpscale') {
+    activateBreakoutBoxWorker(/*addUpscaling*/ true);
+  } else if (crop.value === 'bbMainCropUpscale') {
+    activateBreakoutBoxMain(); 
   } else {
     console.log('[ERROR] Invalid selection');
   }
@@ -258,8 +279,8 @@ const activateCanvas = async () => {
   }  
 };
 
-const activateVisibleRect = addUpscaling => {
-  console.log(`activateVisibleRect(addUpscaling=${addUpscaling})`);
+const activateBreakoutBoxWorker = addUpscaling => {
+  console.log(`activateBreakoutBoxWorker(addUpscaling=${addUpscaling})`);
   if (!stream) {
     console.log('No MediaStreamTrack exists yet');
     return;
@@ -312,6 +333,32 @@ const activateVisibleRect = addUpscaling => {
   }
 };
 
+const activateBreakoutBoxMain = () => {
+  console.log(`activateBreakoutBoxMain()`);
+  if (!stream) {
+    console.log('No MediaStreamTrack exists yet');
+    return;
+  }
+ 
+  const [track] = stream.getVideoTracks();
+  processor = new MediaStreamTrackProcessor({track});
+  const {readable} = processor;
+  
+  generator = new MediaStreamTrackGenerator({kind: 'video'});
+  const {writable} = generator;
+  localVideo.srcObject = new MediaStream([generator]);
+  
+  cropRect = getCropRect();
+  
+  readable
+      .pipeThrough(new TransformStream({transform}))
+      .pipeTo(writable);
+  try {
+  } catch (e) {
+    loge(e);
+  }
+};
+
 const clearActiveCropping = async () => {
   console.log('clearActiveCropping');
   try {
@@ -333,6 +380,11 @@ const clearActiveCropping = async () => {
       processor = null;
       generator = null;
       worker = null;
+    }
+    if (processor) {
+      processor.readable.cancel();
+      processor = null;
+      generator = null;
     }
   } catch (e) {
     loge(e);
