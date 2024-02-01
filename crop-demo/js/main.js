@@ -20,6 +20,7 @@ const renderCheckbox = document.getElementById('renderEncoded');
 const getStatsCheckbox = document.getElementById('getStats');
 const codecSelect = document.getElementById('codec');
 const inputs = document.getElementsByTagName('input');
+const errorElement = document.getElementById('error-message');
 
 pauseCheckbox.disabled = true;
 stopButton.disabled = true;
@@ -59,7 +60,6 @@ const hdConstraints = {
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
 const loge = (error) => {
-  const errorElement = document.getElementById('error-message');
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
 };
@@ -208,11 +208,9 @@ const activateSelectedCropMethod = async () => {
     activateNone();
   } else if (crop.value === 'canvas') {
     await activateCanvas();
-  } else if (crop.value === 'bbWorkerCrop') {
-    activateBreakoutBoxWorker(/*addUpscaling*/ false);
-  } else if (crop.value === 'bbWorkerCropUpscale') {
-    activateBreakoutBoxWorker(/*addUpscaling*/ true);
-  } else if (crop.value === 'bbMainCropUpscale') {
+  } else if (crop.value === 'bbworker') {
+    activateBreakoutBoxWorker();
+  } else if (crop.value === 'bbmain') {
     activateBreakoutBoxMain(); 
   } else {
     console.log('[ERROR] Invalid selection');
@@ -279,8 +277,8 @@ const activateCanvas = async () => {
   }  
 };
 
-const activateBreakoutBoxWorker = addUpscaling => {
-  console.log(`activateBreakoutBoxWorker(addUpscaling=${addUpscaling})`);
+const activateBreakoutBoxWorker = () => {
+  console.log('activateBreakoutBoxWorker');
   if (!stream) {
     console.log('No MediaStreamTrack exists yet');
     return;
@@ -310,19 +308,12 @@ const activateBreakoutBoxWorker = addUpscaling => {
   
   cropRect = getCropRect();
 
-  if (!addUpscaling) {
-    worker.postMessage({
-      operation: 'crop',
-      readable,
-      writable,
-    }, [readable, writable]);
-  } else {
-    worker.postMessage({
-      operation: 'cropscale',
-      readable,
-      writable,
-    }, [readable, writable]);
-  }
+  // Crop and scale using visibleRect.
+  worker.postMessage({
+    operation: 'crop',
+    readable,
+    writable,
+  }, [readable, writable]);
   
   worker.postMessage({
     operation: 'change',
@@ -352,7 +343,10 @@ const activateBreakoutBoxMain = () => {
   
   readable
       .pipeThrough(new TransformStream({transform}))
-      .pipeTo(writable);
+      .pipeTo(writable)
+      .catch((e) => {
+        loge(e)
+      });
   try {
   } catch (e) {
     loge(e);
@@ -375,14 +369,14 @@ const clearActiveCropping = async () => {
       canvasStream = null;
     }
     if (worker) {
-      processor.readable.cancel();
+      console.log('Cleaning up after BB worker');
       worker.terminate();
       processor = null;
       generator = null;
       worker = null;
     }
     if (processor) {
-      processor.readable.cancel();
+      console.log('Cleaning up after BB main');
       processor = null;
       generator = null;
     }
@@ -393,31 +387,36 @@ const clearActiveCropping = async () => {
 
 stopButton.onclick = async () => {
   await clearActiveCropping();
-  if (trackStatsIntervalId) {
-    clearInterval(trackStatsIntervalId);
-  }
-  if (stream) {
-    for (const track of stream.getVideoTracks()) {
-      track.stop();
+  try {
+    if (trackStatsIntervalId) {
+      clearInterval(trackStatsIntervalId);
     }
-    stream = null;
-  }
-  if (remoteStream) {
-    for (const track of remoteStream.getVideoTracks()) {
-      track.stop();
+    if (stream) {
+      for (const track of stream.getVideoTracks()) {
+        track.stop();
+      }
+      stream = null;
     }
-    remoteStream = null;
+    if (remoteStream) {
+      for (const track of remoteStream.getVideoTracks()) {
+        track.stop();
+      }
+      remoteStream = null;
+    }
+    if (localVideo.srcObject) {
+      localVideo.srcObject = null;
+    }
+    if (encodedVideo.srcObject) {
+      encodedVideo.srcObject = null;
+    }
+    if (worker) {
+      worker.terminate();
+      worker = null;
+    } 
+  } catch (e) {
+    loge(e);
   }
-  if (localVideo.srcObject) {
-    localVideo.srcObject = null;
-  }
-  if (encodedVideo.srcObject) {
-    encodedVideo.srcObject = null;
-  }
-  if (worker) {
-    worker.terminate();
-    worker = null;
-  }
+  errorElement.textContent = "";
   statsDiv.textContent = "";
   videoSizeDiv.textContent = "";
   constraintsDiv.textContent = "";
