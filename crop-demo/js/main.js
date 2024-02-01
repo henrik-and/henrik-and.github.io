@@ -420,7 +420,9 @@ stopButton.onclick = async () => {
       if (input.type === 'number') {
         input.value = defaultVisibleRect[input.id];
       }
-    }    
+    }
+    crop.value = 'none';
+    codec.value = 'VP9';
   } catch (e) {
     loge(e);
   } 
