@@ -415,10 +415,15 @@ stopButton.onclick = async () => {
     if (worker) {
       worker.terminate();
       worker = null;
-    } 
+    }
+    for (const input of inputs) {
+      if (input.type === 'number') {
+        input.value = defaultVisibleRect[input.id];
+      }
+    }    
   } catch (e) {
     loge(e);
-  }
+  } 
   errorElement.textContent = "";
   statsDiv.textContent = "";
   videoSizeDiv.textContent = "";
