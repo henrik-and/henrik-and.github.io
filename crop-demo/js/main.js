@@ -180,6 +180,9 @@ pauseCheckbox.onchange = () => {
 
 renderCheckbox.onchange = () => {
   if (renderEncoded.checked) {
+    if (remoteStream) {
+      encodedVideo.srcObject = remoteStream;
+    }
   } else {
     if (encodedVideo.srcObject) {
       encodedVideo.pause();
@@ -425,7 +428,6 @@ stopButton.onclick = async () => {
   callButton.disabled = true;
   getStatsCheckbox.disabled = true;
   stopButton.disabled = true;
-  renderCheckbox.disabled = false;
   pauseCheckbox.disabled = true;
   codecSelect.disabled = false;
 };
@@ -434,7 +436,6 @@ callButton.onclick = async () => {
   try {
     await setupPeerConnection();
     callButton.disabled = true;
-    renderCheckbox.disabled = true;
     codecSelect.disabled = true;
 
     if (getStats.checked) {
