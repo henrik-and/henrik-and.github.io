@@ -54,7 +54,7 @@ const rateFps = 30;
 const defaultVisibleRect = {x: 640, y: 360, width: 640, height: 360};
 
 const hdConstraints = {
-  video: {width: {exact: 1280}, height: {exact: 720}}
+  video: {width: {exact: 1280}, height: {exact: 720}, frameRate: { exact: 30 }}
 };
 
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
@@ -470,6 +470,7 @@ const startGetStats = () => {
           partialStats.powerEfficientEncoder = stats.powerEfficientEncoder;
           partialStats.scalabilityMode= stats.scalabilityMode;
           partialStats.framesPerSecond = stats.framesPerSecond;
+          partialStats.qualityLimitationReason = stats.qualityLimitationReason;
           statsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
         }
       }
