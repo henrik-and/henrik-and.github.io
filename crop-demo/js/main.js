@@ -14,6 +14,7 @@ const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
 const cropMethod = document.getElementById('crop');
 const statsDiv = document.getElementById('stats');
+const trackDiv = document.getElementById('track');
 const videoSizeDiv = document.getElementById('videoSize');
 const constraintsDiv = document.getElementById('constraints');
 const renderCheckbox = document.getElementById('renderEncoded');
@@ -33,7 +34,9 @@ let remoteStream;
 let canvasStream;
 let context2d;
 let intervalId;
+let getStatsIntervalId;
 let trackStatsIntervalId;
+let oldTrackStats = null;
 
 let canvas;
 let canvasVideo;
@@ -128,6 +131,8 @@ gumButton.onclick = async () => {
         input.addEventListener('change', handleInputChange);
       }
     }
+    
+    startTrackStats();
        
     gumButton.disabled = true;
     pauseCheckbox.disabled = false;
@@ -391,9 +396,8 @@ const clearActiveCropping = async () => {
 stopButton.onclick = async () => {
   await clearActiveCropping();
   try {
-    if (trackStatsIntervalId) {
-      clearInterval(trackStatsIntervalId);
-    }
+    stopTrackStats();
+    stopGetStats();
     if (stream) {
       for (const track of stream.getVideoTracks()) {
         track.stop();
@@ -453,9 +457,39 @@ callButton.onclick = async () => {
   }
 };
 
+const startTrackStats = () => {
+  trackStatsIntervalId = setInterval(async () => {
+    if (stream) {
+      const [track] = stream.getVideoTracks();
+      if (track.stats != undefined) {
+        const trackStats = track.stats.toJSON();
+        trackStats.droppedFrames =
+            trackStats.totalFrames - trackStats.deliveredFrames - trackStats.discardedFrames;
+        if (oldTrackStats == null)
+          oldTrackStats = trackStats;
+        const deltaStats =
+        Object.assign(trackStats,
+    									{fps:{delivered: trackStats.deliveredFrames - oldTrackStats.deliveredFrames,
+    									      discarded: trackStats.discardedFrames - oldTrackStats.discardedFrames,
+                            dropped: trackStats.droppedFrames - oldTrackStats.droppedFrames,
+                            total: trackStats.totalFrames - oldTrackStats.totalFrames}});
+        trackDiv.textContent = 'local track.stats:\n' + prettyJson(deltaStats);
+        oldTrackStats = trackStats;
+      }
+    }
+  }, 1000);
+};
+
+const stopTrackStats = () => {
+  if (trackStatsIntervalId) {
+    clearInterval(trackStatsIntervalId);
+  }
+  trackDiv.textContent = '';
+};
+
 const startGetStats = () => {
   // https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
-  trackStatsIntervalId = setInterval(async () => {
+  getStatsIntervalId = setInterval(async () => {
     if (pc1) {
       const report = await pc1.getStats();
       for (const stats of report.values()) {
@@ -479,8 +513,8 @@ const startGetStats = () => {
 };
 
 const stopGetStats = () => {
-  if (trackStatsIntervalId) {
-    clearInterval(trackStatsIntervalId);
+  if (getStatsIntervalId) {
+    clearInterval(getStatsIntervalId);
   }
   statsDiv.textContent = '';
 };
