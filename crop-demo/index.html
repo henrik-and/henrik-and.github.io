@@ -49,11 +49,15 @@
     </div>
     
     <div class="peerconnection-container">
-      <span>Codec:</span>
       <select id="codec">
         <option value="VP8">VP8</option>
         <option value="VP9" selected>VP9</option>
         <option value="H264">H264</option>
+       </select>
+      <span>scalabilityMode:</span>
+      <select id="scalabilityMode">
+        <option value="L1T1" selected>L1T1</option>
+        <option value="L1T2">L1T2</option>
        </select>
       <button id="call">Call</button>
       <input id="getStats" type="checkbox" checked>getStats</input>

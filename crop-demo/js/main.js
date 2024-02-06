@@ -20,6 +20,7 @@ const constraintsDiv = document.getElementById('constraints');
 const renderCheckbox = document.getElementById('renderEncoded');
 const getStatsCheckbox = document.getElementById('getStats');
 const codecSelect = document.getElementById('codec');
+const scalabilityModeSelect = document.getElementById('scalabilityMode');
 const inputs = document.getElementsByTagName('input');
 const errorElement = document.getElementById('error-message');
 
@@ -206,6 +207,10 @@ getStatsCheckbox.onchange = () => {
 
 crop.onchange = async () => {
   await activateSelectedCropMethod();
+};
+
+scalabilityModeSelect.onchange = async () => {
+  await setVideoParameters(scalabilityModeSelect.value);
 };
 
 const activateSelectedCropMethod = async () => {
@@ -429,7 +434,8 @@ stopButton.onclick = async () => {
     codec.value = 'VP9';
   } catch (e) {
     loge(e);
-  } 
+  }
+  oldTrackStats = null;
   errorElement.textContent = "";
   statsDiv.textContent = "";
   videoSizeDiv.textContent = "";
@@ -519,6 +525,20 @@ const stopGetStats = () => {
   statsDiv.textContent = '';
 };
 
+async function setVideoParameters(scalabilityMode) {
+  if (!pc1) {
+    return;
+  }
+  const [sender] = pc1.getSenders();
+  const parameters = sender.getParameters();
+  parameters.encodings[0].scalabilityMode = scalabilityMode;
+  try {
+    await sender.setParameters(parameters);
+  } catch (e) {
+    loge(e);
+  }
+}
+
 const setupPeerConnection = async () => {
   console.log('setupPeerConnection');
   if (canvasStream) {
@@ -535,11 +555,10 @@ const setupPeerConnection = async () => {
   pc2 = new RTCPeerConnection();
   const [localTrack] = activeSourceStream.getVideoTracks();
   let remoteTrack = null;
-  const sender = pc1.addTrack(localTrack, activeSourceStream);
-  const parameters = sender.getParameters();
-  parameters.encodings[0].scalabiltyMode = 'L1T2';
-  console.log('sender.getParameters: ', parameters); 
-  await sender.setParameters(parameters);
+   
+  pc1.addTrack(localTrack, activeSourceStream);
+  await setVideoParameters(scalabilityModeSelect.value);
+  
   pc2.ontrack = (e) => {
     remoteTrack = e.track;
     remoteStream = e.streams[0];
