@@ -537,7 +537,8 @@ const setupPeerConnection = async () => {
   let remoteTrack = null;
   const sender = pc1.addTrack(localTrack, activeSourceStream);
   const parameters = sender.getParameters();
-  parameters.encodings[0].scalabiltyMode = 'L1T1';
+  parameters.encodings[0].scalabiltyMode = 'L1T2';
+  console.log('sender.getParameters: ', parameters); 
   await sender.setParameters(parameters);
   pc2.ontrack = (e) => {
     remoteTrack = e.track;
