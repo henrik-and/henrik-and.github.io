@@ -253,7 +253,7 @@ async function call() {
   
   const transceiver = localPeerConnection.getTransceivers()[0];
   if (transceiver.setCodecPreferences) {
-    const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
+    const codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(
       (c) => c.mimeType.includes(codec.value),
     );
     transceiver.setCodecPreferences(codecs);
