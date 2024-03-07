@@ -582,7 +582,7 @@ const setupPeerConnection = async () => {
   // See https://jsfiddle.net/henbos/c2zqb1yw/.
   const transceiver = pc1.getTransceivers()[0];
   if (transceiver.setCodecPreferences) {
-    const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(
+    const codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(
       (c) => c.mimeType.includes(codec.value),
     );
     transceiver.setCodecPreferences(codecs);
