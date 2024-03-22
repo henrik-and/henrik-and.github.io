@@ -24,14 +24,13 @@ onmessage = async (event) => {
     gl.bindTexture(gl.TEXTURE_2D, texture);
   } else if (operation === 'crop') {
     const {readable, writable} = event.data;
-    const reader = readable.getReader();
+    const source = readable.getReader();
+    console.log('[WebGL crop worker] source:', source);
     
     try {
       while (true) {
-        const { value: videoFrame, done: isStreamFinished } = reader.read();
-        if (isStreamFinished) {
-          break;
-        }
+        const { value: videoFrame, done: isStreamFinished } = await source.read();
+        if (isStreamFinished) break;
         console.log('[WebGL crop worker] videoFrame:', videoFrame);
         
         // Upload image data in `videoFrame` to the `texture`.        
@@ -45,9 +44,9 @@ onmessage = async (event) => {
         
         await writable.write(newFrame);
         
-        value.close();
+        videoFrame.close();
       }
-      reader.releaseLock();
+      source.releaseLock();
     } catch (e) {
       const message = `DOMException: ${e.name} [${e.message}]`; 
       console.error(message);
