@@ -35,6 +35,10 @@ onmessage = async (event) => {
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFrame);
         
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
         const newFrame = new VideoFrame(canvas, {
           timestamp: videoFrame.timestamp,
           visibleRect: cropRect,
