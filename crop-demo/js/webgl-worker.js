@@ -5,7 +5,6 @@ const defaultVisibleRect = {x: 640, y: 360, width: 640, height: 360};
 let cropRect;
 let canvas;
 let gl;
-let texture;
 
 // https://github.com/webrtc/samples/blob/7ac95cac37f613ce5c68d92c90cfa27d9f3f0d18/src/content/insertable-streams/video-processing/js/webgl-transform.js
 onmessage = async (event) => {
@@ -20,29 +19,30 @@ onmessage = async (event) => {
     if (gl) {
       console.log('[WebGL crop worker] gl:', gl);
     }
-    texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
   } else if (operation === 'crop') {
     const {readable, writable} = event.data;
     const source = readable.getReader();
+    const sink = writable.getWriter();
     console.log('[WebGL crop worker] source:', source);
     
     try {
       while (true) {
         const { value: videoFrame, done: isStreamFinished } = await source.read();
         if (isStreamFinished) break;
-        console.log('[WebGL crop worker] videoFrame:', videoFrame);
+        // console.log('[WebGL crop worker] videoFrame:', videoFrame);
         
-        // Upload image data in `videoFrame` to the `texture`.        
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, videoFrame);
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFrame);
         
-        const newFrame = new VideoFrame(texture, {
+        const newFrame = new VideoFrame(canvas, {
+          timestamp: videoFrame.timestamp,
           visibleRect: cropRect,
           displayWidth: 1280,
           displayHeight: 720,
         });
         
-        await writable.write(newFrame);
+        await sink.write(newFrame);
         
         videoFrame.close();
       }
