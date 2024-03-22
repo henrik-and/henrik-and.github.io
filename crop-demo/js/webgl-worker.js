@@ -7,17 +7,14 @@ let canvas;
 let gl;
 let texture;
 
-const prettyJson = (obj) => JSON.stringify(obj, null, 2);
-
 // https://github.com/webrtc/samples/blob/7ac95cac37f613ce5c68d92c90cfa27d9f3f0d18/src/content/insertable-streams/video-processing/js/webgl-transform.js
 onmessage = async (event) => {
   const {operation} = event.data;
   console.log('[WebGL crop worker] message=' + operation);
   if (operation === 'init') {
-    canvas = new OffscreenCanvas(1280, 720); // TODO(henrika): size?
+    canvas = new OffscreenCanvas(1280, 720);
     gl = canvas.getContext('webgl2');
     if (!gl) {
-      // Fall back to WebGL1.
       gl = canvas.getContext('webgl');
     }
     if (gl) {
@@ -33,7 +30,6 @@ onmessage = async (event) => {
       while (true) {
         const { value: videoFrame, done: isStreamFinished } = reader.read();
         if (isStreamFinished) {
-          // Stream has ended.
           break;
         }
         console.log('[WebGL crop worker] videoFrame:', videoFrame);
