@@ -1,9 +1,8 @@
 'use strict';
 
-let cropRect;
-
 const defaultVisibleRect = {x: 640, y: 360, width: 640, height: 360};
 
+let cropRect;
 let loggedFrameProperties;
 
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);

@@ -38,6 +38,7 @@ let intervalId;
 let getStatsIntervalId;
 let trackStatsIntervalId;
 let oldTrackStats = null;
+let loggedFrameProperties;
 
 let canvas;
 let canvasVideo;
@@ -68,13 +69,35 @@ const loge = (error) => {
   console.error(error);
 };
 
+const logFrameProperties = (videoFrame, stage) => {
+  if (loggedFrameProperties) {
+    return;
+  }
+  // TODO(henrika): figure out why we need this copy to be able to see all
+  // essential properties in the debug console.
+  const internalFrame = {};
+  internalFrame.format = videoFrame.format;
+  internalFrame.visibleRect = videoFrame.visibleRect;
+  internalFrame.codedWidth = videoFrame.codedWidth;
+  internalFrame.codedHeight = videoFrame.codedHeight;
+  internalFrame.colorSpace = videoFrame.colorSpace;
+  internalFrame.displayHeight = videoFrame.displayHeight;
+  internalFrame.displayWidth = videoFrame.displayWidth;
+  console.log(`[${stage}] Video Frame: ` + prettyJson(internalFrame));
+  if (stage === 'after') {
+    loggedFrameProperties = true;
+  }
+};
+
 function transform(frame, controller) {
   try {
+    logFrameProperties(frame, 'before');
     const newFrame = new VideoFrame(frame, {
         visibleRect: cropRect,
         displayWidth: 1280,
         displayHeight: 720,
       });
+    logFrameProperties(newFrame, 'after');
     controller.enqueue(newFrame);
     frame.close();
   } catch (e) {
@@ -223,6 +246,8 @@ const activateSelectedCropMethod = async () => {
     await activateCanvas();
   } else if (crop.value === 'bbworker') {
     activateBreakoutBoxWorker();
+  } else if (crop.value === 'bbworkerWebGl') {
+    activateBreakoutBoxWorkerWebGL()
   } else if (crop.value === 'bbmain') {
     activateBreakoutBoxMain(); 
   } else {
@@ -301,37 +326,89 @@ const activateBreakoutBoxWorker = () => {
     return;
   }
   try {
-  worker = new Worker('./js/worker.js', {name: 'Crop worker'});
-  
-  // Worker will post back if/when we fail to construct a VideoFrame.
-  worker.onmessage = async (event) => {
-    const {operation, error} = event.data;
-    console.log('[main] message=' + operation);
-  };
-  
-  const [track] = stream.getVideoTracks();
-  processor = new MediaStreamTrackProcessor({track});
-  const {readable} = processor;
+    worker = new Worker('./js/worker.js', {name: 'Crop worker'});
+     
+    // Worker will post back if/when we fail to construct a VideoFrame.
+    worker.onmessage = async (event) => {
+      const {operation, error} = event.data;
+      console.log('[main] message=' + operation);
+    };
+    
+    const [track] = stream.getVideoTracks();
+    processor = new MediaStreamTrackProcessor({track});
+    const {readable} = processor;
 
-  // Creates a WritableStream that acts as a MediaStreamTrack source.
-  // The object consumes a stream of video frames as input.
-  generator = new MediaStreamTrackGenerator({kind: 'video'});
-  const {writable} = generator;
-  localVideo.srcObject = new MediaStream([generator]);
-  
-  cropRect = getCropRect();
+    // Creates a WritableStream that acts as a MediaStreamTrack source.
+    // The object consumes a stream of video frames as input.
+    generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const {writable} = generator;
+    localVideo.srcObject = new MediaStream([generator]);
+    
+    cropRect = getCropRect();
 
-  // Crop and scale using visibleRect.
-  worker.postMessage({
-    operation: 'crop',
-    readable,
-    writable,
-  }, [readable, writable]);
-  
-  worker.postMessage({
-    operation: 'change',
-    cropRect: cropRect,
-  });
+    // Crop and scale using visibleRect.
+    worker.postMessage({
+      operation: 'crop',
+      readable,
+      writable,
+    }, [readable, writable]);
+    
+    worker.postMessage({
+      operation: 'change',
+      cropRect: cropRect,
+    });
+  } catch (e) {
+    loge(e);
+  }
+};
+
+const activateBreakoutBoxWorkerWebGL = () => {
+  console.log('activateBreakoutBoxWorkerWebGL');
+  if (!stream) {
+    console.log('No MediaStreamTrack exists yet');
+    return;
+  }
+  if (worker) {
+    console.log('[ERROR] worker is still active');
+    return;
+  }
+  try {
+    worker = new Worker('./js/webgl-worker.js', {name: 'WebGL crop worker'});
+    
+    // Worker will post back if/when we fail to construct a VideoFrame.
+    worker.onmessage = async (event) => {
+      const {operation, error} = event.data;
+      console.log('[main] message=' + error);
+    };
+    
+    // Initialize the WebGL context. 
+    worker.postMessage({
+      operation: 'init',
+    }); 
+    
+    const [track] = stream.getVideoTracks();
+    processor = new MediaStreamTrackProcessor({track});
+    const {readable} = processor;
+
+    // Creates a WritableStream that acts as a MediaStreamTrack source.
+    // The object consumes a stream of video frames as input.
+    generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const {writable} = generator;
+    localVideo.srcObject = new MediaStream([generator]);
+    
+    cropRect = getCropRect();
+
+    // Crop and scale using visibleRect.
+    worker.postMessage({
+      operation: 'crop',
+      readable,
+      writable,
+    }, [readable, writable]);
+    
+    worker.postMessage({
+      operation: 'change',
+      cropRect: cropRect,
+    });
   } catch (e) {
     loge(e);
   }
@@ -343,24 +420,24 @@ const activateBreakoutBoxMain = () => {
     console.log('No MediaStreamTrack exists yet');
     return;
   }
- 
-  const [track] = stream.getVideoTracks();
-  processor = new MediaStreamTrackProcessor({track});
-  const {readable} = processor;
   
-  generator = new MediaStreamTrackGenerator({kind: 'video'});
-  const {writable} = generator;
-  localVideo.srcObject = new MediaStream([generator]);
-  
-  cropRect = getCropRect();
-  
-  readable
-      .pipeThrough(new TransformStream({transform}))
-      .pipeTo(writable)
-      .catch((e) => {
-        loge(e)
-      });
   try {
+    const [track] = stream.getVideoTracks();
+    processor = new MediaStreamTrackProcessor({track});
+    const {readable} = processor;
+    
+    generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const {writable} = generator;
+    localVideo.srcObject = new MediaStream([generator]);
+    
+    cropRect = getCropRect();
+    
+    readable
+        .pipeThrough(new TransformStream({transform}))
+        .pipeTo(writable)
+        .catch((e) => {
+          loge(e)
+        });
   } catch (e) {
     loge(e);
   }
