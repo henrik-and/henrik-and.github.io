@@ -373,13 +373,7 @@ const activateBreakoutBoxWorkerWebGL = () => {
     return;
   }
   try {
-    worker = new Worker('./js/webgl-worker.js', {name: 'WebGL crop worker'});
-    
-    // Worker will post back if/when we fail to construct a VideoFrame.
-    worker.onmessage = async (event) => {
-      const {operation, error} = event.data;
-      console.log('[main] message=' + error);
-    };
+    worker = new Worker('./js/webgl-worker.js', {name: 'WebGL worker'});
     
     // Initialize the WebGL context. 
     worker.postMessage({
@@ -395,20 +389,13 @@ const activateBreakoutBoxWorkerWebGL = () => {
     generator = new MediaStreamTrackGenerator({kind: 'video'});
     const {writable} = generator;
     localVideo.srcObject = new MediaStream([generator]);
-    
-    cropRect = getCropRect();
 
-    // Crop and scale using visibleRect.
+    // Transform using WebGL.
     worker.postMessage({
-      operation: 'crop',
+      operation: 'transform',
       readable,
       writable,
     }, [readable, writable]);
-    
-    worker.postMessage({
-      operation: 'change',
-      cropRect: cropRect,
-    });
   } catch (e) {
     loge(e);
   }
