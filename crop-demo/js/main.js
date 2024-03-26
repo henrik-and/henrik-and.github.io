@@ -246,8 +246,8 @@ const activateSelectedCropMethod = async () => {
     await activateCanvas();
   } else if (crop.value === 'bbworker') {
     activateBreakoutBoxWorker();
-  } else if (crop.value === 'bbworkerWebGlPass') {
-    activateBreakoutBoxWorkerWebGLPassthrough();
+  } else if (crop.value === 'bbWebGlPassWorker') {
+    activateBreakoutBoxWebGLPassthroughWorker();
   } else if (crop.value === 'bbmain') {
     activateBreakoutBoxMain(); 
   } else {
@@ -362,8 +362,8 @@ const activateBreakoutBoxWorker = () => {
   }
 };
 
-const activateBreakoutBoxWorkerWebGLPassthrough = () => {
-  console.log('activateBreakoutBoxWorkerWebGLPassthrough');
+const activateBreakoutBoxWebGLPassthroughWorker = () => {
+  console.log('activateBreakoutBoxWebGLPassthroughWorker');
   if (!stream) {
     console.log('No MediaStreamTrack exists yet');
     return;
@@ -373,7 +373,7 @@ const activateBreakoutBoxWorkerWebGLPassthrough = () => {
     return;
   }
   try {
-    worker = new Worker('./js/webgl-worker.js', {name: 'WebGL worker'});
+    worker = new Worker('./js/webgl-passthrough-worker.js', {name: 'WebGL passthrough worker'});
     
     // Initialize the WebGL context. 
     worker.postMessage({
