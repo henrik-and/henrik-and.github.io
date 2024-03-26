@@ -246,8 +246,8 @@ const activateSelectedCropMethod = async () => {
     await activateCanvas();
   } else if (crop.value === 'bbworker') {
     activateBreakoutBoxWorker();
-  } else if (crop.value === 'bbworkerWebGl') {
-    activateBreakoutBoxWorkerWebGL()
+  } else if (crop.value === 'bbworkerWebGlPass') {
+    activateBreakoutBoxWorkerWebGLPassthrough();
   } else if (crop.value === 'bbmain') {
     activateBreakoutBoxMain(); 
   } else {
@@ -362,8 +362,8 @@ const activateBreakoutBoxWorker = () => {
   }
 };
 
-const activateBreakoutBoxWorkerWebGL = () => {
-  console.log('activateBreakoutBoxWorkerWebGL');
+const activateBreakoutBoxWorkerWebGLPassthrough = () => {
+  console.log('activateBreakoutBoxWorkerWebGLPassthrough');
   if (!stream) {
     console.log('No MediaStreamTrack exists yet');
     return;

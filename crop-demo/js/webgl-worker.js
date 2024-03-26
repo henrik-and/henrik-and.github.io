@@ -32,20 +32,9 @@ function init() {
     precision mediump float;
     varying vec2 texCoord;
     uniform sampler2D inSampler;
+
     void main(void) {
-      float boundary = distance(texCoord, vec2(0.5)) - 0.2;
-      if (boundary < 0.0) {
-        gl_FragColor = texture2D(inSampler, texCoord);
-      } else {
-        // Rotate the position
-        float angle = 2.0 * boundary;
-        vec2 rotation = vec2(sin(angle), cos(angle));
-        vec2 fromCenter = texCoord - vec2(0.5);
-        vec2 rotatedPosition = vec2(
-          fromCenter.x * rotation.y + fromCenter.y * rotation.x,
-          fromCenter.y * rotation.y - fromCenter.x * rotation.x) + vec2(0.5);
-        gl_FragColor = texture2D(inSampler, rotatedPosition);
-      }
+      gl_FragColor = texture2D(inSampler, texCoord); // Directly sample the texture 
     }`);
     if (!vertexShader || !fragmentShader) return;
     
