@@ -9,7 +9,10 @@ let texture_ = null;
 function init() {
   console.log('[WebGL passthrough worker] Initializing WebGL');
   canvas_ = new OffscreenCanvas(1, 1);
-  const gl = canvas_.getContext('webgl');
+  let gl = canvas_.getContext('webgl2');
+  if (!gl) {
+    gl = canvas_.getContext('webgl');
+  }
   if (!gl) {
     alert(
         'Failed to create WebGL context. Check that WebGL is supported ' +
@@ -19,7 +22,7 @@ function init() {
   gl_ = gl;
   
   const vertexShader = loadShader_(gl.VERTEX_SHADER, `
-    precision mediump float;
+    precision lowp float;
     attribute vec3 g_Position;
     attribute vec2 g_TexCoord;
     varying vec2 texCoord;
@@ -29,7 +32,7 @@ function init() {
     }`);
     
   const fragmentShader = loadShader_(gl.FRAGMENT_SHADER, `
-    precision mediump float;
+    precision lowp float;
     varying vec2 texCoord;
     uniform sampler2D inSampler;
 
