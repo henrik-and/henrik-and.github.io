@@ -160,7 +160,7 @@ function transform(frame, controller) {
 
 onmessage = async (event) => {
   const {operation} = event.data;
-  console.log('[WebGL worker] message=' + operation);
+  console.log('[WebGL passthrough worker] message=' + operation);
   if (operation === 'init') {
     init();
   } else if (operation === 'transform') {
