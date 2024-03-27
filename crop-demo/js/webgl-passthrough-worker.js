@@ -76,7 +76,7 @@ function init() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     console.log(
-        '[WebGL passthrough worker] WebGL initialized.', `canvas_ =`,
+        '[WebGL passthrough worker] WebGL initialized: ', `canvas_ =`,
         canvas_, `gl_ =`, gl_);
 };
 
@@ -126,6 +126,8 @@ function transform(frame, controller) {
     frame.close();
     return;
   }
+  
+  // Resize canvas and viewport (if necessary).
   const width = frame.displayWidth;
   const height = frame.displayHeight;
   if (canvas_.width !== width || canvas_.height !== height) {
@@ -134,17 +136,24 @@ function transform(frame, controller) {
     gl.viewport(0, 0, width, height);
     console.log(`[WebGL passthrough worker] canvas_.width=${width}, canvas_.height=${height}`);
   }
+  
+  // Upload texture from VideoFrame using the original timestamp.
   const timestamp = frame.timestamp;
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture_);
+  // Flip the texture vertically (needed for webcam/video textures).
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
   frame.close();
+  
+  // Render using WebGL.
   gl.useProgram(program_);
   gl.uniform1i(sampler_, 0);
+  // Draw a full-screen quad (using gl.TRIANGLE_STRIP) to render the texture.
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.bindTexture(gl.TEXTURE_2D, null);
+  
   // alpha: 'discard' is needed in order to send frames to a PeerConnection.
   controller.enqueue(new VideoFrame(canvas_, {timestamp, alpha: 'discard'}));
 }
