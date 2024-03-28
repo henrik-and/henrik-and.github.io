@@ -240,8 +240,8 @@ const activateSelectedCropMethod = async () => {
   console.log('Selected crop method is: ' + crop.value);
   await clearActiveCropping();
   
-  if (crop.value === 'none') {
-    activateNone();
+  if (crop.value === 'passthrough') {
+    activatePassthrough();
   } else if (crop.value === 'canvas') {
     await activateCanvas();
   } else if (crop.value === 'bbworker') {
@@ -261,8 +261,8 @@ const activateSelectedCropMethod = async () => {
   }
 };
 
-const activateNone = () => {
-  console.log('activateNone');
+const activatePassthrough = () => {
+  console.log('activatePassthrough');
   if (!stream) {
     return;
   }
