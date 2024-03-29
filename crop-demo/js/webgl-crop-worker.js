@@ -32,12 +32,21 @@ function init() {
     }`);
     
   const fragmentShader = loadShader_(gl.FRAGMENT_SHADER, `
-    precision lowp float;
+    precision mediump float;
     varying vec2 texCoord;
     uniform sampler2D inSampler;
 
     void main(void) {
-      gl_FragColor = texture2D(inSampler, texCoord); // Directly sample the texture 
+      vec2 cropSize = vec2(0.5, 0.5);  // half the input size (cropped area is a quarter)
+      // Calculate half the crop size (normalized coordinates)
+      vec2 halfCropSize = cropSize / 2.0;
+      // Adjust cropRect based on half size to position the center at the bottom-right corner
+      vec2 cropRect = vec2(1.0, 0.5) - halfCropSize;  // (1.0, 0.5) is bottom-right corner
+      // Calculate the UV coordinates within the crop area based on the fragment's texCoord
+      vec2 uvInCrop = texCoord * cropSize + cropRect - cropSize * 0.5;
+      // Sample the texture using the coordinates within the crop area
+      vec4 color = texture2D(inSampler, uvInCrop);
+      gl_FragColor = color; 
     }`);
     if (!vertexShader || !fragmentShader) return;
     
@@ -134,7 +143,7 @@ function transform(frame, controller) {
     canvas_.width = width;
     canvas_.height = height;
     gl.viewport(0, 0, width, height);
-    console.log(`[WebGL passthrough worker] canvas_.width=${width}, canvas_.height=${height}`);
+    console.log(`[WebGL crop worker] canvas_.width=${width}, canvas_.height=${height}`);
   }
   
   // Upload texture from VideoFrame using the original timestamp.
@@ -160,7 +169,7 @@ function transform(frame, controller) {
 
 onmessage = async (event) => {
   const {operation} = event.data;
-  console.log('[WebGL passthrough worker] message=' + operation);
+  console.log('[WebGL crop worker] message=' + operation);
   if (operation === 'init') {
     init();
   } else if (operation === 'transform') {
@@ -169,9 +178,9 @@ onmessage = async (event) => {
         .pipeThrough(new TransformStream({transform}))
         .pipeTo(writable)
         .catch((e) => {
-          console.error('[WebGL passthrough worker] error:', e);
+          console.error('[WebGL crop worker] error:', e);
         });
   } else {
-    console.error('[WebGL passthrough worker] Unknown operation', operation);
+    console.error('[WebGL crop worker] Unknown operation', operation);
   }
 };

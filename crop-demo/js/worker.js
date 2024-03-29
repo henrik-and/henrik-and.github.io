@@ -64,7 +64,7 @@ onmessage = async (event) => {
         .pipeThrough(new TransformStream({transform}))
         .pipeTo(writable)
         .catch((e) => {
-          loge(e)
+          console.error('[Crop worker] error:', e);
         });
   } else if (operation === 'change') {
     cropRect = event.data.cropRect;

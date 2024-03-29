@@ -250,6 +250,8 @@ const activateSelectedCropMethod = async () => {
     activateBreakoutBoxWebGLPassthroughWorker();
   } else if (crop.value === 'bbmain') {
     activateBreakoutBoxMain(); 
+  } else if (crop.value === 'bbWebGlCropAndScaleWorker') {
+    activateBreakoutBoxWebGLCropAndScaleWorker();
   } else {
     console.log('[ERROR] Invalid selection');
   }
@@ -425,6 +427,45 @@ const activateBreakoutBoxMain = () => {
         .catch((e) => {
           loge(e)
         });
+  } catch (e) {
+    loge(e);
+  }
+};
+
+const activateBreakoutBoxWebGLCropAndScaleWorker = () => {
+  console.log('activateBreakoutBoxWebGLCropAndScaleWorker');
+  if (!stream) {
+    console.log('No MediaStreamTrack exists yet');
+    return;
+  }
+  if (worker) {
+    console.log('[ERROR] worker is still active');
+    return;
+  }
+  try {
+    worker = new Worker('./js/webgl-crop-worker.js', {name: 'WebGL crop worker'});
+    
+    // Initialize the WebGL context. 
+    worker.postMessage({
+      operation: 'init',
+    }); 
+    
+    const [track] = stream.getVideoTracks();
+    processor = new MediaStreamTrackProcessor({track});
+    const {readable} = processor;
+
+    // Creates a WritableStream that acts as a MediaStreamTrack source.
+    // The object consumes a stream of video frames as input.
+    generator = new MediaStreamTrackGenerator({kind: 'video'});
+    const {writable} = generator;
+    localVideo.srcObject = new MediaStream([generator]);
+
+    // Transform using WebGL.
+    worker.postMessage({
+      operation: 'transform',
+      readable,
+      writable,
+    }, [readable, writable]);
   } catch (e) {
     loge(e);
   }
