@@ -117,7 +117,10 @@ function attributeSetFloats_(attrName, vsize, arr) {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr), gl.STATIC_DRAW);
   const attr = gl.getAttribLocation(program_, attrName);
   gl.enableVertexAttribArray(attr);
-  gl.vertexAttribPointer(attr, vsize, gl.FLOAT, false, 0, 0);
+  const normalize = false;
+  const stride = 0;
+  const offset = 0;
+  gl.vertexAttribPointer(attr, vsize, gl.FLOAT, normalize, stride, offset);
 };
 
 function transform(frame, controller) {
