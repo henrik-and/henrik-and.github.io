@@ -23,21 +23,21 @@ function init() {
   
   const vertexShader = loadShader_(gl.VERTEX_SHADER, `
     precision lowp float;
-    attribute vec3 g_Position;
-    attribute vec2 g_TexCoord;
-    varying vec2 texCoord;
+    attribute vec3 a_position;
+    attribute vec2 a_texCoord;
+    varying vec2 v_texCoord;
     void main() {
-      gl_Position = vec4(g_Position, 1.0);
-      texCoord = g_TexCoord;
+      gl_Position = vec4(a_position, 1.0);
+      v_texCoord = a_texCoord;
     }`);
     
   const fragmentShader = loadShader_(gl.FRAGMENT_SHADER, `
     precision lowp float;
-    varying vec2 texCoord;
-    uniform sampler2D inSampler;
+    varying vec2 v_texCoord;
+    uniform sampler2D u_inSampler;
 
     void main(void) {
-      gl_FragColor = texture2D(inSampler, texCoord); // Directly sample the texture 
+      gl_FragColor = texture2D(u_inSampler, v_texCoord); // Directly sample the texture 
     }`);
     if (!vertexShader || !fragmentShader) return;
     
@@ -56,7 +56,7 @@ function init() {
     }
     gl.deleteShader(vertexShader);
     gl.deleteShader(fragmentShader);
-    sampler_ = gl.getUniformLocation(programObject, 'inSampler');
+    sampler_ = gl.getUniformLocation(programObject, 'u_inSampler');
     program_ = programObject;
     // Bind attributes
     const vertices = [1.0, -1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0];
@@ -64,8 +64,8 @@ function init() {
     const txtcoords = [1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
     // Mirror horizonally.
     // const txtcoords = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0];
-    attributeSetFloats_('g_Position', 2, vertices);
-    attributeSetFloats_('g_TexCoord', 2, txtcoords);
+    attributeSetFloats_('a_position', 2, vertices);
+    attributeSetFloats_('a_texCoord', 2, txtcoords);
     // Initialize input texture
     texture_ = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture_);
