@@ -9,7 +9,6 @@ if (typeof MediaStreamTrackProcessor === 'undefined' ||
 const localVideo = document.getElementById('local');
 const encodedVideo = document.getElementById('encoded');
 const pauseCheckbox = document.getElementById('pause');
-const pipeCheckbox = document.getElementById('pipe');
 const gumButton = document.getElementById('gum');
 const callButton = document.getElementById('call');
 const stopButton = document.getElementById('stop');
@@ -208,10 +207,6 @@ pauseCheckbox.onchange = () => {
   }
 };
 
-pipeCheckbox.onchange = async () => {
-  await activateSelectedCropMethod();
-};
-
 renderCheckbox.onchange = () => {
   if (renderEncoded.checked) {
     if (remoteStream) {
@@ -396,12 +391,10 @@ const activateBreakoutBoxWebGLPassthroughWorker = () => {
     generator = new MediaStreamTrackGenerator({kind: 'video'});
     const {writable} = generator;
     localVideo.srcObject = new MediaStream([generator]);
-    
-    const mode = pipe.checked ? 'pipe-passthrough' : 'no-pipe-passthrough'; 
 
     // Transform using WebGL.
     worker.postMessage({
-      operation: mode,
+      operation: 'transform',
       readable,
       writable,
     }, [readable, writable]);
