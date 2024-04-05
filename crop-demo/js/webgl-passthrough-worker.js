@@ -60,7 +60,7 @@ function init() {
     program_ = programObject;
     // Bind attributes
     const vertices = [1.0, -1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0];
-    // Pass-through.
+    // Pass-through using texture corner coordinates where its range is [0,1].
     const txtcoords = [1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
     // Mirror horizonally.
     // const txtcoords = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0];
