@@ -209,7 +209,8 @@ pauseCheckbox.onchange = () => {
 };
 
 pipeCheckbox.onchange = async () => {
-  await activateSelectedCropMethod();
+  // TODO(henrika
+  // await activateSelectedCropMethod();
 };
 
 renderCheckbox.onchange = () => {
