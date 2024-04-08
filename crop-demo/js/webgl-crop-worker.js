@@ -7,7 +7,7 @@ let program_ = null;
 let texture_ = null;
 
 function init() {
-  console.log('[WebGL passthrough worker] Initializing WebGL');
+  console.log('[WebGL crop worker] Initializing WebGL');
   canvas_ = new OffscreenCanvas(1, 1);
   let gl = canvas_.getContext('webgl2');
   if (!gl) {
@@ -85,7 +85,7 @@ function init() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     console.log(
-        '[WebGL passthrough worker] WebGL initialized: ', `canvas_ =`,
+        '[WebGL crop worker] WebGL initialized: ', `canvas_ =`,
         canvas_, `gl_ =`, gl_);
 };
 
@@ -172,7 +172,7 @@ onmessage = async (event) => {
   console.log('[WebGL crop worker] message=' + operation);
   if (operation === 'init') {
     init();
-  } else if (operation === 'transform') {
+  } else if (operation === 'pipe-transform') {
     const {readable, writable} = event.data;
     readable
         .pipeThrough(new TransformStream({transform}))

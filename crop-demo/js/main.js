@@ -233,6 +233,10 @@ crop.onchange = async () => {
   await activateSelectedCropMethod();
 };
 
+pipeCheckbox.onchange = async () => {
+  await activateSelectedCropMethod();
+}
+
 scalabilityModeSelect.onchange = async () => {
   await setVideoParameters(scalabilityModeSelect.value);
 };
@@ -393,7 +397,7 @@ const activateBreakoutBoxWebGLPassthroughWorker = () => {
     const {writable} = generator;
     localVideo.srcObject = new MediaStream([generator]);
     
-    const mode = pipe.checked ? 'pipe-passthrough' : 'no-pipe-passthrough'; 
+    const mode = pipe.checked ? 'pipe-transform' : 'no-pipe-transform'; 
 
     // Transform using WebGL.
     worker.postMessage({
@@ -462,10 +466,12 @@ const activateBreakoutBoxWebGLCropAndScaleWorker = () => {
     generator = new MediaStreamTrackGenerator({kind: 'video'});
     const {writable} = generator;
     localVideo.srcObject = new MediaStream([generator]);
+    
+    const mode = pipe.checked ? 'pipe-transform' : 'no-pipe-transform';
 
     // Transform using WebGL.
     worker.postMessage({
-      operation: 'transform',
+      operation: mode,
       readable,
       writable,
     }, [readable, writable]);

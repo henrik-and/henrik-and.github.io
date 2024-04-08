@@ -201,7 +201,7 @@ onmessage = async (event) => {
   console.log('[WebGL passthrough worker] message=' + operation);
   if (operation === 'init') {
     init();
-  } else if (operation === 'pipe-passthrough') {
+  } else if (operation === 'pipe-transform') {
     const {readable, writable} = event.data;
     readable
         .pipeThrough(new TransformStream({pipeTransform}))
@@ -209,13 +209,12 @@ onmessage = async (event) => {
         .catch((e) => {
           console.error('[WebGL passthrough worker] error:', e);
         });
-  } else if (operation === 'no-pipe-passthrough') {
+  } else if (operation === 'no-pipe-transform') {
     const {readable, writable} = event.data;
     const source = readable.getReader();
     const sink = writable.getWriter();
     console.log('[WebGL passthrough worker] source:', source);
     console.log('[WebGL passthrough worker] sink:', sink);
-    
     try {
       while (true) {
         const { value: videoFrame, done: isStreamFinished } = await source.read();
@@ -224,7 +223,6 @@ onmessage = async (event) => {
         const timestamp = videoFrame.timestamp;
         noPipeTransform(videoFrame);
         
-        // alpha: 'discard' is needed in order to send frames to a PeerConnection.
         const newFrame = new VideoFrame(canvas_, {timestamp, alpha: 'discard'});
         
         await sink.write(newFrame);
