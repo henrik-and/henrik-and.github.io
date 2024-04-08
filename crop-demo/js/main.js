@@ -643,9 +643,13 @@ async function setVideoParameters(scalabilityMode) {
   if (!pc1) {
     return;
   }
+  if (scalabilityMode === 'none') {
+    return;
+  }
   const [sender] = pc1.getSenders();
   const parameters = sender.getParameters();
   parameters.encodings[0].scalabilityMode = scalabilityMode;
+  console.log('sender parameters: ', parameters);
   try {
     await sender.setParameters(parameters);
   } catch (e) {
