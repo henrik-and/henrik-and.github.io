@@ -129,7 +129,7 @@ function attributeSetFloats_(attrName, vsize, arr) {
   gl.vertexAttribPointer(attr, vsize, gl.FLOAT, false, 0, 0);
 };
 
-function transform(frame, controller) {
+async function transform(frame, controller) {
   const gl = gl_;
   if (!gl || !canvas_) {
     frame.close();
@@ -167,6 +167,41 @@ function transform(frame, controller) {
   controller.enqueue(new VideoFrame(canvas_, {timestamp, alpha: 'discard'}));
 }
 
+async function noPipeTransform(frame) {
+  const gl = gl_;
+  if (!gl || !canvas_) {
+    frame.close();
+    return;
+  }
+  
+  // Resize canvas and viewport (if necessary).
+  const width = frame.displayWidth;
+  const height = frame.displayHeight;
+  if (canvas_.width !== width || canvas_.height !== height) {
+    canvas_.width = width;
+    canvas_.height = height;
+    gl.viewport(0, 0, width, height);
+    console.log(`[WebGL crop worker] canvas_.width=${width}, canvas_.height=${height}`);
+  }
+  
+  // Upload texture from VideoFrame using the original timestamp.
+  const timestamp = frame.timestamp;
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture_);
+  // Flip the texture vertically (needed for webcam/video textures).
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+  frame.close();
+  
+  // Render using WebGL.
+  gl.useProgram(program_);
+  gl.uniform1i(sampler_, 0);
+  // Draw a full-screen quad (using gl.TRIANGLE_STRIP) to render the texture.
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
 onmessage = async (event) => {
   const {operation} = event.data;
   console.log('[WebGL crop worker] message=' + operation);
@@ -180,6 +215,29 @@ onmessage = async (event) => {
         .catch((e) => {
           console.error('[WebGL crop worker] error:', e);
         });
+  } else if (operation === 'no-pipe-transform') {
+    const {readable, writable} = event.data;
+    const source = readable.getReader();
+    const sink = writable.getWriter();
+    console.log('[WebGL crop worker] source:', source);
+    console.log('[WebGL crop worker] sink:', sink);
+    try {
+      while (true) {
+        const { value: videoFrame, done: isStreamFinished } = await source.read();
+        if (isStreamFinished) break;
+        
+        const timestamp = videoFrame.timestamp;
+        noPipeTransform(videoFrame);
+        
+        const newFrame = new VideoFrame(canvas_, {timestamp, alpha: 'discard'});
+        
+        await sink.write(newFrame);
+      }
+      source.releaseLock();
+    } catch (e) {
+      const message = `DOMException: ${e.name} [${e.message}]`; 
+      console.error(message);
+    }
   } else {
     console.error('[WebGL crop worker] Unknown operation', operation);
   }

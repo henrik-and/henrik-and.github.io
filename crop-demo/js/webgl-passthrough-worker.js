@@ -123,7 +123,7 @@ function attributeSetFloats_(attrName, vsize, arr) {
   gl.vertexAttribPointer(attr, vsize, gl.FLOAT, normalize, stride, offset);
 };
 
-function pipeTransform(frame, controller) {
+function transform(frame, controller) {
   const gl = gl_;
   if (!gl || !canvas_) {
     frame.close();
@@ -204,7 +204,7 @@ onmessage = async (event) => {
   } else if (operation === 'pipe-transform') {
     const {readable, writable} = event.data;
     readable
-        .pipeThrough(new TransformStream({pipeTransform}))
+        .pipeThrough(new TransformStream({transform}))
         .pipeTo(writable)
         .catch((e) => {
           console.error('[WebGL passthrough worker] error:', e);
