@@ -612,7 +612,8 @@ function showRemoteStats(report) {
   const now = performance.now();
   const deltaReportTimeMs = now - oldReportTimeMs;
   oldReportTimeMs = now;
-  // console.log(deltaReportTimeMs);
+  console.log(deltaReportTimeMs);
+  console.log(report);
   
   report.forEach(stats => {
     const partialStats = {};
@@ -623,12 +624,12 @@ function showRemoteStats(report) {
         //  transportStatsDiv.textContent = `${stats.type}:\n` + prettyJson(partialStats);
         // }
     } else if (stats.type === 'inbound-rtp') {
-      if (stats.remoteId != undefined) {
-        const remoteOutboundRtp = stats.get(report.remoteId);
-        console.log(remoteOutboundRtp);
-      }
-      // partialStats.decoderImplementation = stats.decoderImplementation;
-      // partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
+      // if (stats.remoteId != undefined) {
+      //   const remoteOutboundRtp = stats.get(report.remoteId);
+      //   console.log(remoteOutboundRtp);
+      // }
+      partialStats.decoderImplementation = stats.decoderImplementation;
+      partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
       partialStats.framesDecoded = stats.framesDecoded;
       // The total number of frames dropped prior to decode or dropped because the frame missed its
       // display deadline for this receiver's track.
