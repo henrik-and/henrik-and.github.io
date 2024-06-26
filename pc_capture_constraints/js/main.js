@@ -612,8 +612,8 @@ function showRemoteStats(report) {
   const now = performance.now();
   const deltaReportTimeMs = now - oldReportTimeMs;
   oldReportTimeMs = now;
-  console.log(deltaReportTimeMs);
-  console.log(report);
+  // console.log(deltaReportTimeMs);
+  // console.log(report);
   
   report.forEach(stats => {
     const partialStats = {};
