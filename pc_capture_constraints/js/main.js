@@ -110,8 +110,10 @@ function getDisplayMediaConstraints() {
 }
 
 let localStream;
-let localPeerConnection;
-let remotePeerConnection;
+let remoteStream;
+let pc1;
+let pc2;
+
 let prevStats = null;
 let prevOutStats = null;
 let prevInStats = null;
@@ -221,10 +223,6 @@ codecSelector.onchange = () => {
 };
 
 async function call() {
-  callButton.disabled = true;
-  hangupButton.disabled = false;
-  resetDelayStatsButton.disabled = false;
-  codecSelector.disabled = true;
   console.log('Starting call');
   startTime = window.performance.now();
   
@@ -236,91 +234,112 @@ async function call() {
   if (audioTracks.length > 0) {
     console.log(`Using audio device: ${audioTracks[0].label}`);
   }
-  const configuration = {};
-  console.log('RTCPeerConnection configuration:', configuration);
-  localPeerConnection = new RTCPeerConnection(configuration);
-  console.log('Created local peer connection object localPeerConnection');
-  localPeerConnection.addEventListener('icecandidate', e => onIceCandidate(localPeerConnection, e));
-  remotePeerConnection = new RTCPeerConnection(configuration);
-  console.log('Created remote peer connection object remotePeerConnection');
-  remotePeerConnection.addEventListener('icecandidate', e => onIceCandidate(remotePeerConnection, e));
-  localPeerConnection.addEventListener('iceconnectionstatechange', e => onIceStateChange(localPeerConnection, e));
-  remotePeerConnection.addEventListener('iceconnectionstatechange', e => onIceStateChange(remotePeerConnection, e));
-  remotePeerConnection.addEventListener('track', gotRemoteStream);
-
-  localStream.getTracks().forEach(track => localPeerConnection.addTrack(track, localStream));
-  console.log('Added local stream to localPeerConnection');
   
-  const transceiver = localPeerConnection.getTransceivers()[0];
+  try {
+    await setupPeerConnection();
+    callButton.disabled = true;
+    hangupButton.disabled = false;
+    resetDelayStatsButton.disabled = false;
+    codecSelector.disabled = true;
+  } catch (e) {
+    loge(e);
+  }
+}
+
+function hangup() {
+  console.log('Ending call');
+  closePeerConnection();
+  hangupButton.disabled = true;
+  callButton.disabled = false;
+  applyConstraintsButton.disabled = true;
+  resetDelayStatsButton.disabled = true;
+  codecSelector.disabled = false;
+}
+
+const setupPeerConnection = async () => {
+  console.log('setupPeerConnection');
+  console.log('localStream:', localStream);
+  
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  const [localTrack] = localStream.getVideoTracks();
+  let remoteTrack = null;
+   
+  pc1.addTrack(localTrack, localStream);
+  
+  // TODO(henrika): 
+  // await setVideoParameters(scalabilityModeSelect.value);
+  
+  pc2.ontrack = (e) => {
+    remoteTrack = e.track;
+    if (remoteVideo.srcObject !== e.streams[0]) {
+      remoteStream = e.streams[0];
+      remoteVideo.srcObject = remoteStream;
+      console.log('remotePeerConnection received remote stream');
+    }
+  };
+  exchangeIceCandidates(pc1, pc2);
+  
+  pc1.oniceconnectionstatechange = (e) => {
+    console.log('pc1 ICE state: ' + pc1.iceConnectionState)
+  }
+  
+  pc2.oniceconnectionstatechange = (e) => {
+    console.log('pc2 ICE state: ' + pc2.iceConnectionState)
+  }
+  
+  // TODO(henrika): We should also include all of the following, otherwise we'd
+  // turn off features like RTX etc:
+  // mimeType == 'video/ulpfec' || mimeType == 'video/red' || mimeType == 'video/rtx'.
+  // See https://jsfiddle.net/henbos/c2zqb1yw/.
+  const transceiver = pc1.getTransceivers()[0];
   if (transceiver.setCodecPreferences) {
     const codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(
       (c) => c.mimeType.includes(codec.value),
     );
     transceiver.setCodecPreferences(codecs);
   }
-
-  try {
-    console.log('localPeerConnection createOffer start');
-    const offer = await localPeerConnection.createOffer();
-    await onCreateOfferSuccess(offer);
-  } catch (e) {
-    onCreateSessionDescriptionError(e);
-  }
-}
-
-function onCreateSessionDescriptionError(error) {
-  console.log(`Failed to create session description: ${error.toString()}`);
-}
-
-async function onCreateOfferSuccess(desc) { 
-  console.log('localPeerConnection setLocalDescription start');
-  desc.sdp = insertReceiverReferenceTimeReport(desc.sdp);
-  console.log(`Modified offer from localPeerConnection\n${desc.sdp}`)
   
-  try {
-    await localPeerConnection.setLocalDescription(desc);
-    onSetLocalSuccess(localPeerConnection);
-  } catch (e) {
-    onSetSessionDescriptionError();
+  const offer = await pc1.createOffer();
+  offer.sdp = insertReceiverReferenceTimeReport(offer.sdp);
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  console.log('modified pc1 offer: ', offer.sdp);
+  
+  const answer = await pc2.createAnswer();
+  answer.sdp = insertReceiverReferenceTimeReport(answer.sdp);
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  console.log('modified pc2 answer: ', answer.sdp);
+  
+  // TODO(henrika): improve logs for active connection.
+};
+
+const closePeerConnection = () => {
+  console.log('closePeerConnection');
+  if (pc1) {
+    pc1.close();
+    pc1 = null;
   }
-  console.log('remotePeerConnection setRemoteDescription start');
-  try {
-    await remotePeerConnection.setRemoteDescription(desc);
-    onSetRemoteSuccess(remotePeerConnection);
-  } catch (e) {
-    onSetSessionDescriptionError();
+  if (pc2) {
+    remoteVideo.srcObject = null;
+    pc2.close();
+    pc2 = null;
   }
+};
 
-  console.log('remotePeerConnection createAnswer start');
-  // Since the 'remote' side has no media stream we need
-  // to pass in the right constraints in order for it to
-  // accept the incoming offer of audio and video.
-  try {
-    const answer = await remotePeerConnection.createAnswer();
-    await onCreateAnswerSuccess(answer);
-  } catch (e) {
-    onCreateSessionDescriptionError(e);
+const exchangeIceCandidates = (pc1, pc2) => {
+  function doExchange(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      const { candidate } = event;
+      if (candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(candidate);
+      }
+    });
   }
-}
-
-function onSetLocalSuccess(pc) {
-  console.log(`${getName(pc)} setLocalDescription complete`);
-}
-
-function onSetRemoteSuccess(pc) {
-  console.log(`${getName(pc)} setRemoteDescription complete`);
-}
-
-function onSetSessionDescriptionError(error) {
-  console.log(`Failed to set session description: ${error.toString()}`);
-}
-
-function gotRemoteStream(e) {
-  if (remoteVideo.srcObject !== e.streams[0]) {
-    remoteVideo.srcObject = e.streams[0];
-    console.log('remotePeerConnection received remote stream');
-  }
-}
+  doExchange(pc1, pc2);
+  doExchange(pc2, pc1);
+};
 
 const insertReceiverReferenceTimeReport = (sdp) => {
   var lines = sdp.split('\r\n');
@@ -333,63 +352,6 @@ const insertReceiverReferenceTimeReport = (sdp) => {
     }
   }
   return newSdp.join('\r\n');
-}
-
-async function onCreateAnswerSuccess(desc) {
-  desc.sdp = insertReceiverReferenceTimeReport(desc.sdp);
-  console.log(`Modified offer from remotePeerConnection\n${desc.sdp}`)
-  console.log('remotePeerConnection setLocalDescription start');
-  try {
-    await remotePeerConnection.setLocalDescription(desc);
-    onSetLocalSuccess(remotePeerConnection);
-  } catch (e) {
-    onSetSessionDescriptionError(e);
-  }
-  console.log('localPeerConnection setRemoteDescription start');
-  try {
-    await localPeerConnection.setRemoteDescription(desc);
-    onSetRemoteSuccess(localPeerConnection);
-  } catch (e) {
-    onSetSessionDescriptionError(e);
-  }
-}
-
-async function onIceCandidate(pc, event) {
-  try {
-    await (getOtherPc(pc).addIceCandidate(event.candidate));
-    onAddIceCandidateSuccess(pc);
-  } catch (e) {
-    onAddIceCandidateError(pc, e);
-  }
-  console.log(`${getName(pc)} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
-}
-
-function onAddIceCandidateSuccess(pc) {
-  console.log(`${getName(pc)} addIceCandidate success`);
-}
-
-function onAddIceCandidateError(pc, error) {
-  console.log(`${getName(pc)} failed to add ICE Candidate: ${error.toString()}`);
-}
-
-function onIceStateChange(pc, event) {
-  if (pc) {
-    console.log(`${getName(pc)} ICE state: ${pc.iceConnectionState}`);
-    console.log('ICE state change event: ', event);
-  }
-}
-
-function hangup() {
-  console.log('Ending call');
-  localPeerConnection.close();
-  remotePeerConnection.close();
-  localPeerConnection = null; 
-  remotePeerConnection = null;
-  hangupButton.disabled = true;
-  callButton.disabled = false;
-  applyConstraintsButton.disabled = true;
-  resetDelayStatsButton.disabled = true;
-  codecSelector.disabled = false;
 }
 
 /*
@@ -730,13 +692,13 @@ setInterval(() => {
       prevStats = currStats;
     }
   }
-  if (localPeerConnection && remotePeerConnection) {
-    localPeerConnection
-        .getStats(null)
-        .then(showLocalStats, err => console.log(err));
-    remotePeerConnection
-        .getStats(null)
-        .then(showRemoteStats, err => console.log(err));
+  if (pc1 && pc2) {
+    pc1
+      .getStats(null)
+      .then(showLocalStats, err => console.log(err));
+    pc2
+      .getStats(null)
+      .then(showRemoteStats, err => console.log(err));
   }
   if (localVideo.videoWidth) {
     const width = localVideo.videoWidth;
