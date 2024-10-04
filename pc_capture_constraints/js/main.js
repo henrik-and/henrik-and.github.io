@@ -587,8 +587,8 @@ function showRemoteStats(report) {
         // }
     } else if (stats.type === 'inbound-rtp') {
       // if (stats.remoteId != undefined) {
-      //   const remoteOutboundRtp = stats.get(report.remoteId);
-      //   console.log(remoteOutboundRtp);
+      //  const remoteOutboundRtp = report.get(stats.remoteId);
+      //  console.log(remoteOutboundRtp);
       // }
       partialStats.decoderImplementation = stats.decoderImplementation;
       partialStats.powerEfficientDecoder = stats.powerEfficientDecoder;
