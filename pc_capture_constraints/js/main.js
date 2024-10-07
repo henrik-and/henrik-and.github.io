@@ -43,6 +43,8 @@ const transportStatsDiv = document.querySelector('div#transportStats');
 const codecSelector = document.querySelector('#codec');
 codecSelector.disabled = true;
 
+const hintSelector = document.querySelector('#contentHint');
+
 let oldTimestampMs = 0;
 let oldLocalFrames = 0;
 let localFps = 30;
@@ -156,6 +158,17 @@ function handleSuccess(stream) {
   const constraints = getDisplayMediaConstraints();
   console.log('Requested constraints', prettyJson(constraints));
   
+  if ('contentHint' in videoTrack) {
+    videoTrack.contentHint = contentHint.value;
+    if (videoTrack.contentHint !== contentHint.value) {
+      errorMsg(`Invalid video track contentHint: ${contentHint.value}`);
+    } else {
+      console.log(`MediaStreamTrack.contentHint: ${contentHint.value}`);
+    }
+  } else {
+    errorMsg("MediaStreamTrack contentHint attribute not supported");
+  }
+  
   // Apply the complete constraint (including possibly >0 min framerate).
   videoTrack
     .applyConstraints(constraints)
@@ -220,6 +233,23 @@ codecSelector.onchange = () => {
   // if (stream) {
   //   setupPeerConnection();
   // }
+};
+
+hintSelector.onchange = () => {
+  console.log('New content hint selected:', contentHint.value);
+  if (localStream) {
+    const [videoTrack] = localStream.getVideoTracks(); 
+    if ('contentHint' in videoTrack) {
+      videoTrack.contentHint = contentHint.value;
+      if (videoTrack.contentHint !== contentHint.value) {
+        errorMsg(`Invalid video track contentHint: ${contentHint.value}`);
+      } else {
+        console.log(`MediaStreamTrack.contentHint: ${contentHint.value}`);
+      }
+    } else {
+      errorMsg("MediaStreamTrack contentHint attribute not supported");
+    }
+  }
 };
 
 async function call() {
