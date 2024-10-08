@@ -45,6 +45,9 @@ codecSelector.disabled = true;
 
 const hintSelector = document.querySelector('#contentHint');
 
+const degradationPreferenceSelector = document.querySelector('#degradationPreference');
+degradationPreferenceSelector.disabled = true;
+
 let oldTimestampMs = 0;
 let oldLocalFrames = 0;
 let localFps = 30;
@@ -153,6 +156,7 @@ function handleSuccess(stream) {
   startButton.disabled = true;
   applyConstraintsButton.disabled = false;
   codecSelector.disabled = false;
+  degradationPreferenceSelector.disabled = false;
   
   const videoTrack = stream.getVideoTracks()[0]; 
   const constraints = getDisplayMediaConstraints();
@@ -252,6 +256,11 @@ hintSelector.onchange = () => {
   }
 };
 
+degradationPreferenceSelector.onchange = () => {
+  console.log('New degradation preference selected:', degradationPreference.value);
+  setVideoParameters(degradationPreference.value);
+}
+
 async function call() {
   console.log('Starting call');
   startTime = window.performance.now();
@@ -271,6 +280,7 @@ async function call() {
     hangupButton.disabled = false;
     resetDelayStatsButton.disabled = false;
     codecSelector.disabled = true;
+    degradationPreferenceSelector.disabled = true;
   } catch (e) {
     loge(e);
   }
@@ -284,6 +294,29 @@ function hangup() {
   applyConstraintsButton.disabled = true;
   resetDelayStatsButton.disabled = true;
   codecSelector.disabled = false;
+  degradationPreferenceSelector.disabled = false;
+}
+
+async function setVideoParameters(degradationPreference) {
+  if (!pc1) {
+    return;
+  }
+  if (degradationPreference === 'none') {
+    return;
+  }
+  const [sender] = pc1.getSenders();
+  const parameters = sender.getParameters();
+  if ('degradationPreference' in parameters) {
+    parameters.degradationPreference = degradationPreference;
+    console.log('sender parameters.degradationPreference: ', parameters.degradationPreference);
+    try {
+      await sender.setParameters(parameters);
+    } catch (e) {
+      loge(e);
+    }
+  } else {
+    errorMsg('degradationPreference is not supported on this browser');
+  }
 }
 
 const setupPeerConnection = async () => {
@@ -299,6 +332,8 @@ const setupPeerConnection = async () => {
   
   // TODO(henrika): 
   // await setVideoParameters(scalabilityModeSelect.value);
+  
+  await setVideoParameters(degradationPreference.value);
   
   pc2.ontrack = (e) => {
     remoteTrack = e.track;
