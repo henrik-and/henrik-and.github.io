@@ -312,6 +312,10 @@ async function setVideoParameters(degradationPreference) {
   const [sender] = pc1.getSenders();
   let parameters = sender.getParameters();
   console.log('sender.getParameters: ', prettyJson(parameters));
+  if (degradationPreference === "") {
+    console.log('degradationPreference is undefined')
+    return;
+  }
   parameters.degradationPreference = degradationPreference;
   console.log('sender parameters.degradationPreference: ', parameters.degradationPreference);
   try {
