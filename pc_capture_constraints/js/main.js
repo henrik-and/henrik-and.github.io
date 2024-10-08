@@ -221,6 +221,11 @@ resetDelayStatsButton.onclick = async () => {
   resetDelayStats();
 }
 
+const loge = (error) => {
+  console.log(`DOMException: ${error.name} [${error.message}]`);
+  console.error(error);
+};
+
 function handleError(error) {
   errorMsg(`getDisplayMedia error: ${error.name}`, error);
 }
@@ -305,16 +310,17 @@ async function setVideoParameters(degradationPreference) {
     return;
   }
   const [sender] = pc1.getSenders();
-  const parameters = sender.getParameters();
-  if ('degradationPreference' in parameters) {
-    parameters.degradationPreference = degradationPreference;
-    console.log('sender parameters.degradationPreference: ', parameters.degradationPreference);
-    try {
-      await sender.setParameters(parameters);
-    } catch (e) {
-      loge(e);
-    }
-  } else {
+  let parameters = sender.getParameters();
+  console.log('sender.getParameters: ', prettyJson(parameters));
+  parameters.degradationPreference = degradationPreference;
+  console.log('sender parameters.degradationPreference: ', parameters.degradationPreference);
+  try {
+    await sender.setParameters(parameters);
+  } catch (e) {
+    loge(e);
+  }
+  parameters = sender.getParameters();
+  if (parameters.degradationPreference !== degradationPreference) {
     errorMsg('degradationPreference is not supported on this browser');
   }
 }
