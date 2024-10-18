@@ -93,6 +93,18 @@ function getDisplayMediaOptions() {
   return {video: mediaTrackConstraints};
 }
 
+function getUserMediaConstraints() {
+  let constraints = {};
+  constraints.audio = false;
+  constraints.video = {
+      height: {max: 2560},
+      width: {max: 1440},
+      frameRate: 30,
+      mediaSource: "screen",
+    };
+    return constraints;
+  }
+
 function getDisplayMediaConstraints() {
   let constraints = {};
   
@@ -144,6 +156,13 @@ function getOtherPc(pc) {
 async function start() {
   console.log('Requesting local stream');
   startButton.disabled = true;
+  
+  /*
+  const constraints = getUserMediaConstraints();
+  console.log('getUserMedia constraints=', prettyJson(constraints));
+  navigator.mediaDevices.getUserMedia(constraints)
+      .then(handleSuccess, handleError);
+  */
   
   // Use options to gDM but avoid using min framerate.
   const options = getDisplayMediaOptions();
@@ -531,10 +550,11 @@ function showLocalStats(report) {
       // RTP packetizer until it is handed over to the OS network socket.
       const deltaPacketSendDelay = currOutStats.totalPacketSendDelay - prevOutStats.totalPacketSendDelay;
       const deltaPacketsSent = currOutStats.packetsSent - prevOutStats.packetsSent;
+      const deltaBytesSent = currOutStats.bytesSent - prevOutStats.bytesSent;
       const deltaFramesEncoded = currOutStats.framesEncoded - prevOutStats.framesEncoded;
       const deltaqpSum = currOutStats.qpSum - prevOutStats.qpSum;
-      const deltaQualityLimitNone = currOutStats.qualityLimitationDurations.none - prevOutStats.qualityLimitationDurations.none;
-      const deltaQualityLimitCpu = currOutStats.qualityLimitationDurations.cpu - prevOutStats.qualityLimitationDurations.cpu;
+      const deltaQualityLimitNone = (currOutStats?.qualityLimitationDurations?.none ?? 0) - (prevOutStats?.qualityLimitationDurations?.none ?? 0);
+      const deltaQualityLimitCpu = (currOutStats?.qualityLimitationDurations?.cpu ?? 0) - (prevOutStats?.qualityLimitationDurations?.cpu ?? 0);
       
       const deltaOutStats =
           Object.assign(partialStats,
@@ -543,6 +563,7 @@ function showLocalStats(report) {
                              "[totalPacketSendDelay/packetsSent]": (1000 * deltaPacketSendDelay / deltaPacketsSent).toFixed(1)}},
                         {fps:{framesEncoded: currOutStats.framesEncoded - prevOutStats.framesEncoded,
                               framesSent: currOutStats.framesSent - prevOutStats.framesSent}},
+                        {KBps:{bytesSent: ((deltaBytesSent) / 1024).toFixed(1)}},
                         {"%":{"qualityLimitationDurations.cpu": Math.min(100, (100 * deltaQualityLimitCpu).toFixed(1))}});
       
       senderStatsDiv.textContent = `${currOutStats.type}:\n` + prettyJson(deltaOutStats);
