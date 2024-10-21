@@ -540,7 +540,7 @@ function showLocalStats(report) {
       partialStats.qualityLimitationReason = currOutStats.qualityLimitationReason;
       partialStats.firCount = currOutStats.firCount;
       partialStats.pliCount = currOutStats.pliCount;
-      partialStats.targetBitrate = currOutStats.targetBitrate;
+      partialStats.targetBitrate = currOutStats?.targetBitrate;
       
       if (prevOutStats == null)
         prevOutStats = currOutStats;
