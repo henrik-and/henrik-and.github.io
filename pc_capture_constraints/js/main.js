@@ -538,8 +538,9 @@ function showLocalStats(report) {
       // A record of the total time, in seconds, that this stream has spent in each quality
       // limitation state.
       partialStats.qualityLimitationReason = currOutStats.qualityLimitationReason;
-      partialStats.firCount = stats.firCount;
-      partialStats.pliCount = stats.pliCount;
+      partialStats.firCount = currOutStats.firCount;
+      partialStats.pliCount = currOutStats.pliCount;
+      partialStats.targetBitrate = currOutStats.targetBitrate;
       
       if (prevOutStats == null)
         prevOutStats = currOutStats;
