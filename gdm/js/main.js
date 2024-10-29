@@ -84,12 +84,13 @@ const setStream = async (stream) => {
   videoElement.srcObject = stream;
   videoStream = stream;
   
-  videoTrack.onmute = () => {
-    // console.log(`local ${videoTrack.kind} mute (muted = ${videoTrack.muted})`);
+  videoTrack.onmute = (event) => {
+    // ${videoTrack.kind} mute (muted = ${videoTrack.muted})
+    console.log(`[${Math.round(event.timeStamp)}] onmute => ${event.type}`);
   }
   
-  videoTrack.onunmute = () => {
-    // console.log(`local ${videoTrack.kind} unmute (muted = ${videoTrack.muted})`);
+  videoTrack.onunmute = (event) => {
+    console.log(`[${Math.round(event.timeStamp)}] onunmute => ${event.type}`);
   }
   
   videoTrack.addEventListener('ended', () => {
