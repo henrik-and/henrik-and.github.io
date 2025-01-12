@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Demo</title>
+    <h2>Echo Demo</h2>
+    <link rel="stylesheet" href="css/main.css"/>
+  </head>
+  
+  <body>
+    <div class="gum-audio-container">
+      <audio id="gum-audio" autoplay></audio>
+    </div>
+    
+    <div class="gum-container">
+      <button id="gum">getUserMedia</button>
+      <button id="gum-stop">Stop</button>
+    </div>
+    
+    <div class="info-container">
+      <div id="constraints"></div>
+    </div>
+    
+    <div id="error-message"></div>
+    
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
+
