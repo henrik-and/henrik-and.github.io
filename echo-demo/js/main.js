@@ -12,6 +12,7 @@ let gumStream;
 
 gumStopButton.disabled = true;
 gumMuteCheckbox.disabled = true;
+gumAecCheckbox.disabled = false;
 
 const logi = (...args) => {
   console.log(...args);
@@ -30,8 +31,8 @@ const loge = (error) => {
 
 const printAudioSettings = (settings) => {
   const propertiesToPrint = [
-      "autoGainControl",
       "echoCancellation",
+      "autoGainControl",
       "noiseSuppression",
       "sampleRate",
       "voiceIsolation"
@@ -53,12 +54,15 @@ gumButton.onclick = async () => {
     // logi(prettyJson(supportedConstraints));
     
     const constraints = {
-      audio: true,
-      echoCancellation: {exact: gumAecCheckbox.checked},
+      audio: {
+        echoCancellation: {exact: gumAecCheckbox.checked},
+        autoGainControl: {exact: true},
+        noiseSuppression: {exact: true},
+      },
       video: false,
     };
     
-    logi('requested constraints to getUserMedia: ', constraints);
+    logi('requested constraints to getUserMedia: ', prettyJson(constraints));
     gumStream = await navigator.mediaDevices.getUserMedia(constraints);
     const [audioTrack] = gumStream.getAudioTracks();
     logi('audioTrack:', audioTrack);
@@ -79,6 +83,7 @@ gumButton.onclick = async () => {
     gumButton.disabled = true;
     gumStopButton.disabled = false;
     gumMuteCheckbox.disabled = false;
+    gumAecCheckbox.disabled = true;
   } catch (e) {
     loge(e);
   }
@@ -92,6 +97,7 @@ gumStopButton.onclick = () => {
     gumButton.disabled = false;
     gumStopButton.disabled = true;
     gumMuteCheckbox.disabled = true;
+    gumAecCheckbox.disabled = false;
   }
 };
 
@@ -101,4 +107,24 @@ gumMuteCheckbox.onchange = () => {
     track.enabled = !gumMuteCheckbox.checked;
   }
 };
+
+/*
+Calling MediaStreamTrack: applyConstraints with `echoCancellation` as constraint
+results in: DOMException: OverconstrainedError [Cannot satisfy constraints].
+gumAecCheckbox.onchange = async () => {
+  if (gumStream) {
+    try {
+      const [track] = gumStream.getAudioTracks();
+      const constraints = {
+        echoCancellation: {exact: gumAecCheckbox.checked},
+      }
+      logi('requested constraints to applyConstraints: ', prettyJson(constraints));
+      await track.applyConstraints(constraints);
+      printAudioSettings(track.getSettings());
+    } catch (e) {
+      loge(e);
+    }
+  }
+};
+*/
 
