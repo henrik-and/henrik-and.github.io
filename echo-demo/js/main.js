@@ -6,6 +6,7 @@ const gumAecCheckbox = document.getElementById('gum-aec');
 const gumStopButton = document.getElementById('gum-stop');
 const gumMuteCheckbox = document.getElementById('gum-mute');
 const gumConstraintsDiv = document.getElementById('gum-constraints');
+const htmlAudio = document.getElementById('html-audio');
 const errorElement = document.getElementById('error-message');
 
 let gumStream;
@@ -28,6 +29,46 @@ const loge = (error) => {
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
 };
+
+/*
+htmlAudio.addEventListener('play', (event) => {
+  logi('<audio> Audio playback started');
+});
+
+htmlAudio.addEventListener('pause', (event) => {
+  logi('<audio> Audio playback paused');
+});
+
+htmlAudio.addEventListener('ended', (event) => {
+  logi('<audio> Audio playback ended');
+});
+
+htmlAudio.addEventListener('error', (event) => {
+  let errorMessage = "An error occurred while trying to play the audio.";
+
+  switch (htmlAudio.error.code) {
+    case htmlAudio.error.MEDIA_ERR_ABORTED:
+      errorMessage = "Audio playback was aborted.";
+      break;
+    case htmlAudio.error.MEDIA_ERR_NETWORK:
+      errorMessage = "A network error occurred.";
+      break;
+    case htmlAudio.error.MEDIA_ERR_DECODE:
+      errorMessage = "The audio file could not be decoded.";
+      break;
+    case htmlAudio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      // Check if the error is specifically due to a 404 (Not Found)
+      if (htmlAudio.networkState === htmlAudio.NETWORK_NO_SOURCE) {
+        errorMessage = "The audio file could not be found.";
+      } else {
+        errorMessage = "The audio source is not supported.";
+      } 
+      break;
+  }
+
+  console.error(errorMessage);
+});
+*/
 
 const printAudioSettings = (settings) => {
   const propertiesToPrint = [

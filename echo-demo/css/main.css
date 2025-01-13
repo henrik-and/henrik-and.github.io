@@ -35,6 +35,10 @@ button, input, select, form {
   white-space: pre;
 }
 
+.html-audio-container {
+  margin-top: 10px;
+}
+
 #error-message {
   margin-top: 10px;
   color: red;
