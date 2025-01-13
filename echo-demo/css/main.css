@@ -45,6 +45,7 @@ figure audio {
 }
 
 figure figcaption {
+  font-size: 0.8em;
 }
 
 #error-message {
