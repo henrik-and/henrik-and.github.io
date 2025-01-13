@@ -6,9 +6,9 @@ const gumAecCheckbox = document.getElementById('gum-aec');
 const gumStopButton = document.getElementById('gum-stop');
 const gumMuteCheckbox = document.getElementById('gum-mute');
 const gumConstraintsDiv = document.getElementById('gum-constraints');
-const htmlAudio = document.getElementById('html-audio');
 const errorElement = document.getElementById('error-message');
 
+let htmlAudio;
 let gumStream;
 
 gumStopButton.disabled = true;
@@ -29,6 +29,11 @@ const loge = (error) => {
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
 };
+
+document.addEventListener('DOMContentLoaded', (event) => {
+  htmlAudio = document.getElementById("html-audio");
+  htmlAudio.volume = 0.5; 
+});
 
 /*
 htmlAudio.addEventListener('play', (event) => {

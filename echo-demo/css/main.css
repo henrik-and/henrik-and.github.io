@@ -35,8 +35,16 @@ button, input, select, form {
   white-space: pre;
 }
 
-.html-audio-container {
-  margin-top: 10px;
+figure {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+figure audio {
+}
+
+figure figcaption {
 }
 
 #error-message {
