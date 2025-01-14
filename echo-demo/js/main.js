@@ -9,6 +9,7 @@ const gumStopButton = document.getElementById('gum-stop');
 const gumMuteCheckbox = document.getElementById('gum-mute');
 const gumConstraintsDiv = document.getElementById('gum-constraints');
 const gumTrackDiv = document.getElementById('gum-track');
+const gumRecordedDiv = document.getElementById('gum-recorded');
 const errorElement = document.getElementById('error-message');
 
 let htmlAudio;
@@ -82,6 +83,18 @@ function printAudioTrack(track) {
     return obj;
   }, {});
   gumTrackDiv.textContent = 'MediaStreamTrack:\n' + prettyJson(filteredTrack);
+};
+
+function printMediaRecorder(recorder) {
+  const propertiesToPrint = [
+    'mimeType',
+    'state'
+  ];
+  const filteredRecorder = propertiesToPrint.reduce((obj, prop) => {
+    obj[prop] = recorder[prop];
+    return obj;
+  }, {});
+  gumRecordedDiv.textContent = 'MediaRecorder:\n' + prettyJson(filteredRecorder);
 };
 
 gumButton.onclick = async () => {
@@ -171,16 +184,22 @@ function startRecording() {
     mediaRecorder = new MediaRecorder(gumStream, options);
     gumRecordButton.textContent = 'Stop Recording';
     
+    mediaRecorder.onstart = (event) => {
+      printMediaRecorder(mediaRecorder);
+    };
+    
     mediaRecorder.onstop = (event) => {
       
       gumRecordedAudio.addEventListener('canplay', () => {
-        logi('Recorded audio is now ready to be played out and/or downloaded.');
+        // logi('Recorded audio is now ready to be played out and/or downloaded.');
       });
       
       const superBuffer = new Blob(recordedBlobs, {type: mimeType});
       gumRecordedAudio.src = '';
       gumRecordedAudio.srcObject = null;
       gumRecordedAudio.src = URL.createObjectURL(superBuffer);
+      printMediaRecorder(mediaRecorder);
+      gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
     mediaRecorder.ondataavailable = (event) => {
@@ -198,7 +217,6 @@ function startRecording() {
 function stopRecording() {
   if (mediaRecorder) {
     mediaRecorder.stop();
-    mediaRecorder = null;
   }
 };
 
