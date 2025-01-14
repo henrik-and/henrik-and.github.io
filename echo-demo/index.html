@@ -18,6 +18,8 @@
       <input id="gum-aec" type="checkbox" checked>AEC</input>
       <button id="gum-stop">Stop</button>
       <input id="gum-mute" type="checkbox">Mute</input>
+      <button id="gum-record" disabled>Start Recording</button>
+      <audio id="gum-recorded-audio" controls></audio>
     </div>
     
     <figure>
@@ -30,6 +32,7 @@
     
     <div class="gum-info-container">
       <div id="gum-constraints"></div>
+      <div id="gum-track"></div>
     </div>
     
     <div id="error-message"></div>

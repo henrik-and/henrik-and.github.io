@@ -14,8 +14,16 @@ button, input, select, form {
 }
 
 .gum-container {
-  margin-top: 10px;
-  margin-left: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.gum-container > * { /* Select all direct children of .gum-container */
+  margin-left: 10px; 
+}
+
+.gum-container > *:last-child { /* Select the last child */
+  margin-right: 0;  /* Remove margin from the last element */
 }
 
 .gum-info-container {
