@@ -151,8 +151,6 @@ gumStopButton.onclick = () => {
     gumAecCheckbox.disabled = false;
     gumRecordButton.textContent = 'Start Recording';
     gumRecordButton.disabled = true;
-    gumRecordedAudio.src = '';
-    gumRecordedAudio.disabled = true;
     clearGumInfoContainer();
   }
 };
