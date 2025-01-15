@@ -1,5 +1,7 @@
 'use strict';
 
+const audioInputSelect = document.getElementById('audio-input');
+const audioOutputSelect = document.getElementById('audio-output');
 const gumAudio = document.getElementById('gum-audio');
 const gumPlayAudioButton = document.getElementById('gum-play-audio');
 const gumRecordedAudio = document.getElementById('gum-recorded-audio');
@@ -43,7 +45,9 @@ const styles = window.getComputedStyle(gumButton);
 const fontSize = styles.getPropertyValue('font-size');
 // logi('button font-size: ' + fontSize); 
 
-document.addEventListener('DOMContentLoaded', (event) => {
+document.addEventListener('DOMContentLoaded', async (event) => {
+  await enumerateDevices();
+  
   htmlAudio = document.getElementById("html-audio");
   htmlAudio.volume = 0.3;
   
@@ -169,11 +173,40 @@ gumAudio.addEventListener('error', (event) => {
   console.error(errorMessage);
 });
 
-gumButton.onclick = async () => {
+async function enumerateDevices() {
+  const audioSelectors = [audioInputSelect, audioInputSelect];
+  audioSelectors.forEach(element => {
+    element.innerHTML = '';
+  });
+  
   try {
-    // const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
-    // logi(prettyJson(supportedConstraints));
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
+    const deviceInfosOutput = devices.filter(device => device.kind === 'audiooutput');
+    logi(deviceInfosInput);
+    logi(deviceInfosOutput);
     
+    deviceInfosInput.forEach(deviceInfo => {
+      const option = document.createElement('option');
+      option.value = deviceInfo.deviceId;
+      option.text = deviceInfo.label;
+      audioInputSelect.appendChild(option);
+    });
+    
+    deviceInfosOutput.forEach(deviceInfo => {
+      const option = document.createElement('option');
+      option.value = deviceInfo.deviceId;
+      option.text = deviceInfo.label;
+      audioOutputSelect.appendChild(option);
+    });
+    
+  } catch (e) {
+    loge(e);
+  }
+};
+
+async function startGum() {
+  try {
     const constraints = {
       audio: {
         echoCancellation: {exact: gumAecCheckbox.checked},
@@ -196,7 +229,7 @@ gumButton.onclick = async () => {
       printAudioTrack(audioTrack);
     };
     audioTrack.onunmute = () => {
-      logi('MediaStreamTrack.onmute: ' + audioTrack.label);
+      logi('MediaStreamTrack.onunmute: ' + audioTrack.label);
       printAudioTrack(audioTrack);
     };
     
@@ -214,12 +247,18 @@ gumButton.onclick = async () => {
   } catch (e) {
     loge(e);
   }
+}  
+
+gumButton.onclick = async () => {
+  stopGum();
+  await startGum();
 };
 
-gumStopButton.onclick = () => {
+function stopGum() {
   if (gumStream) {
     const [track] = gumStream.getAudioTracks();
     track.stop();
+    gumStream = null;
     gumAudio.srcObject = null;
     gumButton.disabled = false;
     gumStopButton.disabled = true;
@@ -229,6 +268,10 @@ gumStopButton.onclick = () => {
     gumRecordButton.disabled = true;
     clearGumInfoContainer();
   }
+};
+
+gumStopButton.onclick = () => {
+  stopGum();
 };
 
 gumMuteCheckbox.onchange = () => {
