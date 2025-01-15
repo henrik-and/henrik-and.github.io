@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
   htmlAudio.volume = 0.3;
   
   htmlAudio.addEventListener('play', (event) => {
-    logi('<audio> HTML audio playout started');
+    logi(`<audio> HTML audio playout started [source: ${htmlAudio.currentSrc}]`);
   });
   
   htmlAudio.addEventListener('pause', (event) => {
@@ -89,6 +89,7 @@ function printAudioSettings(settings) {
 
 function printAudioTrack(track) {
   const propertiesToPrint = [
+    'id',
     'label',
     'kind',
     'enabled',
@@ -115,7 +116,12 @@ function printMediaRecorder(recorder) {
 };
 
 gumAudio.addEventListener('play', (event) => {
-  logi('<audio> gUM audio track playout started');
+  let sourceId;
+  if (gumStream) {
+    const [track] = gumStream.getAudioTracks();
+    sourceId = track.id;
+  }
+  logi(`<audio> gUM audio track playout started [source id: ${sourceId}]`);
 });
 
 gumAudio.addEventListener('pause', (event) => {
