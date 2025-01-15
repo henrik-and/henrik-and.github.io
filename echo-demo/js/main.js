@@ -1,6 +1,7 @@
 'use strict';
 
 const gumAudio = document.getElementById('gum-audio');
+const gumPlayAudioButton = document.getElementById('gum-play-audio');
 const gumRecordedAudio = document.getElementById('gum-recorded-audio');
 const gumButton = document.getElementById('gum');
 const gumRecordButton = document.getElementById('gum-record');
@@ -38,9 +39,25 @@ const loge = (error) => {
   console.error(error);
 };
 
+const styles = window.getComputedStyle(gumButton);
+const fontSize = styles.getPropertyValue('font-size');
+// logi('button font-size: ' + fontSize); 
+
 document.addEventListener('DOMContentLoaded', (event) => {
   htmlAudio = document.getElementById("html-audio");
-  htmlAudio.volume = 0.3; 
+  htmlAudio.volume = 0.3;
+  
+  htmlAudio.addEventListener('play', (event) => {
+    logi('<audio> HTML audio playout started');
+  });
+  
+  htmlAudio.addEventListener('pause', (event) => {
+    logi('<audio> HTML audio playout paused');
+  });
+  
+  htmlAudio.addEventListener('ended', (event) => {
+    logi('<audio> HTML audio playout ended');
+  });
 });
 
 function clearGumInfoContainer() {
@@ -97,6 +114,55 @@ function printMediaRecorder(recorder) {
   gumRecordedDiv.textContent = 'MediaRecorder:\n' + prettyJson(filteredRecorder);
 };
 
+gumAudio.addEventListener('play', (event) => {
+  logi('<audio> gUM audio track playout started');
+});
+
+gumAudio.addEventListener('pause', (event) => {
+  logi('<audio> gUM audio track playout paused');
+});
+
+gumAudio.addEventListener('ended', (event) => {
+  logi('<audio> gUM audio track playout ended');
+});
+
+gumRecordedAudio.addEventListener('play', (event) => {
+  logi('<audio> Recorded gUM audio track playout started');
+});
+
+gumRecordedAudio.addEventListener('pause', (event) => {
+  logi('<audio> Recorded gUM audio track playout paused');
+});
+
+gumRecordedAudio.addEventListener('ended', (event) => {
+  logi('<audio> Recorded gUM audio track playout ended');
+});
+
+gumAudio.addEventListener('error', (event) => {
+  let errorMessage = "An error occurred while trying to play the audio.";
+
+  switch (gumAudio.error.code) {
+    case gumAudio.error.MEDIA_ERR_ABORTED:
+      errorMessage = "Audio playback was aborted.";
+      break;
+    case gumAudio.error.MEDIA_ERR_NETWORK:
+      errorMessage = "A network error occurred.";
+      break;
+    case gumAudio.error.MEDIA_ERR_DECODE:
+      errorMessage = "The audio file could not be decoded.";
+      break;
+    case gumAudio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      // Check if the error is specifically due to a 404 (Not Found)
+      if (gumAudio.networkState === gumAudio.NETWORK_NO_SOURCE) {
+        errorMessage = "The audio file could not be found.";
+      } else {
+        errorMessage = "The audio source is not supported.";
+      } 
+      break;
+  }
+  console.error(errorMessage);
+});
+
 gumButton.onclick = async () => {
   try {
     // const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
@@ -128,7 +194,11 @@ gumButton.onclick = async () => {
       printAudioTrack(audioTrack);
     };
     
+    // The `autoplay` attribute of the audio tag is not set.
     gumAudio.srcObject = gumStream;
+    if (gumPlayAudioButton.checked) {
+      await gumAudio.play();
+    }
        
     gumButton.disabled = true;
     gumStopButton.disabled = false;
@@ -160,6 +230,18 @@ gumMuteCheckbox.onchange = () => {
     const [track] = gumStream.getAudioTracks();
     track.enabled = !gumMuteCheckbox.checked;
     printAudioTrack(track);
+  }
+};
+
+gumPlayAudioButton.onclick = async () => {
+  if (gumPlayAudioButton.checked) {
+    if (gumAudio.srcObject && gumAudio.paused) {
+      await gumAudio.play();
+    }
+  } else {
+    if (gumAudio.srcObject && !gumAudio.paused) {
+      await gumAudio.pause();
+    }
   }
 };
 
@@ -249,43 +331,4 @@ gumAecCheckbox.onchange = async () => {
 };
 */
 
-/*
-htmlAudio.addEventListener('play', (event) => {
-  logi('<audio> Audio playback started');
-});
-
-htmlAudio.addEventListener('pause', (event) => {
-  logi('<audio> Audio playback paused');
-});
-
-htmlAudio.addEventListener('ended', (event) => {
-  logi('<audio> Audio playback ended');
-});
-
-htmlAudio.addEventListener('error', (event) => {
-  let errorMessage = "An error occurred while trying to play the audio.";
-
-  switch (htmlAudio.error.code) {
-    case htmlAudio.error.MEDIA_ERR_ABORTED:
-      errorMessage = "Audio playback was aborted.";
-      break;
-    case htmlAudio.error.MEDIA_ERR_NETWORK:
-      errorMessage = "A network error occurred.";
-      break;
-    case htmlAudio.error.MEDIA_ERR_DECODE:
-      errorMessage = "The audio file could not be decoded.";
-      break;
-    case htmlAudio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-      // Check if the error is specifically due to a 404 (Not Found)
-      if (htmlAudio.networkState === htmlAudio.NETWORK_NO_SOURCE) {
-        errorMessage = "The audio file could not be found.";
-      } else {
-        errorMessage = "The audio source is not supported.";
-      } 
-      break;
-  }
-
-  console.error(errorMessage);
-});
-*/
 

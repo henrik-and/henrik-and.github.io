@@ -10,22 +10,29 @@
   
   <body>
     <div class="gum-audio-container">
-      <audio id="gum-audio" autoplay></audio>
+      <audio id="gum-audio"></audio>
     </div>
     
     <div class="gum-container">
       <button id="gum">getUserMedia</button>
-      <input id="gum-aec" type="checkbox" checked>AEC</input>
+      <input id="gum-aec" type="checkbox" checked></input>
+      <label for="gum-aec">AEC</label>
       <button id="gum-stop">Stop</button>
-      <input id="gum-mute" type="checkbox">Mute</input>
+      <input id="gum-mute" type="checkbox"></input>
+      <label for="gum-mute">Mute</label>
+      <div class="vertical-line"></div>
+      <pre>&lt;audio&gt;</pre>
+      <input id="gum-play-audio" type="checkbox" checked></input>
+      <label for="gum-play-audio">Play</label>
+      <div class="vertical-line"></div>
       <button id="gum-record" disabled>Start Recording</button>
       <audio id="gum-recorded-audio" controls></audio>
     </div>
     
     <figure>
-      <figcaption>Play out audio from a WAV file:</figcaption>
+      <figcaption>Play audio from a WAV file:</figcaption>
       <!-- The file is copied from https://filesamples.com/formats/wav -->
-      <audio id="html-audio" controls>
+      <audio id="html-audio" controls loop>
         <source src="audio/sample2.wav" type="audio/wav">
       </audio>
     </figure>
