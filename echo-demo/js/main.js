@@ -133,7 +133,7 @@ gumAudio.addEventListener('ended', (event) => {
 });
 
 gumRecordedAudio.addEventListener('play', (event) => {
-  logi('<audio> Recorded gUM audio track playout started');
+  logi(`<audio> Recorded gUM audio track playout started [source: ${gumRecordedAudio.currentSrc}]`);
 });
 
 gumRecordedAudio.addEventListener('pause', (event) => {
