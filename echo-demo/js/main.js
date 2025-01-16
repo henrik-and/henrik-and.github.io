@@ -196,11 +196,12 @@ async function enumerateDevices() {
   hasMicrophone = false;
   hasSpeaker = false;
   const audioSelectors = [audioInputSelect, audioOutputSelect];
-  logi(audioInputSelect.value);
+  logi('Selected input device: ' + audioInputSelect.value);
   
-  // audioSelectors.forEach(element => {
-  //  element.innerHTML = '';
-  // });
+  // Clear current content of audio devices.
+  audioSelectors.forEach(element => {
+    element.innerHTML = '';
+  });
   
   try {
     // MediaDevices: enumerateDevices()
