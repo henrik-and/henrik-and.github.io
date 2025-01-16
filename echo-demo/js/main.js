@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * TODO: Ensure that a device selection is maintained after a device is added or removed.
+ * TODO: Check that a device can be changed while recording is ongoing.
+ */
+
 const audioInputSelect = document.getElementById('audio-input');
 const audioOutputSelect = document.getElementById('audio-output');
 const gumAudio = document.getElementById('gum-audio');
@@ -15,6 +20,14 @@ const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
 const errorElement = document.getElementById('error-message');
 
+// Set to true when the user has granted user media permissions.
+let hasPermission = false;
+// Set to true if at least one input device is detected.
+let hasMicrophone = false;
+// Set to true if at least one output device is detected.
+let hasSpeaker = false;
+// Contains the currently active microphone device ID.
+let openMicId = undefined;
 let htmlAudio;
 let gumStream;
 let mediaRecorder;
@@ -74,6 +87,7 @@ function clearGumInfoContainer() {
 
 function printAudioSettings(settings) {
   const propertiesToPrint = [
+    'deviceId',
     'echoCancellation',
     'autoGainControl',
     'noiseSuppression',
@@ -93,8 +107,8 @@ function printAudioSettings(settings) {
 
 function printAudioTrack(track) {
   const propertiesToPrint = [
-    'id',
     'label',
+    'id',
     'kind',
     'enabled',
     'muted',
@@ -120,12 +134,12 @@ function printMediaRecorder(recorder) {
 };
 
 gumAudio.addEventListener('play', (event) => {
-  let sourceId;
+  let sourceLabel;
   if (gumStream) {
     const [track] = gumStream.getAudioTracks();
-    sourceId = track.id;
+    sourceLabel = track.label;
   }
-  logi(`<audio> gUM audio track playout started [source id: ${sourceId}]`);
+  logi(`<audio> gUM audio track playout started [source label: ${sourceLabel}]`);
 });
 
 gumAudio.addEventListener('pause', (event) => {
@@ -173,27 +187,55 @@ gumAudio.addEventListener('error', (event) => {
   console.error(errorMessage);
 });
 
+/**
+ * Enumerate all devices and  deliver results (internally) as `MediaDeviceInfo` objects.
+ * TODO: ensure that a device selection is maintained after a device is added or removed.
+ */
 async function enumerateDevices() {
-  const audioSelectors = [audioInputSelect, audioInputSelect];
-  audioSelectors.forEach(element => {
-    element.innerHTML = '';
-  });
+  hasPermission = false;
+  hasMicrophone = false;
+  hasSpeaker = false;
+  const audioSelectors = [audioInputSelect, audioOutputSelect];
+  logi(audioInputSelect.value);
+  
+  // audioSelectors.forEach(element => {
+  //  element.innerHTML = '';
+  // });
   
   try {
+    // MediaDevices: enumerateDevices()
+    // 
+    // Returns an array of `MediaDeviceInfo` objects. Each object in the array
+    // describes one of the available media input and output devices.
+    // The order is significant — the default capture devices will be listed first.
+    //
+    // Other than default devices, only devices for which permission has been granted are "available".
+    // 
+    // If the media device is an input device, an `InputDeviceInfo` object will be returned instead.
+    // See also: https://guidou.github.io/enumdemo4.html
+    // Chrome issue: https://g-issues.chromium.org/issues/390333516
     const devices = await navigator.mediaDevices.enumerateDevices();
+    
+    // If we get at least one deviceId, it means that the user has granted media permissions.
+    hasPermission = devices.length > 0;
+    // Filter out array of InputDeviceInfo objects.
     const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
+    // Filter out array of MediaDeviceInfo objects.
     const deviceInfosOutput = devices.filter(device => device.kind === 'audiooutput');
     logi(deviceInfosInput);
     logi(deviceInfosOutput);
     
     deviceInfosInput.forEach(deviceInfo => {
+      hasMicrophone = true;
       const option = document.createElement('option');
       option.value = deviceInfo.deviceId;
       option.text = deviceInfo.label;
       audioInputSelect.appendChild(option);
+      // logi(deviceInfo.getCapabilities());
     });
     
     deviceInfosOutput.forEach(deviceInfo => {
+      hasSpeaker = true;
       const option = document.createElement('option');
       option.value = deviceInfo.deviceId;
       option.text = deviceInfo.label;
@@ -206,9 +248,21 @@ async function enumerateDevices() {
 };
 
 async function startGum() {
+  logi('startGum()');
+  // Get the input device ID based on what is currently selected.
+  const audioSource = audioInputSelect.value || undefined;
+  // Avoid opening the same device again.
+  if (hasPermission && openMicId === audioSource) {
+    return;
+  }
+  
+  // Close existing streams.
+  stopGum();
+  
   try {
     const constraints = {
       audio: {
+        deviceId: audioSource ? {exact: audioSource} : undefined,
         echoCancellation: {exact: gumAecCheckbox.checked},
         autoGainControl: {exact: true},
         noiseSuppression: {exact: true},
@@ -219,10 +273,12 @@ async function startGum() {
     logi('requested constraints to getUserMedia: ', prettyJson(constraints));
     gumStream = await navigator.mediaDevices.getUserMedia(constraints);
     const [audioTrack] = gumStream.getAudioTracks();
-    logi('audioTrack:', audioTrack);
-    
-    printAudioSettings(audioTrack.getSettings());
+ 
+    const settings = audioTrack.getSettings();
+    printAudioSettings(settings);
     printAudioTrack(audioTrack);
+    // Store the currently selected and active (unique) microphone ID.
+    openMicId = settings.deviceId;
      
     audioTrack.onmute = () => {
       logi('MediaStreamTrack.onmute: ' + audioTrack.label);
@@ -250,7 +306,6 @@ async function startGum() {
 }  
 
 gumButton.onclick = async () => {
-  stopGum();
   await startGum();
 };
 
@@ -259,6 +314,7 @@ function stopGum() {
     const [track] = gumStream.getAudioTracks();
     track.stop();
     gumStream = null;
+    openMicId = undefined;
     gumAudio.srcObject = null;
     gumButton.disabled = false;
     gumStopButton.disabled = true;
@@ -357,6 +413,29 @@ gumRecordButton.onclick = () => {
     gumRecordButton.textContent = 'Start Recording';
   }
 };
+
+/** Restart the local MediaStreamTrack (gUM) when a new input device is selected. */
+audioInputSelect.onchange = async () => {
+  await startGum();
+};
+
+audioOutputSelect.onchange = async () => {
+  // TODO: changeAudioDestination;
+};
+
+/** The devicechange event is sent to a MediaDevices instance whenever a media device such as a
+ * camera, microphone, or speaker is connected to or removed from the system.
+ */
+navigator.mediaDevices.ondevicechange = async () => {
+  logw('MediaDevices: devicechange');
+  // Refresh the list (and selection) of available devices.
+  await enumerateDevices();
+  // Restart the active stream using the new device selection.
+  if (gumStream) {
+    startGum();
+  }
+};
+  
 
 // gumButton.innerHTML = "&#x25B6;&#xFE0F;" : "&#x23F8;&#xFE0F;";
 
