@@ -198,7 +198,7 @@ async function enumerateDevices() {
   const audioSelectors = [audioInputSelect, audioOutputSelect];
   logi('Selected input device: ' + audioInputSelect.value);
   
-  // Clear current content of audio devices.
+  // Clear current content of audio devices to prepare for an updated state.
   audioSelectors.forEach(element => {
     element.innerHTML = '';
   });
@@ -261,17 +261,22 @@ async function startGum() {
   stopGum();
   
   try {
-    const constraints = {
+    // Constraints without any `deviceId` property in the `audio` object.
+    let constraints = {
       audio: {
-        deviceId: audioSource ? {exact: audioSource} : undefined,
         echoCancellation: {exact: gumAecCheckbox.checked},
         autoGainControl: {exact: true},
         noiseSuppression: {exact: true},
       },
       video: false,
     };
+    // Add a `deviceId` property to the `audio` object if a microphone is available.
+    if (hasMicrophone) {
+      constraints.audio.deviceId = audioSource ? {exact: audioSource} : undefined;
+    }
     
     logi('requested constraints to getUserMedia: ', prettyJson(constraints));
+    // MediaDevices: getUserMedia()
     gumStream = await navigator.mediaDevices.getUserMedia(constraints);
     const [audioTrack] = gumStream.getAudioTracks();
  
