@@ -139,7 +139,7 @@ gumAudio.addEventListener('play', (event) => {
     const [track] = gumStream.getAudioTracks();
     sourceLabel = track.label;
   }
-  logi(`<audio> gUM audio track playout started [source label: ${sourceLabel}]`);
+  logi(`<audio> gUM audio track playout started [source: ${sourceLabel}]`);
 });
 
 gumAudio.addEventListener('pause', (event) => {
@@ -187,6 +187,17 @@ gumAudio.addEventListener('error', (event) => {
   console.error(errorMessage);
 });
 
+function updateDevices(listElement, devices) {
+  listElement.innerHTML = '';
+  devices.map(device => {
+    const deviceOption = document.createElement('option');
+    deviceOption.value = device.deviceId;
+    deviceOption.label = device.label;
+    deviceOption.text = device.label;
+    listElement.appendChild(deviceOption);
+  });
+};
+
 /**
  * Enumerate all devices and  deliver results (internally) as `MediaDeviceInfo` objects.
  * TODO: ensure that a device selection is maintained after a device is added or removed.
@@ -197,11 +208,6 @@ async function enumerateDevices() {
   hasSpeaker = false;
   const audioSelectors = [audioInputSelect, audioOutputSelect];
   logi('Selected input device: ' + audioInputSelect.value);
-  
-  // Clear current content of audio devices to prepare for an updated state.
-  audioSelectors.forEach(element => {
-    element.innerHTML = '';
-  });
   
   try {
     // MediaDevices: enumerateDevices()
@@ -221,37 +227,73 @@ async function enumerateDevices() {
     hasPermission = devices.length > 0;
     // Filter out array of InputDeviceInfo objects.
     const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
+    hasMicrophone = deviceInfosInput.length > 0;
     // Filter out array of MediaDeviceInfo objects.
     const deviceInfosOutput = devices.filter(device => device.kind === 'audiooutput');
+    hasSpeaker = deviceInfosOutput.length > 0;
     logi(deviceInfosInput);
     logi(deviceInfosOutput);
-    
-    deviceInfosInput.forEach(deviceInfo => {
-      hasMicrophone = true;
-      const option = document.createElement('option');
-      option.value = deviceInfo.deviceId;
-      option.text = deviceInfo.label;
-      audioInputSelect.appendChild(option);
-      // logi(deviceInfo.getCapabilities());
-    });
-    
-    deviceInfosOutput.forEach(deviceInfo => {
-      hasSpeaker = true;
-      const option = document.createElement('option');
-      option.value = deviceInfo.deviceId;
-      option.text = deviceInfo.label;
-      audioOutputSelect.appendChild(option);
-    });
-    
+    // Clear all select elements and add the latest input and output devices.
+    updateDevices(audioInputSelect, deviceInfosInput);
+    updateDevices(audioOutputSelect, deviceInfosOutput);
   } catch (e) {
     loge(e);
   }
 };
 
+async function changeAudioOutput() {
+  if (!hasSpeaker) {
+    return;
+  }
+  const options = audioOutputSelect.options;
+  const deviceId = audioOutputSelect.value;
+  const deviceLabel = options[options.selectedIndex].label;
+  const audioElements = [htmlAudio, gumAudio];
+  await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
+}
+
+/** 
+ * Attach audio output device to audio/video element using device/sink ID.
+ * See also https://developer.chrome.com/blog/audiocontext-setsinkid.
+ * Demo: https://sinkid.glitch.me/
+ */
+async function attachSinkId(element, sinkId, label) {
+  if (typeof element.sinkId == 'undefined') {
+    logw('Browser does not support output device selection.');
+    return;
+  }
+  
+  try {
+    /**
+     * HTMLMediaElement: setSinkId()
+     * Set the ID of the audio device to use for output.
+     * The output device is set even if the element has no source to prepare for when it gets one.
+     */
+    await element.setSinkId(sinkId);
+    
+    let source;
+    if (element.srcObject && gumStream) {
+      const [track] = gumStream.getAudioTracks();
+      source = track.label;
+    } else if (element.src) {
+      source = element.src;
+    } else if (element.currentSrc) {
+      source = element.currentSrc;
+    }      
+    logi(`<audio> audio playout sets audio output [source: ${source}][sink: ${label}]`);
+  } catch (e) {
+     // Jump back to first output device in the list as it's the default.
+     audioOutputSelect.selectedIndex = 0;
+    loge(e);
+  }
+}
+
 async function startGum() {
   logi('startGum()');
   // Get the input device ID based on what is currently selected.
   const audioSource = audioInputSelect.value || undefined;
+  const audioSink = audioOutputSelect.value;
+  logi(audioSink);
   // Avoid opening the same device again.
   if (hasPermission && openMicId === audioSource) {
     return;
@@ -422,14 +464,18 @@ gumRecordButton.onclick = () => {
 
 /** Restart the local MediaStreamTrack (gUM) when a new input device is selected. */
 audioInputSelect.onchange = async () => {
-  await startGum();
+  // Restart the active stream using the new device selection.
+  if (gumStream) {
+    await startGum();
+  }
 };
 
 audioOutputSelect.onchange = async () => {
-  // TODO: changeAudioDestination;
+  await changeAudioOutput();
 };
 
-/** The devicechange event is sent to a MediaDevices instance whenever a media device such as a
+/** 
+ * The devicechange event is sent to a MediaDevices instance whenever a media device such as a
  * camera, microphone, or speaker is connected to or removed from the system.
  */
 navigator.mediaDevices.ondevicechange = async () => {
@@ -438,31 +484,9 @@ navigator.mediaDevices.ondevicechange = async () => {
   await enumerateDevices();
   // Restart the active stream using the new device selection.
   if (gumStream) {
-    startGum();
+    await startGum();
   }
 };
-  
 
-// gumButton.innerHTML = "&#x25B6;&#xFE0F;" : "&#x23F8;&#xFE0F;";
-
-/*
-Calling MediaStreamTrack: applyConstraints with `echoCancellation` as constraint
-results in: DOMException: OverconstrainedError [Cannot satisfy constraints].
-gumAecCheckbox.onchange = async () => {
-  if (gumStream) {
-    try {
-      const [track] = gumStream.getAudioTracks();
-      const constraints = {
-        echoCancellation: {exact: gumAecCheckbox.checked},
-      }
-      logi('requested constraints to applyConstraints: ', prettyJson(constraints));
-      await track.applyConstraints(constraints);
-      printAudioSettings(track.getSettings());
-    } catch (e) {
-      loge(e);
-    }
-  }
-};
-*/
 
 
