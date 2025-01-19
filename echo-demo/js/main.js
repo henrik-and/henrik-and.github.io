@@ -56,24 +56,42 @@ const loge = (error) => {
 
 const styles = window.getComputedStyle(gumButton);
 const fontSize = styles.getPropertyValue('font-size');
-// logi('button font-size: ' + fontSize); 
+// logi('button font-size: ' + fontSize);
+
+function updateSourceLabel(element) {
+  // Get the label of the source currently attached to the audio element.
+  let source;
+  if (element.srcObject && gumStream) {
+    const [track] = gumStream.getAudioTracks();
+    source = track.label;
+  } else if (element.src) {
+    source = element.src;
+  } else if (element.currentSrc) {
+    source = element.currentSrc;
+  }
+  element.currentSourceLabel = source;
+}
+
+/** Extend the audio element with three extra properties. */
+function updateAudioElement(element, sinkId, label) {
+  updateSourceLabel(element);
+  // Extend the audio element with custom properties for logging purposes.
+  element.currentSinkId = sinkId;
+  element.currentSinkLabel = label;
+}
 
 document.addEventListener('DOMContentLoaded', async (event) => {
   await enumerateDevices();
   
   htmlAudio = document.getElementById("html-audio");
   htmlAudio.volume = 0.3;
-  
+ 
+  // Set default sink and source for all audio elements.
+  changeAudioOutput();
+   
   htmlAudio.addEventListener('play', (event) => {
-    logi(`<audio> HTML audio playout started [source: ${htmlAudio.currentSrc}]`);
-  });
-  
-  htmlAudio.addEventListener('pause', (event) => {
-    logi('<audio> HTML audio playout paused');
-  });
-  
-  htmlAudio.addEventListener('ended', (event) => {
-    logi('<audio> HTML audio playout ended');
+    logi('<audio> playout starts ' +
+      `[source: ${htmlAudio.currentSourceLabel}][sink: ${htmlAudio.currentSinkLabel}]`);
   });
 });
 
@@ -134,33 +152,15 @@ function printMediaRecorder(recorder) {
 };
 
 gumAudio.addEventListener('play', (event) => {
-  let sourceLabel;
-  if (gumStream) {
-    const [track] = gumStream.getAudioTracks();
-    sourceLabel = track.label;
-  }
-  logi(`<audio> gUM audio track playout started [source: ${sourceLabel}]`);
-});
-
-gumAudio.addEventListener('pause', (event) => {
-  logi('<audio> gUM audio track playout paused');
-});
-
-gumAudio.addEventListener('ended', (event) => {
-  logi('<audio> gUM audio track playout ended');
+  logi('<audio> playout starts ' +
+    `[source: ${gumAudio.currentSourceLabel}][sink: ${gumAudio.currentSinkLabel}]`);
 });
 
 gumRecordedAudio.addEventListener('play', (event) => {
-  logi(`<audio> Recorded gUM audio track playout started [source: ${gumRecordedAudio.currentSrc}]`);
+  logi('<audio> playout starts ' +
+    `[source: ${gumRecordedAudio.currentSourceLabel}][sink: ${gumRecordedAudio.currentSinkLabel}]`);
 });
 
-gumRecordedAudio.addEventListener('pause', (event) => {
-  logi('<audio> Recorded gUM audio track playout paused');
-});
-
-gumRecordedAudio.addEventListener('ended', (event) => {
-  logi('<audio> Recorded gUM audio track playout ended');
-});
 
 gumAudio.addEventListener('error', (event) => {
   let errorMessage = "An error occurred while trying to play the audio.";
@@ -241,14 +241,20 @@ async function enumerateDevices() {
   }
 };
 
+/**
+ * Call HTMLMediaElement: setSinkId() on all available audio elements.
+ */
 async function changeAudioOutput() {
   if (!hasSpeaker) {
     return;
   }
+  // Read device ID and device label from the select options.
   const options = audioOutputSelect.options;
   const deviceId = audioOutputSelect.value;
   const deviceLabel = options[options.selectedIndex].label;
-  const audioElements = [htmlAudio, gumAudio];
+  
+  // Set sink ID on these three audio elements. 
+  const audioElements = [htmlAudio, gumAudio, gumRecordedAudio];
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
 }
 
@@ -270,17 +276,9 @@ async function attachSinkId(element, sinkId, label) {
      * The output device is set even if the element has no source to prepare for when it gets one.
      */
     await element.setSinkId(sinkId);
-    
-    let source;
-    if (element.srcObject && gumStream) {
-      const [track] = gumStream.getAudioTracks();
-      source = track.label;
-    } else if (element.src) {
-      source = element.src;
-    } else if (element.currentSrc) {
-      source = element.currentSrc;
-    }      
-    logi(`<audio> audio playout sets audio output [source: ${source}][sink: ${label}]`);
+    updateAudioElement(element, sinkId, label);
+    logi('<audio> playout sets audio output [source: ' +
+      `${element.currentSourceLabel}][sink: ${element.currentSinkLabel}]`);
   } catch (e) {
      // Jump back to first output device in the list as it's the default.
      audioOutputSelect.selectedIndex = 0;
@@ -292,8 +290,7 @@ async function startGum() {
   logi('startGum()');
   // Get the input device ID based on what is currently selected.
   const audioSource = audioInputSelect.value || undefined;
-  const audioSink = audioOutputSelect.value;
-  logi(audioSink);
+  const audioSink = audioOutputSelect.value || undefined;
   // Avoid opening the same device again.
   if (hasPermission && openMicId === audioSource) {
     return;
@@ -339,6 +336,7 @@ async function startGum() {
     
     // The `autoplay` attribute of the audio tag is not set.
     gumAudio.srcObject = gumStream;
+    updateSourceLabel(gumAudio);
     if (gumPlayAudioButton.checked) {
       await gumAudio.play();
     }
@@ -371,6 +369,7 @@ function stopGum() {
     gumRecordButton.textContent = 'Start Recording';
     gumRecordButton.disabled = true;
     clearGumInfoContainer();
+    updateSourceLabel(gumAudio);
   }
 };
 
@@ -422,15 +421,11 @@ function startRecording() {
     };
     
     mediaRecorder.onstop = (event) => {
-      
-      gumRecordedAudio.addEventListener('canplay', () => {
-        // logi('Recorded audio is now ready to be played out and/or downloaded.');
-      });
-      
       const superBuffer = new Blob(recordedBlobs, {type: mimeType});
       gumRecordedAudio.src = '';
       gumRecordedAudio.srcObject = null;
       gumRecordedAudio.src = URL.createObjectURL(superBuffer);
+      updateSourceLabel(gumRecordedAudio);
       printMediaRecorder(mediaRecorder);
       gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
@@ -470,6 +465,7 @@ audioInputSelect.onchange = async () => {
   }
 };
 
+/** Set sink ID for all audio elements based on the latest output device selection. */
 audioOutputSelect.onchange = async () => {
   await changeAudioOutput();
 };
