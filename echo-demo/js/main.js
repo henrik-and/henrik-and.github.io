@@ -291,8 +291,8 @@ async function attachSinkId(element, sinkId, label) {
 async function startGum() {
   logi('startGum()');
   // Get the input device ID based on what is currently selected.
-  const audioSource = audioInputSelect.value || undefined;
-  const audioSink = audioOutputSelect.value || undefined;
+  const audioSource = audioInputSelect.value;
+  const audioSink = audioOutputSelect.value;
   // Avoid opening the same device again.
   if (hasMicrophonePermission && openMicId === audioSource) {
     return;
