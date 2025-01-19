@@ -39,6 +39,10 @@ gumAecCheckbox.disabled = false;
 
 const mimeType = 'audio/mp4';
 
+const styles = window.getComputedStyle(gumButton);
+const fontSize = styles.getPropertyValue('font-size');
+// logi('button font-size: ' + fontSize);
+
 const logi = (...args) => {
   console.log(...args);
 }
@@ -53,10 +57,6 @@ const loge = (error) => {
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
 };
-
-const styles = window.getComputedStyle(gumButton);
-const fontSize = styles.getPropertyValue('font-size');
-// logi('button font-size: ' + fontSize);
 
 function updateSourceLabel(element) {
   // Get the label of the source currently attached to the audio element.
