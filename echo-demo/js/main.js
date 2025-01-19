@@ -39,8 +39,8 @@ gumAecCheckbox.disabled = false;
 
 const mimeType = 'audio/mp4';
 
-const styles = window.getComputedStyle(gumButton);
-const fontSize = styles.getPropertyValue('font-size');
+// const styles = window.getComputedStyle(gumButton);
+// const fontSize = styles.getPropertyValue('font-size');
 // logi('button font-size: ' + fontSize);
 
 const logi = (...args) => {
