@@ -21,7 +21,7 @@ const gumRecordedDiv = document.getElementById('gum-recorded');
 const errorElement = document.getElementById('error-message');
 
 // Set to true when the user has granted user media permissions.
-let hasPermission = false;
+let hasMicrophonePermission = false;
 // Set to true if at least one input device is detected.
 let hasMicrophone = false;
 // Set to true if at least one output device is detected.
@@ -203,7 +203,8 @@ function updateDevices(listElement, devices) {
  * TODO: ensure that a device selection is maintained after a device is added or removed.
  */
 async function enumerateDevices() {
-  hasPermission = false;
+  logi('enumerateDevices()');
+  hasMicrophonePermission = false;
   hasMicrophone = false;
   hasSpeaker = false;
   const audioSelectors = [audioInputSelect, audioOutputSelect];
@@ -212,7 +213,7 @@ async function enumerateDevices() {
   try {
     // MediaDevices: enumerateDevices()
     // 
-    // Returns an array of `MediaDeviceInfo` objects. Each object in the array
+    // Returns an array of `MediaDeviceInfaso` objects. Each object in the array
     // describes one of the available media input and output devices.
     // The order is significant — the default capture devices will be listed first.
     //
@@ -222,9 +223,10 @@ async function enumerateDevices() {
     // See also: https://guidou.github.io/enumdemo4.html
     // Chrome issue: https://g-issues.chromium.org/issues/390333516
     const devices = await navigator.mediaDevices.enumerateDevices();
+    const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+    hasMicrophonePermission = (permissionStatus.state === 'granted' && devices.length > 0)
+    logi('hasMicrophonePermission: ' + hasMicrophonePermission);
     
-    // If we get at least one deviceId, it means that the user has granted media permissions.
-    hasPermission = devices.length > 0;
     // Filter out array of InputDeviceInfo objects.
     const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
     hasMicrophone = deviceInfosInput.length > 0;
@@ -292,10 +294,10 @@ async function startGum() {
   const audioSource = audioInputSelect.value || undefined;
   const audioSink = audioOutputSelect.value || undefined;
   // Avoid opening the same device again.
-  if (hasPermission && openMicId === audioSource) {
+  if (hasMicrophonePermission && openMicId === audioSource) {
     return;
   }
-  
+
   // Close existing streams.
   stopGum();
   
