@@ -73,6 +73,20 @@ label[for="gum-play-audio"] {
   white-space: pre;
 }
 
+.gdm-container {
+  display: flex;
+  align-items: center;
+}
+
+.gdm-container > * { /* Select all direct children of .gdm-container */
+  margin-top: 10px;
+  margin-left: 10px; 
+}
+
+.gdm-container > *:last-child { /* Select the last child */
+  margin-right: 0;  /* Remove margin from the last element */
+}
+
 figure {
   display: flex;
   align-items: center;

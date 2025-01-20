@@ -19,6 +19,8 @@ const gumConstraintsDiv = document.getElementById('gum-constraints');
 const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
 const webAudioButton = document.getElementById('web-audio-start-stop');
+const gdmButton = document.getElementById('gdm');
+const gdmStopButton = document.getElementById('gdm-stop');
 const errorElement = document.getElementById('error-message');
 
 import { logi, logw, prettyJson } from './utils.js';
@@ -36,10 +38,12 @@ let audioContext;
 let webAudioElement;
 let mediaElementSource;
 let gumStream;
+let gdmStream;
 let mediaRecorder;
 let recordedBlobs;
 
 gumStopButton.disabled = true;
+gdmStopButton.disabled = true;
 gumMuteCheckbox.disabled = true;
 gumAecCheckbox.disabled = false;
 
@@ -580,5 +584,64 @@ navigator.mediaDevices.ondevicechange = async () => {
   }
 };
 
+async function startGdm() {
+  logi('startGum()');
+
+  // Close existing streams.
+  stopGdm();
+  
+  /** 
+   * MediaDevices: getDisplayMedia(options)
+   *   audio.suppressLocalAudioPlayback = true => device_id	"loopbackWithMute"
+   *   audio.suppressLocalAudioPlayback = false => device_id	"loopback"
+   *   systemAudio = 'include' => "Also share system audio" in picker
+   *   systemAudio = 'exlude' => Audio sharing option in picker is disabled
+   * TypeError is thown if the specified options include values that are not permitted.
+   * For example a video property set to false, or if any specified MediaTrackConstraints are not
+     permitted. min and exact values are not permitted in constraints used in getDisplayMedia() calls.
+   * https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#instance_properties_of_shared_screen_tracks
+   * See https://screen-sharing-controls.glitch.me/ for an example.
+   */
+  try {
+    let options = {
+      video: true,
+      audio: {
+        echoCancellation: true,
+        suppressLocalAudioPlayback: true,
+      },
+      systemAudio: 'exclude',
+    };
+    
+    logi('requested options to getDisplayMedia: ', prettyJson(options));
+    // MediaDevices: getDisplayMedia()
+    gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
+    const [audioTrack] = gdmStream.getAudioTracks();
+    logi(audioTrack);
+    const settings = audioTrack.getSettings();
+    logi(settings);
+    gdmButton.disabled = true;
+    gdmStopButton.disabled = false;
+  } catch (e) {
+    loge(e);
+  }
+}  
+
+gdmButton.onclick = async () => {
+  await startGdm();
+};
+
+function stopGdm() {
+  if (gdmStream) {
+    const [track] = gdmStream.getAudioTracks();
+    track.stop();
+    gdmStream = null;
+    gdmButton.disabled = false;
+    gdmStopButton.disabled = true;
+  }
+};
+
+gdmStopButton.onclick = () => {
+  stopGdm();
+};
 
 
