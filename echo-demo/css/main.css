@@ -46,6 +46,10 @@ label[for="gum-play-audio"] {
   margin-right: 0;  /* Remove margin from the last element */
 }
 
+.web-audio-container {
+  margin-left: 10px;
+}
+
 .gum-info-container {
   margin-top: 20px;
 }
@@ -79,6 +83,10 @@ figure audio {
 }
 
 figure figcaption {
+}
+
+#html-audio {
+  margin-right: 10px;
 }
 
 #error-message {

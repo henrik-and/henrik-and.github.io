@@ -18,6 +18,7 @@ const gumMuteCheckbox = document.getElementById('gum-mute');
 const gumConstraintsDiv = document.getElementById('gum-constraints');
 const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
+const webAudioButton = document.getElementById('web-audio-start-stop');
 const errorElement = document.getElementById('error-message');
 
 import { logi, logw, prettyJson } from './utils.js';
@@ -31,6 +32,9 @@ let hasSpeaker = false;
 // Contains the currently active microphone device ID.
 let openMicId = undefined;
 let htmlAudio;
+let audioContext;
+let webAudioElement;
+let mediaElementSource;
 let gumStream;
 let mediaRecorder;
 let recordedBlobs;
@@ -74,20 +78,62 @@ function updateAudioElement(element, sinkId, label) {
   element.currentSinkLabel = label;
 }
 
+function initWebAudio() {
+  try {
+    webAudioElement = document.getElementById('webaudio-audio');
+    webAudioElement.volume = 0.7;
+    
+    // const audioCtx = new AudioContext({
+    //   latencyHint: "interactive",
+    //   sampleRate: 44100,
+    //   sinkId: "bb04fea9a8318c96de0bd...",
+    // });
+    audioContext = new AudioContext();
+    
+    // When we create a media element source, the Web Audio API takes over the audio routing,
+    // meaning the audio now flows through the processing graph.
+    mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
+    mediaElementSource.connect(audioContext.destination);
+    
+    webAudioElement.addEventListener('canplay', (event) => {
+    });
+    
+    // Resume the audio context and start playing audio when play is pressed in the audio control. 
+    webAudioElement.addEventListener('play', async (event) => {
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        logi('[WebAudio] playout starts ' +
+          `[source: ${webAudioElement.currentSrc}][sink: ${audioContext.sinkId}]`);
+      }; 
+    });
+    
+    // Suspend the audio context and stop playing audio when pause is pressed in the audio control.
+    webAudioElement.addEventListener('pause', async (event) => {
+      if (audioContext.state === 'running') {
+        await audioContext.suspend();
+      };
+    });
+  } catch (e) {
+    loge(e);
+  };
+};
+
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
   
-  htmlAudio = document.getElementById("html-audio");
+  htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
- 
-  // Set default sink and source for all audio elements.
-  changeAudioOutput();
    
   htmlAudio.addEventListener('play', (event) => {
     logi('<audio> playout starts ' +
       `[source: ${htmlAudio.currentSourceLabel}][sink: ${htmlAudio.currentSinkLabel}]`);
   });
+  
+  await initWebAudio();
+  
+  // Set default sink and source for all audio elements and the audio context.
+  changeAudioOutput();
 });
 
 function clearGumInfoContainer() {
@@ -296,6 +342,12 @@ async function changeAudioOutput() {
   // Set sink ID on these three audio elements. 
   const audioElements = [htmlAudio, gumAudio, gumRecordedAudio];
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
+  if (audioContext) {
+    // await audioCtx.setSinkId({ type : 'none' });
+    await audioContext.setSinkId(deviceId);
+    logi('[WebAudio] playout sets audio ouput ' +
+      `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+  }
 }
 
 /** 
