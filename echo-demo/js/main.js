@@ -20,6 +20,8 @@ const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
 const errorElement = document.getElementById('error-message');
 
+import { logi, logw, prettyJson } from './utils.js';
+
 // Set to true when the user has granted user media permissions.
 let hasMicrophonePermission = false;
 // Set to true if at least one input device is detected.
@@ -44,16 +46,6 @@ const mimeType = 'audio/mp4';
 // const styles = window.getComputedStyle(gumButton);
 // const fontSize = styles.getPropertyValue('font-size');
 // logi('button font-size: ' + fontSize);
-
-const logi = (...args) => {
-  console.log(...args);
-}
-
-const logw = (...args) => {
-  console.warn(...args);
-}
-
-const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
 const loge = (error) => {
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
