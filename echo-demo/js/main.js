@@ -37,6 +37,8 @@ gumStopButton.disabled = true;
 gumMuteCheckbox.disabled = true;
 gumAecCheckbox.disabled = false;
 
+const selectors = [audioInputSelect, audioOutputSelect];
+
 const mimeType = 'audio/mp4';
 
 // const styles = window.getComputedStyle(gumButton);
@@ -81,6 +83,7 @@ function updateAudioElement(element, sinkId, label) {
 }
 
 document.addEventListener('DOMContentLoaded', async (event) => {
+  await ensureMicrophonePermission();
   await enumerateDevices();
   
   htmlAudio = document.getElementById("html-audio");
@@ -198,6 +201,33 @@ function updateDevices(listElement, devices) {
   });
 };
 
+/** Ensures that we always start with microphone permission. */
+async function ensureMicrophonePermission() {
+  const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+  if (permissionStatus.state === 'granted') {
+    return;
+  }
+  try {
+    // Call mediaDevices.getUserMedia() to explicitly ask for microphone permissions.
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (stream) {
+      const [track] = stream.getAudioTracks();
+      track.stop();
+    }
+  } catch (e) {
+    loge(e);
+  };
+}
+
+function getSelectedDevice(select) {
+  const options = select.options;
+  if (options.length == 0) {
+    return '';
+  }
+  const deviceLabel = options[options.selectedIndex].label;
+  return deviceLabel;
+};
+
 /**
  * Enumerate all devices and  deliver results (internally) as `MediaDeviceInfo` objects.
  * TODO: ensure that a device selection is maintained after a device is added or removed.
@@ -207,8 +237,9 @@ async function enumerateDevices() {
   hasMicrophonePermission = false;
   hasMicrophone = false;
   hasSpeaker = false;
-  const audioSelectors = [audioInputSelect, audioOutputSelect];
-  logi('Selected input device: ' + audioInputSelect.value);
+  
+  // Store currently selected devices.
+  const selectedValues = selectors.map(select => select.value);
   
   try {
     // MediaDevices: enumerateDevices()
@@ -222,13 +253,15 @@ async function enumerateDevices() {
     // If the media device is an input device, an `InputDeviceInfo` object will be returned instead.
     // See also: https://guidou.github.io/enumdemo4.html
     // Chrome issue: https://g-issues.chromium.org/issues/390333516
+    
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
-    hasMicrophonePermission = (permissionStatus.state === 'granted' && devices.length > 0)
-    logi('hasMicrophonePermission: ' + hasMicrophonePermission);
     
     // Filter out array of InputDeviceInfo objects.
     const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
+    // Web applications without permissions can know that there are available devices but they
+    // don't get any info about them. Hence, `hasMicrophone` can be set to true even without
+    // having the microphone permission.
+    // Example for no permission: {deviceId: '', kind: 'audioinput', label: '', groupId: ''}
     hasMicrophone = deviceInfosInput.length > 0;
     // Filter out array of MediaDeviceInfo objects.
     const deviceInfosOutput = devices.filter(device => device.kind === 'audiooutput');
@@ -238,6 +271,19 @@ async function enumerateDevices() {
     // Clear all select elements and add the latest input and output devices.
     updateDevices(audioInputSelect, deviceInfosInput);
     updateDevices(audioOutputSelect, deviceInfosOutput);
+    
+    // Check if any <option> element inside the <select> element has a value matching
+    // selectedValues[selectorIndex]. If a match is found, assigns the value to select.value which
+    // selects the correct option. This approach ensures that a previously selected device is
+    // maintained as selection even after device changes (assuming that the old selection was not
+    // removed).
+    selectors.forEach((select, selectorIndex) => {
+      // The spread operator (...) converts the select.options HTMLCollection into a standard array.
+      if ([...select.options].some(option => option.value === selectedValues[selectorIndex])) {
+        select.value = selectedValues[selectorIndex];
+      }
+    });
+    
   } catch (e) {
     loge(e);
   }
@@ -461,6 +507,8 @@ gumRecordButton.onclick = () => {
 
 /** Restart the local MediaStreamTrack (gUM) when a new input device is selected. */
 audioInputSelect.onchange = async () => {
+  const deviceLabel = getSelectedDevice(audioInputSelect);
+  logi(`Selected input device: ${deviceLabel}`); 
   // Restart the active stream using the new device selection.
   if (gumStream) {
     await startGum();
@@ -469,6 +517,8 @@ audioInputSelect.onchange = async () => {
 
 /** Set sink ID for all audio elements based on the latest output device selection. */
 audioOutputSelect.onchange = async () => {
+  const deviceLabel = getSelectedDevice(audioOutputSelect);
+  logi(`Selected output device: ${deviceLabel}`); 
   await changeAudioOutput();
 };
 
