@@ -18,9 +18,18 @@ const gumMuteCheckbox = document.getElementById('gum-mute');
 const gumConstraintsDiv = document.getElementById('gum-constraints');
 const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
+const gdmOptionsDiv = document.getElementById('gdm-options');
+const gdmTrackDiv = document.getElementById('gdm-track');
+const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const webAudioButton = document.getElementById('web-audio-start-stop');
 const gdmButton = document.getElementById('gdm');
+const gdmAecCheckbox = document.getElementById('gdm-aec');
+const gdmLocalAudioPlaybackCheckbox = document.getElementById('gdm-local-audio-playback');
+const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
 const gdmStopButton = document.getElementById('gdm-stop');
+const gdmMuteCheckbox = document.getElementById('gdm-mute');
+const gdmAudio = document.getElementById('gdm-audio');
+const gdmPlayAudioButton = document.getElementById('gdm-play-audio');
 const errorElement = document.getElementById('error-message');
 
 import { logi, logw, prettyJson } from './utils.js';
@@ -46,6 +55,15 @@ gumStopButton.disabled = true;
 gdmStopButton.disabled = true;
 gumMuteCheckbox.disabled = true;
 gumAecCheckbox.disabled = false;
+gdmAecCheckbox.disabled = false;
+gdmLocalAudioPlaybackCheckbox.disabled = false;
+gdmSystemAudioCheckbox.disabled = false;
+gdmMuteCheckbox.disabled = true;
+
+class apiEnum {
+  static GUM = 'gUM';
+  static GDM = 'gDM';
+}
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
@@ -60,11 +78,12 @@ const loge = (error) => {
   console.error(error);
 };
 
-function updateSourceLabel(element) {
+function updateSourceLabel(element, api) {
+  const stream = (api == apiEnum.GUM ? gumStream : gdmStream);
   // Get the label of the source currently attached to the audio element.
   let source;
-  if (element.srcObject && gumStream) {
-    const [track] = gumStream.getAudioTracks();
+  if (element.srcObject && stream) {
+    const [track] = stream.getAudioTracks();
     source = track.label;
   } else if (element.src) {
     source = element.src;
@@ -76,7 +95,7 @@ function updateSourceLabel(element) {
 
 /** Extend the audio element with three extra properties. */
 function updateAudioElement(element, sinkId, label) {
-  updateSourceLabel(element);
+  // updateSourceLabel(element);
   // Extend the audio element with custom properties for logging purposes.
   element.currentSinkId = sinkId;
   element.currentSinkLabel = label;
@@ -148,7 +167,15 @@ function clearGumInfoContainer() {
   });
 };
 
-function printAudioSettings(settings) {
+function clearGdmInfoContainer() {
+  const container = document.querySelector('.gdm-info-container');
+  const divsToClear = container.querySelectorAll('div');
+  divsToClear.forEach(div => {
+    div.textContent = '';
+  });
+};
+
+function printGumAudioSettings(settings) {
   const propertiesToPrint = [
     'deviceId',
     'echoCancellation',
@@ -163,12 +190,36 @@ function printAudioSettings(settings) {
     obj[prop] = settings[prop];
     return obj;
   }, {});
-  gumConstraintsDiv.textContent = 'Active constraints:\n' + prettyJson(filteredSettings);
-  // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));
-    
+  gumConstraintsDiv.textContent = 'Active gUM constraints:\n' + prettyJson(filteredSettings);
+  // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));    
 };
 
-function printAudioTrack(track) {
+/**
+ * TODO: figure out why MediaStreamTrack: getSettings() does not include `systemAudio`.
+ * Note that the track will have "label: 'System Audio'" when sharing the screen.
+ */
+function printGdmAudioSettings(settings, systemAudio) {
+  const propertiesToPrint = [
+    'deviceId',
+    'suppressLocalAudioPlayback',
+    'echoCancellation',
+    'autoGainControl',
+    'noiseSuppression',
+    'sampleRate',
+    'voiceIsolation'
+  ];
+
+  //  MediaStreamTrack: getSettings is the current configuration of the track's constraints.
+  let filteredSettings = propertiesToPrint.reduce((obj, prop) => {
+    obj[prop] = settings[prop];
+    return obj;
+  }, {});
+  // Adding `systemAudio` manually from the supplied options.
+  filteredSettings.systemAudio = systemAudio;
+  gdmOptionsDiv.textContent = 'Active gDM options:\n' + prettyJson(filteredSettings);    
+};
+
+function printGumAudioTrack(track) {
   const propertiesToPrint = [
     'label',
     'id',
@@ -182,6 +233,22 @@ function printAudioTrack(track) {
     return obj;
   }, {});
   gumTrackDiv.textContent = 'MediaStreamTrack:\n' + prettyJson(filteredTrack);
+};
+
+function printGdmAudioTrack(track) {
+  const propertiesToPrint = [
+    'label',
+    'id',
+    'kind',
+    'enabled',
+    'muted',
+    'readyState'
+  ];
+  const filteredTrack = propertiesToPrint.reduce((obj, prop) => {
+    obj[prop] = track[prop];
+    return obj;
+  }, {});
+  gdmTrackDiv.textContent = 'MediaStreamTrack:\n' + prettyJson(filteredTrack);
 };
 
 function printMediaRecorder(recorder) {
@@ -201,9 +268,24 @@ gumAudio.addEventListener('play', (event) => {
     `[source: ${gumAudio.currentSourceLabel}][sink: ${gumAudio.currentSinkLabel}]`);
 });
 
+gumAudio.addEventListener('pause', (event) => {
+  logi('<audio> playout stops ' +
+    `[source: ${gumAudio.currentSourceLabel}][sink: ${gumAudio.currentSinkLabel}]`);
+});
+
 gumRecordedAudio.addEventListener('play', (event) => {
   logi('<audio> playout starts ' +
     `[source: ${gumRecordedAudio.currentSourceLabel}][sink: ${gumRecordedAudio.currentSinkLabel}]`);
+});
+
+gdmAudio.addEventListener('play', (event) => {
+  logi('<audio> playout starts ' +
+    `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
+});
+
+gdmAudio.addEventListener('pause', (event) => {
+  logi('<audio> playout stops ' +
+    `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
 });
 
 
@@ -343,8 +425,8 @@ async function changeAudioOutput() {
   const deviceId = audioOutputSelect.value;
   const deviceLabel = options[options.selectedIndex].label;
   
-  // Set sink ID on these three audio elements. 
-  const audioElements = [htmlAudio, gumAudio, gumRecordedAudio];
+  // Set sink ID on these four audio elements. 
+  const audioElements = [htmlAudio, gumAudio, gumRecordedAudio, gdmAudio];
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
@@ -416,8 +498,8 @@ async function startGum() {
     const [audioTrack] = gumStream.getAudioTracks();
  
     const settings = audioTrack.getSettings();
-    printAudioSettings(settings);
-    printAudioTrack(audioTrack);
+    printGumAudioSettings(settings);
+    printGumAudioTrack(audioTrack);
     // Store the currently selected and active (unique) microphone ID.
     openMicId = settings.deviceId;
      
@@ -432,7 +514,7 @@ async function startGum() {
     
     // The `autoplay` attribute of the audio tag is not set.
     gumAudio.srcObject = gumStream;
-    updateSourceLabel(gumAudio);
+    updateSourceLabel(gumAudio, apiEnum.GUM);
     if (gumPlayAudioButton.checked) {
       await gumAudio.play();
     }
@@ -465,7 +547,7 @@ function stopGum() {
     gumRecordButton.textContent = 'Start Recording';
     gumRecordButton.disabled = true;
     clearGumInfoContainer();
-    updateSourceLabel(gumAudio);
+    updateSourceLabel(gumAudio, apiEnum.GUM);
   }
 };
 
@@ -477,7 +559,7 @@ gumMuteCheckbox.onchange = () => {
   if (gumStream) {
     const [track] = gumStream.getAudioTracks();
     track.enabled = !gumMuteCheckbox.checked;
-    printAudioTrack(track);
+    printGumAudioTrack(track);
   }
 };
 
@@ -521,7 +603,7 @@ function startRecording() {
       gumRecordedAudio.src = '';
       gumRecordedAudio.srcObject = null;
       gumRecordedAudio.src = URL.createObjectURL(superBuffer);
-      updateSourceLabel(gumRecordedAudio);
+      updateSourceLabel(gumRecordedAudio, apiEnum.GUM);
       printMediaRecorder(mediaRecorder);
       gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
@@ -584,6 +666,9 @@ navigator.mediaDevices.ondevicechange = async () => {
   }
 };
 
+/**
+ * startGdm()
+ */
 async function startGdm() {
   logi('startGum()');
 
@@ -601,26 +686,44 @@ async function startGdm() {
      permitted. min and exact values are not permitted in constraints used in getDisplayMedia() calls.
    * https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints#instance_properties_of_shared_screen_tracks
    * See https://screen-sharing-controls.glitch.me/ for an example.
+   * See also https://developer.chrome.com/docs/web-platform/screen-sharing-controls/.
    */
   try {
     let options = {
       video: true,
       audio: {
-        echoCancellation: true,
-        suppressLocalAudioPlayback: true,
+        echoCancellation: gdmAecCheckbox.checked,
+        suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
       },
-      systemAudio: 'exclude',
+      systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
+      selfBrowserSurface: 'include',
+      monitorTypeSurfaces: 'include',
     };
-    
     logi('requested options to getDisplayMedia: ', prettyJson(options));
-    // MediaDevices: getDisplayMedia()
+    
+    /** 
+     * MediaDevices: getDisplayMedia()
+     */
     gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
     const [audioTrack] = gdmStream.getAudioTracks();
     logi(audioTrack);
     const settings = audioTrack.getSettings();
-    logi(settings);
+    printGdmAudioSettings(settings, options.systemAudio);
+    printGdmAudioTrack(audioTrack);
+    
+    // The `autoplay` attribute of the audio tag is not set.
+    gdmAudio.srcObject = gdmStream;
+    updateSourceLabel(gdmAudio, apiEnum.GDM);
+    if (gdmPlayAudioButton.checked) {
+      await gdmAudio.play();
+    }
+    
     gdmButton.disabled = true;
     gdmStopButton.disabled = false;
+    gdmAecCheckbox.disabled = true;
+    gdmLocalAudioPlaybackCheckbox.disabled = true;
+    gdmSystemAudioCheckbox.disabled = true;
+    gdmMuteCheckbox.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -635,13 +738,40 @@ function stopGdm() {
     const [track] = gdmStream.getAudioTracks();
     track.stop();
     gdmStream = null;
+    gdmAudio.srcObject = null;
     gdmButton.disabled = false;
     gdmStopButton.disabled = true;
+    gdmAecCheckbox.disabled = false;
+    gdmLocalAudioPlaybackCheckbox.disabled = false;
+    gdmSystemAudioCheckbox.disabled = false;
+    gdmMuteCheckbox.disabled = true;
+    clearGdmInfoContainer();
+    updateSourceLabel(gdmAudio, apiEnum.GDM);
   }
 };
 
 gdmStopButton.onclick = () => {
   stopGdm();
+};
+
+gdmMuteCheckbox.onclick = () => {
+  if (gdmStream) {
+    const [track] = gdmStream.getAudioTracks();
+    track.enabled = !gdmMuteCheckbox.checked;
+    printGdmAudioTrack(track);
+  }
+};
+
+gdmPlayAudioButton.onclick = async () => {
+  if (gdmPlayAudioButton.checked) {
+    if (gdmAudio.srcObject && gdmAudio.paused) {
+      await gdmAudio.play();
+    }
+  } else {
+    if (gdmAudio.srcObject && !gdmAudio.paused) {
+      await gdmAudio.pause();
+    }
+  }
 };
 
 
