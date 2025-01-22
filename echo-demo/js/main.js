@@ -198,7 +198,7 @@ function printGumAudioSettings(settings) {
     obj[prop] = settings[prop];
     return obj;
   }, {});
-  gumConstraintsDiv.textContent = 'Active gUM constraints:\n' + prettyJson(filteredSettings);
+  gumConstraintsDiv.textContent = '[gUM] Active constraints:\n' + prettyJson(filteredSettings);
   // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));    
 };
 
@@ -224,7 +224,7 @@ function printGdmAudioSettings(settings, systemAudio) {
   }, {});
   // Adding `systemAudio` manually from the supplied options.
   filteredSettings.systemAudio = systemAudio;
-  gdmOptionsDiv.textContent = 'Active gDM options:\n' + prettyJson(filteredSettings);    
+  gdmOptionsDiv.textContent = '[gDM] Active options:\n' + prettyJson(filteredSettings);    
 };
 
 function printGumAudioTrack(track) {
@@ -450,6 +450,7 @@ async function changeAudioOutput() {
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
+    logi(`Calling audioContext.setSinkId(${deviceId})`);
     await audioContext.setSinkId(deviceId);
     logi('[WebAudio] playout sets audio ouput ' +
       `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
