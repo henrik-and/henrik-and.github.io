@@ -105,23 +105,19 @@ function initWebAudio() {
     webAudioElement = document.getElementById('webaudio-audio');
     webAudioElement.volume = 0.7;
     
-    // const audioCtx = new AudioContext({
-    //   latencyHint: "interactive",
-    //   sampleRate: 44100,
-    //   sinkId: "bb04fea9a8318c96de0bd...",
-    // });
-    audioContext = new AudioContext();
-    
-    // When we create a media element source, the Web Audio API takes over the audio routing,
-    // meaning the audio now flows through the processing graph.
-    mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
-    mediaElementSource.connect(audioContext.destination);
-    
     webAudioElement.addEventListener('canplay', (event) => {
     });
     
     // Resume the audio context and start playing audio when play is pressed in the audio control. 
     webAudioElement.addEventListener('play', async (event) => {
+      if (!audioContext) {
+        // Context must be resumed (or created) after a user gesture on the page.
+        audioContext = new AudioContext();
+        // When we create a media element source, the Web Audio API takes over the audio routing,
+        // meaning the audio now flows through the processing graph.
+        mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
+        mediaElementSource.connect(audioContext.destination);
+      }
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
         logi('[WebAudio] playout starts ' +
