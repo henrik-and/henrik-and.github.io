@@ -628,7 +628,7 @@ function startGumRecording() {
       gumRecordedAudio.srcObject = null;
       gumRecordedAudio.src = URL.createObjectURL(superBuffer);
       updateSourceLabel(gumRecordedAudio);
-      printMediaRecorder(gumMediaRecorder);
+      printGumMediaRecorder(gumMediaRecorder);
       gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
