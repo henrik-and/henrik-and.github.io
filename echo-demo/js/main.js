@@ -129,7 +129,7 @@ function initWebAudio() {
         await audioContext.resume();
       }
       logi('[WebAudio] playout starts ' +
-          `[source: ${webAudioElement.currentSrc}][sink: ${audioContext.sinkId}]`);
+          `[source: ${webAudioElement.currentSrc}][sink: sink: ${getSelectedDevice(audioOutputSelect)}]`);
     });
     
     // Suspend the audio context and stop playing audio when pause is pressed in the audio control.
