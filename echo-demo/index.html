@@ -15,7 +15,19 @@
       <label for="audio-output">Audio output:</label>
       <select id="audio-output"></select>
     </div>
-  
+    
+    <figure>
+      <figcaption>Play audio on &lt;audio&gt; tag:</figcaption>
+      <!-- The file is copied from https://filesamples.com/formats/wav -->
+      <audio id="html-audio" controls loop>
+        <source src="audio/sample2.wav" type="audio/wav">
+      </audio>
+      <figcaption>Play audio in Web Audio context:</figcaption>
+      <audio id="webaudio-audio" controls loop>
+        <source src="audio/soft.mp3" type="audio/mp3">
+      </audio>
+    </figure>
+    
     <div class="gum-audio-container">
       <audio id="gum-audio"></audio>
     </div>
@@ -35,18 +47,6 @@
       <button id="gum-record" disabled>Start Recording</button>
       <audio id="gum-recorded-audio" controls></audio>
     </div>
-    
-    <figure>
-      <figcaption>Play audio on &lt;audio&gt; tag:</figcaption>
-      <!-- The file is copied from https://filesamples.com/formats/wav -->
-      <audio id="html-audio" controls loop>
-        <source src="audio/sample2.wav" type="audio/wav">
-      </audio>
-      <figcaption>Play audio in Web Audio context:</figcaption>
-      <audio id="webaudio-audio" controls loop>
-        <source src="audio/soft.mp3" type="audio/mp3">
-      </audio>
-    </figure>
     
     <div class="gum-info-container">
       <div id="gum-constraints"></div>
@@ -74,6 +74,8 @@
       <input id="gdm-play-audio" type="checkbox"></input>
       <label for="gdm-play-audio">Play</label>
       <div class="vertical-line"></div>
+      <button id="gdm-record" disabled>Start Recording</button>
+      <audio id="gdm-recorded-audio" controls></audio>
     </div>
     
     <div class="gdm-info-container">

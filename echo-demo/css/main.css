@@ -133,12 +133,10 @@ figure {
   display: flex;
   align-items: center;
   margin-left: 10px;
-}
-
-figure audio {
-}
-
-figure figcaption {
+  width: calc(100% - 20px);    /* Full viewport width minus 20px (10px left + 10px right) */
+  box-sizing: border-box;      /* Include padding and border in total width */
+  padding: 5px;               /* Optional padding inside the figure */
+  background-color: aliceblue; /* Light blue background color */
 }
 
 #html-audio {

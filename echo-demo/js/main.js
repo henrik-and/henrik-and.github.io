@@ -20,7 +20,6 @@ const gumTrackDiv = document.getElementById('gum-track');
 const gumRecordedDiv = document.getElementById('gum-recorded');
 const gdmOptionsDiv = document.getElementById('gdm-options');
 const gdmTrackDiv = document.getElementById('gdm-track');
-const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const webAudioButton = document.getElementById('web-audio-start-stop');
 const gdmButton = document.getElementById('gdm');
 const gdmAecCheckbox = document.getElementById('gdm-aec');
@@ -30,6 +29,9 @@ const gdmStopButton = document.getElementById('gdm-stop');
 const gdmMuteCheckbox = document.getElementById('gdm-mute');
 const gdmAudio = document.getElementById('gdm-audio');
 const gdmPlayAudioButton = document.getElementById('gdm-play-audio');
+const gdmRecordedAudio = document.getElementById('gdm-recorded-audio');
+const gdmRecordButton = document.getElementById('gdm-record');
+const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const errorElement = document.getElementById('error-message');
 
 import { logi, logw, prettyJson } from './utils.js';
@@ -48,8 +50,10 @@ let webAudioElement;
 let mediaElementSource;
 let gumStream;
 let gdmStream;
-let mediaRecorder;
-let recordedBlobs;
+let gumMediaRecorder;
+let gumRecordedBlobs;
+let gdmMediaRecorder;
+let gdmRecordedBlobs;
 
 gumStopButton.disabled = true;
 gdmStopButton.disabled = true;
@@ -59,11 +63,6 @@ gdmAecCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
 gdmMuteCheckbox.disabled = true;
-
-class apiEnum {
-  static GUM = 'gUM';
-  static GDM = 'gDM';
-}
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
@@ -78,8 +77,8 @@ const loge = (error) => {
   console.error(error);
 };
 
-function updateSourceLabel(element, api) {
-  const stream = (api == apiEnum.GUM ? gumStream : gdmStream);
+function updateSourceLabel(element) {
+  const stream = (element.tag === 'gUM' ? gumStream : gdmStream);
   // Get the label of the source currently attached to the audio element.
   let source;
   if (element.srcObject && stream) {
@@ -95,7 +94,7 @@ function updateSourceLabel(element, api) {
 
 /** Extend the audio element with three extra properties. */
 function updateAudioElement(element, sinkId, label) {
-  // updateSourceLabel(element);
+  updateSourceLabel(element);
   // Extend the audio element with custom properties for logging purposes.
   element.currentSinkId = sinkId;
   element.currentSinkLabel = label;
@@ -144,9 +143,10 @@ function initWebAudio() {
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
-  
+    
   htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
+  htmlAudio.tag = 'HTML';
    
   htmlAudio.addEventListener('play', (event) => {
     logi('<audio> playout starts ' +
@@ -154,6 +154,14 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   });
   
   await initWebAudio();
+  
+  [gumAudio, gumRecordedAudio].forEach((element) => {
+    element.tag = 'gUM';
+  });
+  [gdm].forEach((element) => {
+    element.tag = 'gDM';
+  });
+
   
   // Set default sink and source for all audio elements and the audio context.
   changeAudioOutput();
@@ -232,7 +240,7 @@ function printGumAudioTrack(track) {
     obj[prop] = track[prop];
     return obj;
   }, {});
-  gumTrackDiv.textContent = 'MediaStreamTrack:\n' + prettyJson(filteredTrack);
+  gumTrackDiv.textContent = '[gUM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
 };
 
 function printGdmAudioTrack(track) {
@@ -248,10 +256,10 @@ function printGdmAudioTrack(track) {
     obj[prop] = track[prop];
     return obj;
   }, {});
-  gdmTrackDiv.textContent = 'MediaStreamTrack:\n' + prettyJson(filteredTrack);
+  gdmTrackDiv.textContent = '[gDM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
 };
 
-function printMediaRecorder(recorder) {
+function printGumMediaRecorder(recorder) {
   const propertiesToPrint = [
     'mimeType',
     'state'
@@ -260,7 +268,19 @@ function printMediaRecorder(recorder) {
     obj[prop] = recorder[prop];
     return obj;
   }, {});
-  gumRecordedDiv.textContent = 'MediaRecorder:\n' + prettyJson(filteredRecorder);
+  gumRecordedDiv.textContent = '[gUM] MediaRecorder:\n' + prettyJson(filteredRecorder);
+};
+
+function printGdmMediaRecorder(recorder) {
+  const propertiesToPrint = [
+    'mimeType',
+    'state'
+  ];
+  const filteredRecorder = propertiesToPrint.reduce((obj, prop) => {
+    obj[prop] = recorder[prop];
+    return obj;
+  }, {});
+  gdmRecordedDiv.textContent = '[gDM] MediaRecorder:\n' + prettyJson(filteredRecorder);
 };
 
 gumAudio.addEventListener('play', (event) => {
@@ -503,18 +523,22 @@ async function startGum() {
     // Store the currently selected and active (unique) microphone ID.
     openMicId = settings.deviceId;
      
-    audioTrack.onmute = () => {
-      logi('MediaStreamTrack.onmute: ' + audioTrack.label);
-      printAudioTrack(audioTrack);
+    audioTrack.onmute = (event) => {
+      logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      printGdmAudioTrack(audioTrack);
+    }
+    audioTrack.onunmute = (event) => {
+      logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      printGdmAudioTrack(audioTrack);
     };
-    audioTrack.onunmute = () => {
-      logi('MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printAudioTrack(audioTrack);
-    };
+    audioTrack.addEventListener('ended', () => {
+      logi('[gUM] MediaStreamTrack.ended: ' + audioTrack.label);
+      stopGdm();
+    });
     
     // The `autoplay` attribute of the audio tag is not set.
     gumAudio.srcObject = gumStream;
-    updateSourceLabel(gumAudio, apiEnum.GUM);
+    updateSourceLabel(gumAudio);
     if (gumPlayAudioButton.checked) {
       await gumAudio.play();
     }
@@ -547,7 +571,7 @@ function stopGum() {
     gumRecordButton.textContent = 'Start Recording';
     gumRecordButton.disabled = true;
     clearGumInfoContainer();
-    updateSourceLabel(gumAudio, apiEnum.GUM);
+    updateSourceLabel(gumAudio);
   }
 };
 
@@ -575,7 +599,7 @@ gumPlayAudioButton.onclick = async () => {
   }
 };
 
-function startRecording() {
+function startGumRecording() {
   if (!gumStream) {
     return;
   }
@@ -583,7 +607,7 @@ function startRecording() {
   gumRecordedAudio.src = '';
   gumRecordedAudio.disabled = true;
   
-  recordedBlobs = [];
+  gumRecordedBlobs = [];
   const options = {mimeType};
   if (!MediaRecorder.isTypeSupported(mimeType)) {
     console.error(`MediaRecorder does not support mimeType: ${mimeType}`);
@@ -591,46 +615,46 @@ function startRecording() {
   }
   
   try {
-    mediaRecorder = new MediaRecorder(gumStream, options);
+    gumMediaRecorder = new MediaRecorder(gumStream, options);
     gumRecordButton.textContent = 'Stop Recording';
     
-    mediaRecorder.onstart = (event) => {
-      printMediaRecorder(mediaRecorder);
+    gumMediaRecorder.onstart = (event) => {
+      printGumMediaRecorder(gumMediaRecorder);
     };
     
-    mediaRecorder.onstop = (event) => {
-      const superBuffer = new Blob(recordedBlobs, {type: mimeType});
+    gumMediaRecorder.onstop = (event) => {
+      const superBuffer = new Blob(gumRecordedBlobs, {type: mimeType});
       gumRecordedAudio.src = '';
       gumRecordedAudio.srcObject = null;
       gumRecordedAudio.src = URL.createObjectURL(superBuffer);
-      updateSourceLabel(gumRecordedAudio, apiEnum.GUM);
-      printMediaRecorder(mediaRecorder);
+      updateSourceLabel(gumRecordedAudio);
+      printMediaRecorder(gumMediaRecorder);
       gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
-    mediaRecorder.ondataavailable = (event) => {
+    gumMediaRecorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
-        recordedBlobs.push(event.data);
+        gumRecordedBlobs.push(event.data);
       }
     };
     
-    mediaRecorder.start();
+    gumMediaRecorder.start();
   } catch (e) {
     log(e); 
   }
 };
 
-function stopRecording() {
-  if (mediaRecorder) {
-    mediaRecorder.stop();
+function stopGumRecording() {
+  if (gumMediaRecorder) {
+    gumMediaRecorder.stop();
   }
 };
 
 gumRecordButton.onclick = () => {
   if (gumRecordButton.textContent === 'Start Recording') {
-    startRecording();
+    startGumRecording();
   } else {
-    stopRecording();
+    stopGumRecording();
     gumRecordButton.textContent = 'Start Recording';
   }
 };
@@ -663,6 +687,71 @@ navigator.mediaDevices.ondevicechange = async () => {
   // Restart the active stream using the new device selection.
   if (gumStream) {
     await startGum();
+  }
+};
+
+function startGdmRecording() {
+  if (!gdmStream) {
+    return;
+  }
+  
+  gdmRecordedAudio.src = '';
+  gdmRecordedAudio.disabled = true;
+  
+  gdmRecordedBlobs = [];
+  const options = {mimeType};
+  if (!MediaRecorder.isTypeSupported(mimeType)) {
+    console.error(`MediaRecorder does not support mimeType: ${mimeType}`);
+    return;
+  }
+  
+  try {
+    // Start by cutting out the audio track part of the `gdmStream`.
+    const [audioTrack] = gdmStream.getAudioTracks();
+    // Next, create a new MediaStream which only contains the gDM audio track
+    const gdmAudioOnlyStream = new MediaStream([audioTrack])
+    // Now we can create a MediaRecorder which records audio only.
+    gdmMediaRecorder = new MediaRecorder(gdmAudioOnlyStream, options);
+    gdmRecordButton.textContent = 'Stop Recording';
+    
+    gdmMediaRecorder.onstart = (event) => {
+      printGdmMediaRecorder(gdmMediaRecorder);
+    };
+    
+    gdmMediaRecorder.onstop = (event) => {
+      const superBuffer = new Blob(gdmRecordedBlobs, {type: mimeType});
+      gdmRecordedAudio.src = '';
+      gdmRecordedAudio.srcObject = null;
+      gdmRecordedAudio.src = URL.createObjectURL(superBuffer);
+      updateSourceLabel(gdmRecordedAudio);
+      printGdmMediaRecorder(gdmMediaRecorder);
+      gdmRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
+    };
+    
+    gdmMediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        gdmRecordedBlobs.push(event.data);
+      }
+    };
+    
+    gdmMediaRecorder.start();
+  } catch (e) {
+    loge(e); 
+  }
+};
+
+function stopGdmRecording() {
+  if (gdmMediaRecorder) {
+    gdmMediaRecorder.stop();
+  }
+};
+
+gdmRecordButton.onclick = () => {
+  if (gdmRecordButton.textContent === 'Start Recording') {
+    startGdmRecording();
+  } else {
+    stopGdmRecording();
+    gdmRecordButton.textContent = 'Start Recording';
   }
 };
 
@@ -706,14 +795,26 @@ async function startGdm() {
      */
     gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
     const [audioTrack] = gdmStream.getAudioTracks();
-    logi(audioTrack);
     const settings = audioTrack.getSettings();
     printGdmAudioSettings(settings, options.systemAudio);
     printGdmAudioTrack(audioTrack);
     
+    audioTrack.onmute = (event) => {
+      logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      printGdmAudioTrack(audioTrack);
+    }
+    audioTrack.onunmute = (event) => {
+      logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      printGdmAudioTrack(audioTrack);
+    };
+    audioTrack.addEventListener('ended', () => {
+      logi('[gDM] MediaStreamTrack.ended: ' + audioTrack.label);
+      stopGdm();
+    });
+    
     // The `autoplay` attribute of the audio tag is not set.
     gdmAudio.srcObject = gdmStream;
-    updateSourceLabel(gdmAudio, apiEnum.GDM);
+    updateSourceLabel(gdmAudio);
     if (gdmPlayAudioButton.checked) {
       await gdmAudio.play();
     }
@@ -724,6 +825,7 @@ async function startGdm() {
     gdmLocalAudioPlaybackCheckbox.disabled = true;
     gdmSystemAudioCheckbox.disabled = true;
     gdmMuteCheckbox.disabled = false;
+    gdmRecordButton.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -745,8 +847,10 @@ function stopGdm() {
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
     gdmMuteCheckbox.disabled = true;
+    gdmRecordButton.textContent = 'Start Recording';
+    gdmRecordButton.disabled = true;
     clearGdmInfoContainer();
-    updateSourceLabel(gdmAudio, apiEnum.GDM);
+    updateSourceLabel(gdmAudio);
   }
 };
 
