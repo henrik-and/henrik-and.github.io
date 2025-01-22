@@ -59,8 +59,12 @@ label[for="gdm-play-audio"] {
 }
 
 .gum-container {
+  position: relative; /* To position the comment relative to the container */
+  border: 1px solid darkgrey;
+  padding: 5px; /* Add some padding inside the container */
   display: flex;
   align-items: center;
+  margin: 0 10px; /* Add 10px margins to the left and right */
 }
 
 .gum-container > * { /* Select all direct children of .gum-container */
@@ -69,6 +73,16 @@ label[for="gdm-play-audio"] {
 
 .gum-container > *:last-child { /* Select the last child */
   margin-right: 0;  /* Remove margin from the last element */
+}
+
+.comment {
+  position: absolute;
+  top: -8px;  /* Adjust this value to fine-tune vertical position */
+  left: 10px; /* Adjust this value to fine-tune horizontal position */
+  background-color: white;
+  padding: 2px 5px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .web-audio-container {
@@ -117,8 +131,12 @@ label[for="gdm-play-audio"] {
 }
 
 .gdm-container {
+  position: relative; /* To position the comment relative to the container */
+  border: 1px solid darkgrey;
+  padding: 5px; /* Add some padding inside the container */
   display: flex;
   align-items: center;
+  margin: 0 10px; /* Add 10px margins to the left and right */
 }
 
 .gdm-container > * { /* Select all direct children of .gdm-container */

@@ -119,6 +119,7 @@ function initWebAudio() {
         mediaElementSource.connect(audioContext.destination);
         
         const deviceId = audioOutputSelect.value;
+        // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
         if (deviceId !== 'default') {
         await audioContext.setSinkId(deviceId);
           logi('[WebAudio] playout sets audio ouput ' +
