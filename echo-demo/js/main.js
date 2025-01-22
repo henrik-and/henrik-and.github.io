@@ -117,12 +117,17 @@ function initWebAudio() {
         // meaning the audio now flows through the processing graph.
         mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
         mediaElementSource.connect(audioContext.destination);
+        
+        const deviceId = audioOutputSelect.value;
+        await audioContext.setSinkId(deviceId);
+        logi('[WebAudio] playout sets audio ouput ' +
+          `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
       }
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
-        logi('[WebAudio] playout starts ' +
+      }
+      logi('[WebAudio] playout starts ' +
           `[source: ${webAudioElement.currentSrc}][sink: ${audioContext.sinkId}]`);
-      }; 
     });
     
     // Suspend the audio context and stop playing audio when pause is pressed in the audio control.
@@ -446,7 +451,6 @@ async function changeAudioOutput() {
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
-    logi(`Calling audioContext.setSinkId(${deviceId})`);
     await audioContext.setSinkId(deviceId);
     logi('[WebAudio] playout sets audio ouput ' +
       `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
