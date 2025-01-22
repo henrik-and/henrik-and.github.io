@@ -119,9 +119,11 @@ function initWebAudio() {
         mediaElementSource.connect(audioContext.destination);
         
         const deviceId = audioOutputSelect.value;
+        if (deviceId !== 'default') {
         await audioContext.setSinkId(deviceId);
-        logi('[WebAudio] playout sets audio ouput ' +
-          `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+          logi('[WebAudio] playout sets audio ouput ' +
+            `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+        }
       }
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
@@ -451,9 +453,11 @@ async function changeAudioOutput() {
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
-    await audioContext.setSinkId(deviceId);
-    logi('[WebAudio] playout sets audio ouput ' +
-      `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+    if (deviceId !== 'default') {
+      await audioContext.setSinkId(deviceId);
+      logi('[WebAudio] playout sets audio ouput ' +
+        `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+    }
   }
 }
 
