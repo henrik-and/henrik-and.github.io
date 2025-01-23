@@ -33,6 +33,8 @@ const gdmRecordedAudio = document.getElementById('gdm-recorded-audio');
 const gdmRecordButton = document.getElementById('gdm-record');
 const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const errorElement = document.getElementById('error-message');
+const gumCanvas = document.getElementById('gum-level-meter');
+const gdmCanvas = document.getElementById('gdm-level-meter');
 
 import { logi, logw, prettyJson } from './utils.js';
 
@@ -54,6 +56,8 @@ let gumMediaRecorder;
 let gumRecordedBlobs;
 let gdmMediaRecorder;
 let gdmRecordedBlobs;
+let gumAnimationFrameId;
+let gdmAnimationFrameId;
 
 gumStopButton.disabled = true;
 gdmStopButton.disabled = true;
@@ -100,6 +104,10 @@ function updateAudioElement(element, sinkId, label) {
   element.currentSinkLabel = label;
 }
 
+/**
+ * Creates a WebAudio context and plays audio with a MediaElementAudioSourceNode
+ * as source.
+ */
 function initWebAudio() {
   try {
     webAudioElement = document.getElementById('webaudio-audio');
@@ -113,6 +121,8 @@ function initWebAudio() {
       if (!audioContext) {
         // Context must be resumed (or created) after a user gesture on the page.
         audioContext = new AudioContext();
+        // The MediaElementAudioSourceNode interface represents an audio source consisting of an
+        // HTML <audio> or <video> element. It is an AudioNode that acts as an audio source.
         // When we create a media element source, the Web Audio API takes over the audio routing,
         // meaning the audio now flows through the processing graph.
         mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
@@ -490,6 +500,52 @@ async function attachSinkId(element, sinkId, label) {
   }
 }
 
+/** 
+ * Encapsulates a level meter given a specified canvas object.
+ * @param canvas The canvas object on which the level meter is rendered.
+ * @return Returns the frame ID from `requestAnimationFrame` so the animation can be stopped.
+ */
+
+async function startLevelMeter(stream, canvas) {
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+  
+  const source = audioContext.createMediaStreamSource(stream);
+  const analyser = audioContext.createAnalyser();
+  // An FFT size of 256 is sufficient for our purposes. Results in 128 frequency bins. 
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.9;
+  source.connect(analyser);
+  
+  const canvasCtx = canvas.getContext('2d');
+  
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  
+  let animationFrameId;
+  function drawLevelMeter() {
+    // Schedule the drawLevelMeter() function to run on the next animation frame.
+    // requestAnimationFrame ensures the drawLevelMeter() function runs once per display refresh
+    // (e.g., 60Hz = ~16.67ms interval).
+    // The ID is assigned directly to `animationFrameId`.
+    animationFrameId = requestAnimationFrame(drawLevelMeter);
+
+    analyser.getByteFrequencyData(dataArray);
+    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+    
+    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    canvasCtx.fillStyle = 'lime';
+    canvasCtx.fillRect(0, 0, (average / 256) * canvas.width, canvas.height);
+  }
+
+  drawLevelMeter();
+  
+  // Wait for one frame to be rendered to ensure a valid `animationFrameId`.
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  return animationFrameId;
+};
+
 async function startGum() {
   logi('startGum()');
   // Get the input device ID based on what is currently selected.
@@ -548,6 +604,8 @@ async function startGum() {
     if (gumPlayAudioButton.checked) {
       await gumAudio.play();
     }
+    
+    gumAnimationFrameId = startLevelMeter(gumStream, gumCanvas);
        
     gumButton.disabled = true;
     gumStopButton.disabled = false;
@@ -557,7 +615,12 @@ async function startGum() {
   } catch (e) {
     loge(e);
   }
-}  
+}
+
+function foo() {
+  const a = [1,2,3];
+  return a;
+};
 
 gumButton.onclick = async () => {
   await startGum();
@@ -578,6 +641,11 @@ function stopGum() {
     gumRecordButton.disabled = true;
     clearGumInfoContainer();
     updateSourceLabel(gumAudio);
+    if (gumAnimationFrameId) {
+      cancelAnimationFrame(gumAnimationFrameId);
+      const canvasCtx = gumCanvas.getContext('2d');
+      canvasCtx.clearRect(0, 0, gumCanvas.width, gumCanvas.height);
+    }
   }
 };
 
@@ -825,6 +893,8 @@ async function startGdm() {
       await gdmAudio.play();
     }
     
+    gdmAnimationFrameId = startLevelMeter(gdmStream, gdmCanvas);
+    
     gdmButton.disabled = true;
     gdmStopButton.disabled = false;
     gdmAecCheckbox.disabled = true;
@@ -857,6 +927,11 @@ function stopGdm() {
     gdmRecordButton.disabled = true;
     clearGdmInfoContainer();
     updateSourceLabel(gdmAudio);
+    if (gdmAnimationFrameId) {
+      cancelAnimationFrame(gdmAnimationFrameId);
+      const canvasCtx = gdmCanvas.getContext('2d');
+      canvasCtx.clearRect(0, 0, gdmCanvas.width, gdmCanvas.height);
+    }
   }
 };
 

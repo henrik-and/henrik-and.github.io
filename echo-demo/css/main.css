@@ -103,6 +103,14 @@ label[for="gdm-play-audio"] {
   margin-left: 10px;
 }
 
+canvas {
+  display: inline-block;
+  border: 1px solid black;
+  background-color: rgb(250, 250, 250);
+  width: 60px;
+  height: 20px;
+}
+
 .gum-info-container div {
   margin-left: 10px;
   margin-bottom: 10px;
