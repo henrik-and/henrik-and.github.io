@@ -7,17 +7,17 @@
 
 const audioInputSelect = document.getElementById('audio-input');
 const audioOutputSelect = document.getElementById('audio-output');
-const gumAudio = document.getElementById('gum-audio');
+const gumAudios = document.querySelectorAll('.gum-audio');
 const gumPlayAudioButton = document.getElementById('gum-play-audio');
-const gumRecordedAudio = document.getElementById('gum-recorded-audio');
-const gumButton = document.getElementById('gum');
-const gumRecordButton = document.getElementById('gum-record');
+const gumRecordedAudios = document.querySelectorAll('.gum-recorded-audio');
+const gumButtons = document.querySelectorAll('.gum');
+const gumRecordButtons = document.querySelectorAll('.gum-record');
 const gumAecCheckbox = document.getElementById('gum-aec');
-const gumStopButton = document.getElementById('gum-stop');
-const gumMuteCheckbox = document.getElementById('gum-mute');
-const gumConstraintsDiv = document.getElementById('gum-constraints');
-const gumTrackDiv = document.getElementById('gum-track');
-const gumRecordedDiv = document.getElementById('gum-recorded');
+const gumStopButtons = document.querySelectorAll('.gum-stop');
+const gumMuteCheckboxes = document.querySelectorAll('.gum-mute');
+const gumConstraintsDivs = document.querySelectorAll('.gum-constraints');
+const gumTrackDivs = document.querySelectorAll('.gum-track');
+const gumRecordedDivs = document.querySelectorAll('.gum-recorded');
 const gdmOptionsDiv = document.getElementById('gdm-options');
 const gdmTrackDiv = document.getElementById('gdm-track');
 const webAudioButton = document.getElementById('web-audio-start-stop');
@@ -33,7 +33,7 @@ const gdmRecordedAudio = document.getElementById('gdm-recorded-audio');
 const gdmRecordButton = document.getElementById('gdm-record');
 const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const errorElement = document.getElementById('error-message');
-const gumCanvas = document.getElementById('gum-level-meter');
+const gumCanvases = document.querySelectorAll('.gum-level-meter');
 const gdmCanvas = document.getElementById('gdm-level-meter');
 
 import { logi, logw, prettyJson } from './utils.js';
@@ -50,23 +50,29 @@ let htmlAudio;
 let audioContext;
 let webAudioElement;
 let mediaElementSource;
-let gumStream;
+// Index 0 <=> gUM with audio processing.
+// Index 1 <=> gUM without audio processing.
+let gumStreams = [null, null];
 let gdmStream;
-let gumMediaRecorder;
-let gumRecordedBlobs;
+let gumMediaRecorders = [null, null];
+let gumRecordedBlobs = [null, null];
 let gdmMediaRecorder;
 let gdmRecordedBlobs;
 let gumAnimationFrameId;
 let gdmAnimationFrameId;
 
-gumStopButton.disabled = true;
+gumStopButtons.forEach((button) => {
+  button.disabled = true;
+});
 gdmStopButton.disabled = true;
-gumMuteCheckbox.disabled = true;
+gumMuteCheckboxes.forEach((checkbox) => {
+  checkbox.disabled = true;
+});
 gumAecCheckbox.disabled = false;
+gdmMuteCheckbox.disabled = false;
 gdmAecCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
-gdmMuteCheckbox.disabled = true;
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
@@ -82,7 +88,17 @@ const loge = (error) => {
 };
 
 function updateSourceLabel(element) {
-  const stream = (element.tag === 'gUM' ? gumStream : gdmStream);
+  let stream;
+  if (element.tag === 'gUM') {
+    // Convert gumAudios NodeList to an array.
+    const gumAudiosArray = Array.from(gumAudios); 
+    // Find the corresponding stream in gumStreams based on the element's index in gumAudios.
+    const index = gumAudiosArray.indexOf(element); 
+    stream = gumStreams[index]; 
+  } else {
+    stream = gdmStream;
+  }
+  
   // Get the label of the source currently attached to the audio element.
   let source;
   if (element.srcObject && stream) {
@@ -169,13 +185,13 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   
   await initWebAudio();
   
-  [gumAudio, gumRecordedAudio].forEach((element) => {
+  gumAudios.forEach((element) => {
     element.tag = 'gUM';
   });
-  [gdm].forEach((element) => {
-    element.tag = 'gDM';
+  gumRecordedAudios.forEach((element) => {
+    element.tag = 'gUM';
   });
-
+  gdmAudio.tag = 'gDM';
   
   // Set default sink and source for all audio elements and the audio context.
   changeAudioOutput();
@@ -197,7 +213,7 @@ function clearGdmInfoContainer() {
   });
 };
 
-function printGumAudioSettings(settings) {
+function printGumAudioSettings(settings, index) {
   const propertiesToPrint = [
     'deviceId',
     'echoCancellation',
@@ -212,7 +228,7 @@ function printGumAudioSettings(settings) {
     obj[prop] = settings[prop];
     return obj;
   }, {});
-  gumConstraintsDiv.textContent = '[gUM] Active constraints:\n' + prettyJson(filteredSettings);
+  gumConstraintsDivs[index].textContent = '[gUM] Active constraints:\n' + prettyJson(filteredSettings);
   // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));    
 };
 
@@ -241,7 +257,7 @@ function printGdmAudioSettings(settings, systemAudio) {
   gdmOptionsDiv.textContent = '[gDM] Active options:\n' + prettyJson(filteredSettings);    
 };
 
-function printGumAudioTrack(track) {
+function printGumAudioTrack(track, index) {
   const propertiesToPrint = [
     'label',
     'id',
@@ -254,7 +270,7 @@ function printGumAudioTrack(track) {
     obj[prop] = track[prop];
     return obj;
   }, {});
-  gumTrackDiv.textContent = '[gUM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
+  gumTrackDivs[index].textContent = '[gUM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
 };
 
 function printGdmAudioTrack(track) {
@@ -273,7 +289,7 @@ function printGdmAudioTrack(track) {
   gdmTrackDiv.textContent = '[gDM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
 };
 
-function printGumMediaRecorder(recorder) {
+function printGumMediaRecorder(recorder, index) {
   const propertiesToPrint = [
     'mimeType',
     'state'
@@ -282,7 +298,7 @@ function printGumMediaRecorder(recorder) {
     obj[prop] = recorder[prop];
     return obj;
   }, {});
-  gumRecordedDiv.textContent = '[gUM] MediaRecorder:\n' + prettyJson(filteredRecorder);
+  gumRecordedDivs[index].textContent = '[gUM] MediaRecorder:\n' + prettyJson(filteredRecorder);
 };
 
 function printGdmMediaRecorder(recorder) {
@@ -297,19 +313,25 @@ function printGdmMediaRecorder(recorder) {
   gdmRecordedDiv.textContent = '[gDM] MediaRecorder:\n' + prettyJson(filteredRecorder);
 };
 
-gumAudio.addEventListener('play', (event) => {
-  logi('<audio> playout starts ' +
-    `[source: ${gumAudio.currentSourceLabel}][sink: ${gumAudio.currentSinkLabel}]`);
+gumAudios.forEach(audio => {
+  audio.addEventListener('play', (event) => {
+    logi('<audio> playout starts ' +
+      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
+  });
 });
 
-gumAudio.addEventListener('pause', (event) => {
-  logi('<audio> playout stops ' +
-    `[source: ${gumAudio.currentSourceLabel}][sink: ${gumAudio.currentSinkLabel}]`);
+gumAudios.forEach(audio => {
+  audio.addEventListener('pause', (event) => {
+    logi('<audio> playout stops ' +
+      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
+  });
 });
 
-gumRecordedAudio.addEventListener('play', (event) => {
-  logi('<audio> playout starts ' +
-    `[source: ${gumRecordedAudio.currentSourceLabel}][sink: ${gumRecordedAudio.currentSinkLabel}]`);
+gumRecordedAudios.forEach(audio => {
+  audio.addEventListener('play', (event) => {
+    logi('<audio> playout starts ' +
+      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
+  });
 });
 
 gdmAudio.addEventListener('play', (event) => {
@@ -320,32 +342,6 @@ gdmAudio.addEventListener('play', (event) => {
 gdmAudio.addEventListener('pause', (event) => {
   logi('<audio> playout stops ' +
     `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
-});
-
-
-gumAudio.addEventListener('error', (event) => {
-  let errorMessage = "An error occurred while trying to play the audio.";
-
-  switch (gumAudio.error.code) {
-    case gumAudio.error.MEDIA_ERR_ABORTED:
-      errorMessage = "Audio playback was aborted.";
-      break;
-    case gumAudio.error.MEDIA_ERR_NETWORK:
-      errorMessage = "A network error occurred.";
-      break;
-    case gumAudio.error.MEDIA_ERR_DECODE:
-      errorMessage = "The audio file could not be decoded.";
-      break;
-    case gumAudio.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-      // Check if the error is specifically due to a 404 (Not Found)
-      if (gumAudio.networkState === gumAudio.NETWORK_NO_SOURCE) {
-        errorMessage = "The audio file could not be found.";
-      } else {
-        errorMessage = "The audio source is not supported.";
-      } 
-      break;
-  }
-  console.error(errorMessage);
 });
 
 function updateDevices(listElement, devices) {
@@ -459,8 +455,8 @@ async function changeAudioOutput() {
   const deviceId = audioOutputSelect.value;
   const deviceLabel = options[options.selectedIndex].label;
   
-  // Set sink ID on these four audio elements. 
-  const audioElements = [htmlAudio, gumAudio, gumRecordedAudio, gdmAudio];
+  // Set sink ID on these six audio elements using the spreading operator (...). 
+  const audioElements = [htmlAudio, ...gumAudios, ...gumRecordedAudios, gdmAudio];
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
@@ -546,8 +542,7 @@ async function startLevelMeter(stream, canvas) {
   return animationFrameId;
 };
 
-async function startGum() {
-  logi('startGum()');
+async function startGum(index) {
   // Get the input device ID based on what is currently selected.
   const audioSource = audioInputSelect.value;
   const audioSink = audioOutputSelect.value;
@@ -557,31 +552,37 @@ async function startGum() {
   }
 
   // Close existing streams.
-  stopGum();
+  stopGum(index);
   
   try {
     // Constraints without any `deviceId` property in the `audio` object.
+    // Use non-processed constraints as default.
     let constraints = {
       audio: {
-        echoCancellation: {exact: gumAecCheckbox.checked},
-        autoGainControl: {exact: true},
-        noiseSuppression: {exact: true},
+        echoCancellation: {exact: false},
+        autoGainControl: {exact: false},
+        noiseSuppression: {exact: false},
       },
       video: false,
     };
+    // Set processed constraints for the first guM stream.
+    if (index === 0) {
+      constraints.audio.echoCancellation = {exact: gumAecCheckbox.checked};
+      constraints.audio.autoGainControl = {exact: true};
+      constraints.audio.noiseSuppression = {exact: true};
+    }
     // Add a `deviceId` property to the `audio` object if a microphone is available.
     if (hasMicrophone) {
       constraints.audio.deviceId = audioSource ? {exact: audioSource} : undefined;
     }
-    
     logi('requested constraints to getUserMedia: ', prettyJson(constraints));
     // MediaDevices: getUserMedia()
-    gumStream = await navigator.mediaDevices.getUserMedia(constraints);
-    const [audioTrack] = gumStream.getAudioTracks();
+    gumStreams[index] = await navigator.mediaDevices.getUserMedia(constraints);
+    const [audioTrack] = gumStreams[index].getAudioTracks();
  
     const settings = audioTrack.getSettings();
-    printGumAudioSettings(settings);
-    printGumAudioTrack(audioTrack);
+    printGumAudioSettings(settings, index);
+    printGumAudioTrack(audioTrack, index);
     // Store the currently selected and active (unique) microphone ID.
     openMicId = settings.deviceId;
      
@@ -599,89 +600,94 @@ async function startGum() {
     });
     
     // The `autoplay` attribute of the audio tag is not set.
-    gumAudio.srcObject = gumStream;
-    updateSourceLabel(gumAudio);
+    gumAudios[index].srcObject = gumStreams[index];
+    updateSourceLabel(gumAudios[index]);
     if (gumPlayAudioButton.checked) {
       await gumAudio.play();
     }
     
-    gumAnimationFrameId = startLevelMeter(gumStream, gumCanvas);
+    gumAnimationFrameId = startLevelMeter(gumStreams[index], gumCanvases[index]);
        
-    gumButton.disabled = true;
-    gumStopButton.disabled = false;
-    gumMuteCheckbox.disabled = false;
+    gumButtons[index].disabled = true;
+    gumStopButtons[index].disabled = false;
+    gumMuteCheckboxes[index].disabled = false;
     gumAecCheckbox.disabled = true;
-    gumRecordButton.disabled = false;
+    gumRecordButtons[index].disabled = false;
   } catch (e) {
     loge(e);
   }
 }
 
-function foo() {
-  const a = [1,2,3];
-  return a;
-};
+gumButtons.forEach((button, index) => {
+  button.onclick = async () => {
+    await startGum(index);
+  };
+});
 
-gumButton.onclick = async () => {
-  await startGum();
-};
-
-function stopGum() {
-  if (gumStream) {
-    const [track] = gumStream.getAudioTracks();
+function stopGum(index) {
+  if (gumStreams[index]) {
+    const [track] = gumStreams[index].getAudioTracks();
     track.stop();
-    gumStream = null;
+    gumStreams[index] = null;
     openMicId = undefined;
-    gumAudio.srcObject = null;
-    gumButton.disabled = false;
-    gumStopButton.disabled = true;
-    gumMuteCheckbox.disabled = true;
+    gumAudios[index]  .srcObject = null;
+    gumButtons[index].disabled = false;
+    gumStopButtons[index].disabled = true;
+    gumMuteCheckboxes[index].disabled = true;
     gumAecCheckbox.disabled = false;
-    gumRecordButton.textContent = 'Start Recording';
-    gumRecordButton.disabled = true;
+    gumRecordButtons[index].textContent = 'Start Recording';
+    gumRecordButtons[index].disabled = true;
     clearGumInfoContainer();
-    updateSourceLabel(gumAudio);
+    updateSourceLabel(gumAudios[index]);
     if (gumAnimationFrameId) {
       cancelAnimationFrame(gumAnimationFrameId);
-      const canvasCtx = gumCanvas.getContext('2d');
-      canvasCtx.clearRect(0, 0, gumCanvas.width, gumCanvas.height);
+      const canvasCtx = gumCanvases[index].getContext('2d');
+      canvasCtx.clearRect(0, 0, gumCanvases[index].width, gumCanvases[index].height);
     }
   }
 };
 
-gumStopButton.onclick = () => {
-  stopGum();
+gumStopButtons.forEach((button, index) => {
+  button.onclick = () => {
+  stopGum(index);
 };
+});
 
-gumMuteCheckbox.onchange = () => {
-  if (gumStream) {
-    const [track] = gumStream.getAudioTracks();
-    track.enabled = !gumMuteCheckbox.checked;
-    printGumAudioTrack(track);
-  }
-};
+gumMuteCheckboxes.forEach((checkbox, index) => {
+  checkbox.onchange = () => {
+    if (gumStreams[index]) {
+      const [track] = gumStreams[index].getAudioTracks();
+      track.enabled = !checkbox.checked;
+      printGumAudioTrack(track, index);
+    }
+  };
+});
+
 
 gumPlayAudioButton.onclick = async () => {
+  // TODO()
+  const index = 0;
+  const audio = gumAudios[index];
   if (gumPlayAudioButton.checked) {
-    if (gumAudio.srcObject && gumAudio.paused) {
-      await gumAudio.play();
+    if (audio.srcObject && audio.paused) {
+      await audio.play();
     }
   } else {
-    if (gumAudio.srcObject && !gumAudio.paused) {
-      await gumAudio.pause();
+    if (audio.srcObject && !audio.paused) {
+      await audio.pause();
     }
   }
 };
 
-function startGumRecording() {
-  if (!gumStream) {
+function startGumRecording(index) {
+  if (!gumStreams[index]) {
     return;
   }
   
-  gumRecordedAudio.src = '';
-  gumRecordedAudio.disabled = true;
+  gumRecordedAudios[index].src = '';
+  gumRecordedAudios[index].disabled = true;
   
-  gumRecordedBlobs = [];
+  gumRecordedBlobs[index] = [];
   const options = {mimeType};
   if (!MediaRecorder.isTypeSupported(mimeType)) {
     console.error(`MediaRecorder does not support mimeType: ${mimeType}`);
@@ -689,58 +695,62 @@ function startGumRecording() {
   }
   
   try {
-    gumMediaRecorder = new MediaRecorder(gumStream, options);
-    gumRecordButton.textContent = 'Stop Recording';
+    gumMediaRecorders[index] = new MediaRecorder(gumStreams[index], options);
+    gumRecordButtons[index].textContent = 'Stop Recording';
     
-    gumMediaRecorder.onstart = (event) => {
-      printGumMediaRecorder(gumMediaRecorder);
+    gumMediaRecorders[index].onstart = (event) => {
+      printGumMediaRecorder(gumMediaRecorders[index], index);
     };
     
-    gumMediaRecorder.onstop = (event) => {
-      const superBuffer = new Blob(gumRecordedBlobs, {type: mimeType});
-      gumRecordedAudio.src = '';
-      gumRecordedAudio.srcObject = null;
-      gumRecordedAudio.src = URL.createObjectURL(superBuffer);
-      updateSourceLabel(gumRecordedAudio);
-      printGumMediaRecorder(gumMediaRecorder);
-      gumRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
+    gumMediaRecorders[index].onstop = (event) => {
+      const superBuffer = new Blob(gumRecordedBlobs[index], {type: mimeType});
+      gumRecordedAudios[index].src = '';
+      gumRecordedAudios[index].srcObject = null;
+      gumRecordedAudios[index].src = URL.createObjectURL(superBuffer);
+      updateSourceLabel(gumRecordedAudios[index]);
+      printGumMediaRecorder(gumMediaRecorders[index], index);
+      gumRecordedDivs[index].textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
-    gumMediaRecorder.ondataavailable = (event) => {
+    gumMediaRecorders[index].ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
-        gumRecordedBlobs.push(event.data);
+        gumRecordedBlobs[index].push(event.data);
       }
     };
     
-    gumMediaRecorder.start();
+    gumMediaRecorders[index].start();
   } catch (e) {
-    log(e); 
+    loge(e); 
   }
 };
 
-function stopGumRecording() {
-  if (gumMediaRecorder) {
-    gumMediaRecorder.stop();
+function stopGumRecording(index) {
+  if (gumMediaRecorders[index]) {
+    gumMediaRecorders[index].stop();
   }
 };
 
-gumRecordButton.onclick = () => {
-  if (gumRecordButton.textContent === 'Start Recording') {
-    startGumRecording();
-  } else {
-    stopGumRecording();
-    gumRecordButton.textContent = 'Start Recording';
+gumRecordButtons.forEach((button, index) => {
+  button.onclick = () => {
+    if (button.textContent === 'Start Recording') {
+      startGumRecording(index);
+    } else {
+      stopGumRecording(index);
+      button.textContent = 'Start Recording';
+    }
   }
-};
+});
 
 /** Restart the local MediaStreamTrack (gUM) when a new input device is selected. */
 audioInputSelect.onchange = async () => {
   const deviceLabel = getSelectedDevice(audioInputSelect);
   logi(`Selected input device: ${deviceLabel}`); 
-  // Restart the active stream using the new device selection.
-  if (gumStream) {
-    await startGum();
-  }
+  // Restart active streams using the new device selection.
+  gumStreams.forEach(async (stream, index) => {
+    if (stream) {
+      await startGum(index);
+    }
+  });
 };
 
 /** Set sink ID for all audio elements based on the latest output device selection. */
@@ -758,10 +768,12 @@ navigator.mediaDevices.ondevicechange = async () => {
   logw('MediaDevices: devicechange');
   // Refresh the list (and selection) of available devices.
   await enumerateDevices();
-  // Restart the active stream using the new device selection.
-  if (gumStream) {
-    await startGum();
-  }
+  // Restart active streams using the new device selection.
+  gumStreams.forEach(async (stream, index) => {
+    if (stream) {
+      await startGum(index);
+    }
+  });
 };
 
 function startGdmRecording() {
@@ -833,8 +845,6 @@ gdmRecordButton.onclick = () => {
  * startGdm()
  */
 async function startGdm() {
-  logi('startGum()');
-
   // Close existing streams.
   stopGdm();
   
@@ -942,8 +952,8 @@ gdmStopButton.onclick = () => {
 gdmMuteCheckbox.onclick = () => {
   if (gdmStream) {
     const [track] = gdmStream.getAudioTracks();
-    track.enabled = !gdmMuteCheckbox.checked;
-    printGdmAudioTrack(track);
+    track.enabled = !checkbox;
+    printGdmAudioTrack(track, index);
   }
 };
 
