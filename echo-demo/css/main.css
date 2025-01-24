@@ -75,6 +75,10 @@ label[for="gdm-play-audio"] {
   margin-right: 0;  /* Remove margin from the last element */
 }
 
+.empty-placeholder {
+  width: 40px;
+}
+
 .comment {
   position: absolute;
   top: -8px;  /* Adjust this value to fine-tune vertical position */
