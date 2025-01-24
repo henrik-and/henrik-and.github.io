@@ -8,7 +8,7 @@
 const audioInputSelect = document.getElementById('audio-input');
 const audioOutputSelect = document.getElementById('audio-output');
 const gumAudios = document.querySelectorAll('.gum-audio');
-const gumPlayAudioButton = document.getElementById('gum-play-audio');
+const gumPlayAudioCheckboxes = document.querySelectorAll('.gum-play-audio');
 const gumRecordedAudios = document.querySelectorAll('.gum-recorded-audio');
 const gumButtons = document.querySelectorAll('.gum');
 const gumRecordButtons = document.querySelectorAll('.gum-record');
@@ -602,8 +602,8 @@ async function startGum(index) {
     // The `autoplay` attribute of the audio tag is not set.
     gumAudios[index].srcObject = gumStreams[index];
     updateSourceLabel(gumAudios[index]);
-    if (gumPlayAudioButton.checked) {
-      await gumAudio.play();
+    if (gumPlayAudioCheckboxes[index].checked) {
+      await gumAudios[index].play();
     }
     
     gumAnimationFrameId = startLevelMeter(gumStreams[index], gumCanvases[index]);
@@ -664,20 +664,20 @@ gumMuteCheckboxes.forEach((checkbox, index) => {
 });
 
 
-gumPlayAudioButton.onclick = async () => {
-  // TODO()
-  const index = 0;
-  const audio = gumAudios[index];
-  if (gumPlayAudioButton.checked) {
-    if (audio.srcObject && audio.paused) {
-      await audio.play();
+gumPlayAudioCheckboxes.forEach((checkbox, index) => {
+  checkbox.onclick = async () => {
+    const audio = gumAudios[index];
+    if (checkbox.checked) {
+      if (audio.srcObject && audio.paused) {
+        await audio.play();
+      }
+    } else {
+      if (audio.srcObject && !audio.paused) {
+        await audio.pause();
+      }
     }
-  } else {
-    if (audio.srcObject && !audio.paused) {
-      await audio.pause();
-    }
-  }
-};
+  };
+});
 
 function startGumRecording(index) {
   if (!gumStreams[index]) {
