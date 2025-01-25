@@ -17,6 +17,11 @@ label[for="gum-aec"] {
   margin: 0;
 }
 
+label[for="gum-aec-hidden"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gdm-local-audio-playback"] {
   font-size: 13.3333px;
   margin: 0;
@@ -35,7 +40,12 @@ label[for="gum-mute"] {
 label[for="gdm-mute"] {
   font-size: 13.3333px;
   margin: 0;
-}
+
+
+label[for="gum-aec"] {
+  font-size: 13.3333px;
+  margin: 0;
+}}
 
 label[for="gum-play-audio"] {
   font-size: 13.3333px;
@@ -70,8 +80,8 @@ label[for="gdm-play-audio"] {
   margin-right: 0;  /* Remove margin from the last element */
 }
 
-.empty-placeholder {
-  width: 40px;
+.hidden-element {
+  visibility: hidden; /* Hides the element but preserves layout space */
 }
 
 .comment {
