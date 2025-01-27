@@ -12,6 +12,11 @@ button, input, select, form {
   margin-bottom: 20px;
 }
 
+label[for="restart-audio"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gum-aec"] {
   font-size: 13.3333px;
   margin: 0;

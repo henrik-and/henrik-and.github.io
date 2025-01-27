@@ -774,14 +774,18 @@ audioOutputSelect.onchange = async () => {
  */
 navigator.mediaDevices.ondevicechange = async () => {
   logw('MediaDevices: devicechange');
+  const restartAudioCheckbox = document.getElementById('restart-audio');
   // Refresh the list (and selection) of available devices.
   await enumerateDevices();
-  // Restart active streams using the new device selection.
-  gumStreams.forEach(async (stream, index) => {
-    if (stream) {
-      await startGum(index);
-    }
-  });
+  if (restartAudioCheckbox.checked) {
+    logi('Restarting active audio streams...');
+    // Restart active streams using the new device selection.
+    gumStreams.forEach(async (stream, index) => {
+      if (stream) {
+        await startGum(index);
+      }
+    });
+  }
 };
 
 function startGdmRecording() {
