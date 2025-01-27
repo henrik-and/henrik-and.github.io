@@ -58,7 +58,7 @@ let gumMediaRecorders = [null, null];
 let gumRecordedBlobs = [null, null];
 let gdmMediaRecorder;
 let gdmRecordedBlobs;
-let gumAnimationFrameId;
+let gumAnimationFrameId = [null, null];
 let gdmAnimationFrameId;
 
 gumStopButtons.forEach((button) => {
@@ -543,11 +543,13 @@ async function startLevelMeter(stream, canvas) {
 };
 
 async function startGum(index) {
+  logi(`startGum(${index})`);
   // Get the input device ID based on what is currently selected.
   const audioSource = audioInputSelect.value;
   const audioSink = audioOutputSelect.value;
   // Avoid opening the same device again.
   if (hasMicrophonePermission && openMicId === audioSource) {
+    logi(`${audioSource}) is already open`);
     return;
   }
 
@@ -606,13 +608,15 @@ async function startGum(index) {
       await gumAudios[index].play();
     }
     
-    gumAnimationFrameId = startLevelMeter(gumStreams[index], gumCanvases[index]);
+    gumAnimationFrameId[index] = startLevelMeter(gumStreams[index], gumCanvases[index]);
        
     gumButtons[index].disabled = true;
     gumStopButtons[index].disabled = false;
     gumMuteCheckboxes[index].disabled = false;
     gumAecCheckbox.disabled = true;
     gumRecordButtons[index].disabled = false;
+    
+    logi(`opened media stream [id=${gumStreams[index].id}]`);
   } catch (e) {
     loge(e);
   }
@@ -625,26 +629,30 @@ gumButtons.forEach((button, index) => {
 });
 
 function stopGum(index) {
-  if (gumStreams[index]) {
-    const [track] = gumStreams[index].getAudioTracks();
-    track.stop();
-    gumStreams[index] = null;
-    openMicId = undefined;
-    gumAudios[index]  .srcObject = null;
-    gumButtons[index].disabled = false;
-    gumStopButtons[index].disabled = true;
-    gumMuteCheckboxes[index].disabled = true;
-    gumAecCheckbox.disabled = false;
-    gumRecordButtons[index].textContent = 'Start Recording';
-    gumRecordButtons[index].disabled = true;
-    clearGumInfoContainer();
-    updateSourceLabel(gumAudios[index]);
-    if (gumAnimationFrameId) {
-      cancelAnimationFrame(gumAnimationFrameId);
-      const canvasCtx = gumCanvases[index].getContext('2d');
-      canvasCtx.clearRect(0, 0, gumCanvases[index].width, gumCanvases[index].height);
-    }
+  if (!gumStreams[index]) {
+    return;
   }
+  logi(`stopGum(${index})`);
+  const streamId = gumStreams[index].id;
+  const [track] = gumStreams[index].getAudioTracks();
+  track.stop();
+  gumStreams[index] = null;
+  openMicId = undefined;
+  gumAudios[index]  .srcObject = null;
+  gumButtons[index].disabled = false;
+  gumStopButtons[index].disabled = true;
+  gumMuteCheckboxes[index].disabled = true;
+  gumAecCheckbox.disabled = false;
+  gumRecordButtons[index].textContent = 'Start Recording';
+  gumRecordButtons[index].disabled = true;
+  clearGumInfoContainer();
+  updateSourceLabel(gumAudios[index]);
+  if (gumAnimationFrameId[index]) {
+    cancelAnimationFrame(gumAnimationFrameId[index]);
+    const canvasCtx = gumCanvases[index].getContext('2d');
+    canvasCtx.clearRect(0, 0, gumCanvases[index].width, gumCanvases[index].height);
+  }
+  logi(`closed media stream [id=${streamId}]`);
 };
 
 gumStopButtons.forEach((button, index) => {
