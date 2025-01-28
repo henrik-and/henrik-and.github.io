@@ -76,7 +76,7 @@ gdmSystemAudioCheckbox.disabled = false;
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
-const mimeType = 'audio/mp4';
+const mimeType = 'audio/webm; codecs=pcm';
 
 // const styles = window.getComputedStyle(gumButton);
 // const fontSize = styles.getPropertyValue('font-size');
