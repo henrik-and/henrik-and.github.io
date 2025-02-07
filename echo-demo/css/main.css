@@ -69,6 +69,11 @@ label[for="gdm-play-audio"] {
   margin: 0;
 }
 
+label[for="gum-play-audio-context"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 .gum-audio-container {
 }
 

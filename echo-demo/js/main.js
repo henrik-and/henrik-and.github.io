@@ -9,6 +9,7 @@ const audioInputSelect = document.getElementById('audio-input');
 const audioOutputSelect = document.getElementById('audio-output');
 const gumAudios = document.querySelectorAll('.gum-audio');
 const gumPlayAudioCheckboxes = document.querySelectorAll('.gum-play-audio');
+const gumPlayAudioContextCheckboxes = document.querySelectorAll('.gum-play-audio-context');
 const gumRecordedAudios = document.querySelectorAll('.gum-recorded-audio');
 const gumButtons = document.querySelectorAll('.gum');
 const gumRecordButtons = document.querySelectorAll('.gum-record');
@@ -53,6 +54,7 @@ let mediaElementSource;
 // Index 0 <=> gUM with audio processing.
 // Index 1 <=> gUM without audio processing.
 let gumStreams = [null, null];
+let mediaStreamSources = [null, null];
 let gdmStream;
 let gumMediaRecorders = [null, null];
 let gumRecordedBlobs = [null, null];
@@ -156,7 +158,7 @@ function initWebAudio() {
         await audioContext.resume();
       }
       logi('[WebAudio] playout starts ' +
-          `[source: ${webAudioElement.currentSrc}][sink: sink: ${getSelectedDevice(audioOutputSelect)}]`);
+          `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
     });
     
     // Suspend the audio context and stop playing audio when pause is pressed in the audio control.
@@ -497,6 +499,49 @@ async function attachSinkId(element, sinkId, label) {
 }
 
 /** 
+ * Start/Stop playing out captured audio on WebAudio audio contexts.
+ */
+async function playoutOnAudioContext(index) {
+  const stream = gumStreams[index];
+  if (!stream) {
+    return;
+  }
+  
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+  
+  // Always stop playout first.
+  if (mediaStreamSources[index]) {
+    mediaStreamSources[index].disconnect();
+    mediaStreamSources[index] = null;
+  }
+  
+  const [track] = stream.getAudioTracks();
+  const source = track.label;
+  const deviceId = audioOutputSelect.value;
+  
+  // Start playing out the local stream on a WebAudio context usin an MSS.
+  if (gumPlayAudioContextCheckboxes[index].checked) {
+    mediaStreamSources[index] = audioContext.createMediaStreamSource(stream);
+    mediaStreamSources[index].connect(audioContext.destination);
+    
+    // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
+    if (deviceId !== 'default') {
+      await audioContext.setSinkId(deviceId);
+      logi('[WebAudio] local playout sets audio output ' +
+          `[source: ${source}}][sink: ${getSelectedDevice(audioOutputSelect)}]`)
+    }
+    logi('[WebAudio] local playout starts ' +
+          `[source: ${source}}][sink: ${getSelectedDevice(audioOutputSelect)}]`)
+    logi(`AudioContext.sinkId=${audioContext.sinkId}`);
+  } else {
+    logi('[WebAudio] local playout stops ' +
+          `[source: ${source}}][sink: ${getSelectedDevice(audioOutputSelect)}]`)
+  }
+}
+
+/** 
  * Encapsulates a level meter given a specified canvas object.
  * @param canvas The canvas object on which the level meter is rendered.
  * @return Returns the frame ID from `requestAnimationFrame` so the animation can be stopped.
@@ -608,6 +653,8 @@ async function startGum(index) {
       await gumAudios[index].play();
     }
     
+    playoutOnAudioContext(index);
+    
     gumAnimationFrameId[index] = startLevelMeter(gumStreams[index], gumCanvases[index]);
        
     gumButtons[index].disabled = true;
@@ -652,6 +699,10 @@ function stopGum(index) {
     const canvasCtx = gumCanvases[index].getContext('2d');
     canvasCtx.clearRect(0, 0, gumCanvases[index].width, gumCanvases[index].height);
   }
+  if (mediaStreamSources[index]) {
+    mediaStreamSources[index].disconnect();
+    mediaStreamSources[index] = null;
+  }
   logi(`closed media stream [id=${streamId}]`);
 };
 
@@ -684,6 +735,12 @@ gumPlayAudioCheckboxes.forEach((checkbox, index) => {
         await audio.pause();
       }
     }
+  };
+});
+
+gumPlayAudioContextCheckboxes.forEach((checkbox, index) => {
+  checkbox.onclick = async () => {
+    playoutOnAudioContext(index);
   };
 });
 
