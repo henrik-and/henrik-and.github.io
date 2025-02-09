@@ -78,8 +78,6 @@ gdmSystemAudioCheckbox.disabled = false;
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
-const mimeType = 'audio/webm; codecs=pcm';
-
 // const styles = window.getComputedStyle(gumButton);
 // const fontSize = styles.getPropertyValue('font-size');
 // logi('button font-size: ' + fontSize);
@@ -88,6 +86,24 @@ const loge = (error) => {
   errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
   console.error(error);
 };
+
+function getSupportedMimeType() {
+  const mimeTypes = [
+    'audio/webm; codecs=pcm',
+    'audio/webm; codecs=opus',
+    'audio/webm',
+    'audio/ogg; codecs=opus',
+    'audio/ogg',
+  ];
+
+  for (const mimeType of mimeTypes) {
+    if (MediaRecorder.isTypeSupported(mimeType)) {
+      return mimeType;
+    }
+  }
+
+  return null; // No supported mimeType found
+}
 
 function updateSourceLabel(element) {
   let stream;
@@ -147,11 +163,15 @@ function initWebAudio() {
         mediaElementSource.connect(audioContext.destination);
         
         const deviceId = audioOutputSelect.value;
-        // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
-        if (deviceId !== 'default') {
-        await audioContext.setSinkId(deviceId);
-          logi('[WebAudio] playout sets audio ouput ' +
-            `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+        if ('setSinkId' in audioContext) {
+          // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
+          if (deviceId !== 'default') {
+          await audioContext.setSinkId(deviceId);
+            logi('[WebAudio] playout sets audio ouput ' +
+              `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+          }
+        } else {
+          logw('AudioContext.setSinkId is not supported');
         }
       }
       if (audioContext.state === 'suspended') {
@@ -753,9 +773,11 @@ function startGumRecording(index) {
   gumRecordedAudios[index].disabled = true;
   
   gumRecordedBlobs[index] = [];
+  // Get the best possible mime type given what the browser supports.
+  const mimeType = getSupportedMimeType();
   const options = {mimeType};
-  if (!MediaRecorder.isTypeSupported(mimeType)) {
-    console.error(`MediaRecorder does not support mimeType: ${mimeType}`);
+  if (!mimeType) {
+    console.error(`MediaRecorder only support very few mime types`);
     return;
   }
   
