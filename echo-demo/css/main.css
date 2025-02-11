@@ -49,17 +49,32 @@ label[for="gum-mute"] {
   margin: 0;
 }
 
-label[for="gdm-mute"] {
+label[for="gdm-aec"] {
   font-size: 13.3333px;
   margin: 0;
+}
 
-
-label[for="gum-aec"] {
+label[for="gdm-prefer-current-tab"] {
   font-size: 13.3333px;
   margin: 0;
-}}
+}
+
+label[for="gdm-self-browser-surface"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
+label[for="gdm-surface-switching"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
 
 label[for="gum-play-audio"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
+label[for="gdm-mute"] {
   font-size: 13.3333px;
   margin: 0;
 }

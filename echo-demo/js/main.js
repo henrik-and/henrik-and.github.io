@@ -26,6 +26,9 @@ const gdmButton = document.getElementById('gdm');
 const gdmAecCheckbox = document.getElementById('gdm-aec');
 const gdmLocalAudioPlaybackCheckbox = document.getElementById('gdm-local-audio-playback');
 const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
+const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
+const gdmSelfBrowserSurfaceCheckbox = document.getElementById('gdm-self-browser-surface');
+const gdmSurfaceSwitchingCheckbox = document.getElementById('gdm-surface-switching');
 const gdmStopButton = document.getElementById('gdm-stop');
 const gdmMuteCheckbox = document.getElementById('gdm-mute');
 const gdmAudio = document.getElementById('gdm-audio');
@@ -75,6 +78,9 @@ gdmMuteCheckbox.disabled = false;
 gdmAecCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
+gdmPreferCurrentTabCheckbox.disabled = false;
+gdmSelfBrowserSurfaceCheckbox.disabled = false;
+gdmSurfaceSwitchingCheckbox.disabled = false;
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
@@ -258,7 +264,7 @@ function printGumAudioSettings(settings, index) {
  * TODO: figure out why MediaStreamTrack: getSettings() does not include `systemAudio`.
  * Note that the track will have "label: 'System Audio'" when sharing the screen.
  */
-function printGdmAudioSettings(settings, systemAudio) {
+function printGdmAudioSettings(settings, options) {
   const propertiesToPrint = [
     'deviceId',
     'suppressLocalAudioPlayback',
@@ -268,14 +274,18 @@ function printGdmAudioSettings(settings, systemAudio) {
     'sampleRate',
     'voiceIsolation'
   ];
-
-  //  MediaStreamTrack: getSettings is the current configuration of the track's constraints.
+  
+  // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
   let filteredSettings = propertiesToPrint.reduce((obj, prop) => {
     obj[prop] = settings[prop];
     return obj;
   }, {});
-  // Adding `systemAudio` manually from the supplied options.
-  filteredSettings.systemAudio = systemAudio;
+  // Adding more properties manually from the supplied options.
+  filteredSettings.systemAudio = options.systemAudio;
+  filteredSettings.preferCurrentTab = options.preferCurrentTab;
+  filteredSettings.selfBrowserSurface = options.selfBrowserSurface;
+  filteredSettings.surfaceSwitching = options.surfaceSwitching;
+  filteredSettings.monitorTypeSurfaces = options.monitorTypeSurfaces;
   gdmOptionsDiv.textContent = '[gDM] Active options:\n' + prettyJson(filteredSettings);    
 };
 
@@ -657,11 +667,11 @@ async function startGum(index) {
      
     audioTrack.onmute = (event) => {
       logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGdmAudioTrack(audioTrack);
+      printGumAudioTrack(audioTrack);
     }
     audioTrack.onunmute = (event) => {
       logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGdmAudioTrack(audioTrack);
+      printGumAudioTrack(audioTrack);
     };
     audioTrack.addEventListener('ended', () => {
       logi('[gUM] MediaStreamTrack.ended: ' + audioTrack.label);
@@ -962,7 +972,9 @@ async function startGdm() {
         suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
-      selfBrowserSurface: 'include',
+      preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
+      selfBrowserSurface: (gdmSelfBrowserSurfaceCheckbox.checked ? 'include' : 'exclude'),
+      surfaceSwitching: (gdmSurfaceSwitchingCheckbox.checked ? 'include' : 'exclude'),
       monitorTypeSurfaces: 'include',
     };
     logi('requested options to getDisplayMedia: ', prettyJson(options));
@@ -973,7 +985,7 @@ async function startGdm() {
     gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
     const [audioTrack] = gdmStream.getAudioTracks();
     const settings = audioTrack.getSettings();
-    printGdmAudioSettings(settings, options.systemAudio);
+    printGdmAudioSettings(settings, options);
     printGdmAudioTrack(audioTrack);
     
     audioTrack.onmute = (event) => {
@@ -1003,6 +1015,9 @@ async function startGdm() {
     gdmAecCheckbox.disabled = true;
     gdmLocalAudioPlaybackCheckbox.disabled = true;
     gdmSystemAudioCheckbox.disabled = true;
+    gdmPreferCurrentTabCheckbox.disabled = true;
+    gdmSelfBrowserSurfaceCheckbox.disabled = true;
+    gdmSurfaceSwitchingCheckbox.disabled = true;
     gdmMuteCheckbox.disabled = false;
     gdmRecordButton.disabled = false;
   } catch (e) {
@@ -1023,6 +1038,9 @@ function stopGdm() {
     gdmButton.disabled = false;
     gdmStopButton.disabled = true;
     gdmAecCheckbox.disabled = false;
+    gdmPreferCurrentTabCheckbox.disabled = false;
+    gdmSelfBrowserSurfaceCheckbox.disabled = false;
+    gdmSurfaceSwitchingCheckbox.disabled = false;
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
     gdmMuteCheckbox.disabled = true;
