@@ -382,12 +382,12 @@ async function ensureMicrophonePermission() {
   logi('ensureMicrophonePermission');
   const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
   logi(permissionStatus);
-  if (permissionStatus.state === 'granted') {
-    return;
-  } else if (permissionStatus.state === 'prompt') {
+  if (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt') {
     try {
+      logi('getUserMedia');
       // Call mediaDevices.getUserMedia() to explicitly ask for microphone permissions.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // await new Promise(resolve => setTimeout(resolve, 1000));
       if (stream) {
         const [track] = stream.getAudioTracks();
         track.stop();
