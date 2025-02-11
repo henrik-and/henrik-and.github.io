@@ -379,20 +379,23 @@ function updateDevices(listElement, devices) {
 
 /** Ensures that we always start with microphone permission. */
 async function ensureMicrophonePermission() {
+  logi('ensureMicrophonePermission');
   const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+  logi(permissionStatus);
   if (permissionStatus.state === 'granted') {
     return;
+  } else if (permissionStatus.state === 'prompt') {
+    try {
+      // Call mediaDevices.getUserMedia() to explicitly ask for microphone permissions.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (stream) {
+        const [track] = stream.getAudioTracks();
+        track.stop();
+      }
+    } catch (e) {
+      loge(e);
+    };
   }
-  try {
-    // Call mediaDevices.getUserMedia() to explicitly ask for microphone permissions.
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    if (stream) {
-      const [track] = stream.getAudioTracks();
-      track.stop();
-    }
-  } catch (e) {
-    loge(e);
-  };
 }
 
 function getSelectedDevice(select) {
