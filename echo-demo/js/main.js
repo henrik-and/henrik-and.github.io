@@ -15,6 +15,7 @@ const gumButtons = document.querySelectorAll('.gum');
 const gumRecordButtons = document.querySelectorAll('.gum-record');
 const gumAecCheckbox = document.getElementById('gum-aec');
 const gumNsCheckbox = document.getElementById('gum-ns');
+const gumAgcCheckbox = document.getElementById('gum-agc');
 const gumStopButtons = document.querySelectorAll('.gum-stop');
 const gumMuteCheckboxes = document.querySelectorAll('.gum-mute');
 const gumConstraintsDivs = document.querySelectorAll('.gum-constraints');
@@ -76,6 +77,7 @@ gumMuteCheckboxes.forEach((checkbox) => {
 });
 gumAecCheckbox.disabled = false;
 gumNsCheckbox.disabled = false;
+gumAgcCheckbox.disabled = false;
 gdmMuteCheckbox.disabled = false;
 gdmAecCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
@@ -649,7 +651,7 @@ async function startGum(index) {
     // Set processed constraints for the first guM stream.
     if (index === 0) {
       constraints.audio.echoCancellation = {exact: gumAecCheckbox.checked};
-      constraints.audio.autoGainControl = {exact: true};
+      constraints.audio.autoGainControl = {exact: gumAgcCheckbox.checked};
       constraints.audio.noiseSuppression = {exact: gumNsCheckbox.checked};
     }
     // Add a `deviceId` property to the `audio` object if a microphone is available.
@@ -696,6 +698,7 @@ async function startGum(index) {
     gumMuteCheckboxes[index].disabled = false;
     gumAecCheckbox.disabled = true;
     gumNsCheckbox.disabled = true;
+    gumAgcCheckbox.disabled = true;
     gumRecordButtons[index].disabled = false;
     
     logi(`opened media stream [id=${gumStreams[index].id}]`);
@@ -726,6 +729,7 @@ function stopGum(index) {
   gumMuteCheckboxes[index].disabled = true;
   gumAecCheckbox.disabled = false;
   gumNsCheckbox.disabled = false;
+  gumAgcCheckbox.disabled = false;
   gumRecordButtons[index].textContent = 'Start Recording';
   gumRecordButtons[index].disabled = true;
   clearGumInfoContainer();

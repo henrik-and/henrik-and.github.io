@@ -29,12 +29,22 @@ label[for="gum-aec"] {
   margin: 0;
 }
 
+label[for="gum-agc"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gum-ns"] {
   font-size: 13.3333px;
   margin: 0;
 }
 
 label[for="gum-aec-hidden"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
+label[for="gum-agc-hidden"] {
   font-size: 13.3333px;
   margin: 0;
 }
