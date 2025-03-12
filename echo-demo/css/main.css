@@ -74,6 +74,16 @@ label[for="gdm-aec"] {
   margin: 0;
 }
 
+label[for="gdm-ns"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
+label[for="gdm-agc"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gdm-prefer-current-tab"] {
   font-size: 13.3333px;
   margin: 0;

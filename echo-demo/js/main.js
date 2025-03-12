@@ -26,6 +26,8 @@ const gdmTrackDiv = document.getElementById('gdm-track');
 const webAudioButton = document.getElementById('web-audio-start-stop');
 const gdmButton = document.getElementById('gdm');
 const gdmAecCheckbox = document.getElementById('gdm-aec');
+const gdmNsCheckbox = document.getElementById('gdm-ns');
+const gdmAgcCheckbox = document.getElementById('gdm-agc');
 const gdmLocalAudioPlaybackCheckbox = document.getElementById('gdm-local-audio-playback');
 const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
@@ -80,6 +82,8 @@ gumNsCheckbox.disabled = false;
 gumAgcCheckbox.disabled = false;
 gdmMuteCheckbox.disabled = false;
 gdmAecCheckbox.disabled = false;
+gdmNsCheckbox.disabled = false;
+gdmAgcCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
 gdmPreferCurrentTabCheckbox.disabled = false;
@@ -986,6 +990,8 @@ async function startGdm() {
       video: true,
       audio: {
         echoCancellation: gdmAecCheckbox.checked,
+        autoGainControl: gdmAgcCheckbox.checked,
+        noiseSuppression: gdmNsCheckbox.checked,
         suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
@@ -1031,6 +1037,8 @@ async function startGdm() {
       gdmButton.disabled = true;
       gdmStopButton.disabled = false;
       gdmAecCheckbox.disabled = true;
+      gdmNsCheckbox.disabled = true;
+      gdmAgcCheckbox.disabled = true;
       gdmLocalAudioPlaybackCheckbox.disabled = true;
       gdmSystemAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
@@ -1069,6 +1077,8 @@ function stopGdm() {
     gdmButton.disabled = false;
     gdmStopButton.disabled = true;
     gdmAecCheckbox.disabled = false;
+    gdmNsCheckbox.disabled = false;
+    gdmAgcCheckbox.disabled = false;
     gdmPreferCurrentTabCheckbox.disabled = false;
     gdmSelfBrowserSurfaceCheckbox.disabled = false;
     gdmSurfaceSwitchingCheckbox.disabled = false;
