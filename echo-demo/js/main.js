@@ -93,8 +93,14 @@ const selectors = [audioInputSelect, audioOutputSelect];
 // logi('button font-size: ' + fontSize);
 
 const loge = (error) => {
-  errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
-  console.error(error);
+  if (typeof error === 'object' && error !== null && 'name' in error && 'message' in error) {
+    errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
+  } else {
+    errorElement.textContent = error === '' ? '' : `ERROR: ${error}`;
+  }
+  if (error !== '') {
+    console.error(error);
+  }
 };
 
 function getSupportedMimeType() {
@@ -896,9 +902,11 @@ function startGdmRecording() {
   gdmRecordedAudio.disabled = true;
   
   gdmRecordedBlobs = [];
+  // Get the best possible mime type given what the browser supports.
+  const mimeType = getSupportedMimeType();
   const options = {mimeType};
-  if (!MediaRecorder.isTypeSupported(mimeType)) {
-    console.error(`MediaRecorder does not support mimeType: ${mimeType}`);
+  if (!mimeType) {
+    console.error(`MediaRecorder only support very few mime types`);
     return;
   }
   
@@ -973,6 +981,7 @@ async function startGdm() {
    * See also https://developer.chrome.com/docs/web-platform/screen-sharing-controls/.
    */
   try {
+    loge('');
     let options = {
       video: true,
       audio: {
@@ -992,42 +1001,54 @@ async function startGdm() {
      */
     gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
     const [audioTrack] = gdmStream.getAudioTracks();
-    const settings = audioTrack.getSettings();
-    printGdmAudioSettings(settings, options);
-    printGdmAudioTrack(audioTrack);
-    
-    audioTrack.onmute = (event) => {
-      logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+    if (audioTrack) {
+      const settings = audioTrack.getSettings();
+      printGdmAudioSettings(settings, options);
       printGdmAudioTrack(audioTrack);
+    
+      audioTrack.onmute = (event) => {
+        logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+        printGdmAudioTrack(audioTrack);
+      }
+      audioTrack.onunmute = (event) => {
+        logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+        printGdmAudioTrack(audioTrack);
+      };
+      audioTrack.addEventListener('ended', () => {
+        logi('[gDM] MediaStreamTrack.ended: ' + audioTrack.label);
+        stopGdm();
+      });
+      
+      // The `autoplay` attribute of the audio tag is not set.
+      gdmAudio.srcObject = gdmStream;
+      updateSourceLabel(gdmAudio);
+      if (gdmPlayAudioButton.checked) {
+        await gdmAudio.play();
+      }
+      
+      gdmAnimationFrameId = startLevelMeter(gdmStream, gdmCanvas);
+      
+      gdmButton.disabled = true;
+      gdmStopButton.disabled = false;
+      gdmAecCheckbox.disabled = true;
+      gdmLocalAudioPlaybackCheckbox.disabled = true;
+      gdmSystemAudioCheckbox.disabled = true;
+      gdmPreferCurrentTabCheckbox.disabled = true;
+      gdmSelfBrowserSurfaceCheckbox.disabled = true;
+      gdmSurfaceSwitchingCheckbox.disabled = true;
+      gdmMuteCheckbox.disabled = false;
+      gdmRecordButton.disabled = false;
+    } else {
+      let deviceId;
+      const [videoTrack] = gdmStream.getVideoTracks();
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        deviceId = settings.deviceId;
+        videoTrack.stop();
+        gdmStream = null;
+      }
+      loge(`No audio track exists for the selected source: ${deviceId}`);
     }
-    audioTrack.onunmute = (event) => {
-      logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGdmAudioTrack(audioTrack);
-    };
-    audioTrack.addEventListener('ended', () => {
-      logi('[gDM] MediaStreamTrack.ended: ' + audioTrack.label);
-      stopGdm();
-    });
-    
-    // The `autoplay` attribute of the audio tag is not set.
-    gdmAudio.srcObject = gdmStream;
-    updateSourceLabel(gdmAudio);
-    if (gdmPlayAudioButton.checked) {
-      await gdmAudio.play();
-    }
-    
-    gdmAnimationFrameId = startLevelMeter(gdmStream, gdmCanvas);
-    
-    gdmButton.disabled = true;
-    gdmStopButton.disabled = false;
-    gdmAecCheckbox.disabled = true;
-    gdmLocalAudioPlaybackCheckbox.disabled = true;
-    gdmSystemAudioCheckbox.disabled = true;
-    gdmPreferCurrentTabCheckbox.disabled = true;
-    gdmSelfBrowserSurfaceCheckbox.disabled = true;
-    gdmSurfaceSwitchingCheckbox.disabled = true;
-    gdmMuteCheckbox.disabled = false;
-    gdmRecordButton.disabled = false;
   } catch (e) {
     loge(e);
   }
@@ -1040,7 +1061,9 @@ gdmButton.onclick = async () => {
 function stopGdm() {
   if (gdmStream) {
     const [track] = gdmStream.getAudioTracks();
-    track.stop();
+    if (track) {
+      track.stop();
+    }
     gdmStream = null;
     gdmAudio.srcObject = null;
     gdmButton.disabled = false;
