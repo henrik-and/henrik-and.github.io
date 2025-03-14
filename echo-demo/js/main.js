@@ -43,6 +43,7 @@ const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const errorElement = document.getElementById('error-message');
 const gumCanvases = document.querySelectorAll('.gum-level-meter');
 const gdmCanvas = document.getElementById('gdm-level-meter');
+const pcAudio = document.getElementById('pc-audio-destination');
 
 import { logi, logw, prettyJson } from './utils.js';
 
@@ -57,18 +58,28 @@ let openMicId = undefined;
 let htmlAudio;
 let audioContext;
 let webAudioElement;
+let pcAudioSource;
+let pcMediaElementSource;
+let pcMediaSourceDestination;
 let mediaElementSource;
 // Index 0 <=> gUM with audio processing.
 // Index 1 <=> gUM without audio processing.
 let gumStreams = [null, null];
 let mediaStreamSources = [null, null];
 let gdmStream;
+let pcLocalStream;
+let pcRemoteStream;
 let gumMediaRecorders = [null, null];
 let gumRecordedBlobs = [null, null];
 let gdmMediaRecorder;
 let gdmRecordedBlobs;
 let gumAnimationFrameId = [null, null];
 let gdmAnimationFrameId;
+
+let remoteStreamReady;
+
+let pc1;
+let pc2;
 
 gumStopButtons.forEach((button) => {
   button.disabled = true;
@@ -133,8 +144,10 @@ function updateSourceLabel(element) {
     // Find the corresponding stream in gumStreams based on the element's index in gumAudios.
     const index = gumAudiosArray.indexOf(element); 
     stream = gumStreams[index]; 
-  } else {
+  } else if (element.tag === 'gDM') {
     stream = gdmStream;
+  } else {
+    stream = pcRemoteStream;
   }
   
   // Get the label of the source currently attached to the audio element.
@@ -159,8 +172,7 @@ function updateAudioElement(element, sinkId, label) {
 }
 
 /**
- * Creates a WebAudio context and plays audio with a MediaElementAudioSourceNode
- * as source.
+ * Creates a WebAudio context and plays audio with a MediaElementAudioSourceNode as source.
  */
 function initWebAudio() {
   try {
@@ -212,6 +224,138 @@ function initWebAudio() {
   };
 };
 
+function stopPeerConnectionAudio() {
+  closePeerConnection();
+  if (pcLocalStream) {
+    pcLocalStream.getTracks().forEach(track => track.stop());
+    pcLocalStream = null;
+  }
+  if (pcRemoteStream) {
+    pcRemoteStream.getTracks().forEach(track => track.stop());
+    pcRemoteStream = null;
+  }
+  pcAudio.srcObject = null;
+  
+  if (pcMediaElementSource) {
+    pcMediaElementSource.disconnect();
+    logi(pcMediaElementSource);
+  }
+  pcMediaElementSource = null;
+  pcMediaSourceDestination = null;
+}
+
+const setupPeerConnection = async () => {
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  const [localTrack] = pcLocalStream.getAudioTracks();
+  let remoteTrack = null;
+   
+  pc1.addTrack(localTrack, pcLocalStream);
+  
+  remoteStreamReady = new Promise((resolve) => {
+    pc2.ontrack = (e) => {
+      [pcRemoteStream] = e.streams;
+      resolve(pcRemoteStream);
+    };
+  });
+  
+  exchangeIceCandidates(pc1, pc2);
+  
+  pc1.oniceconnectionstatechange = (e) => {
+    // logi('pc1 ICE state: ' + pc1.iceConnectionState)
+  }
+  
+  pc2.oniceconnectionstatechange = (e) => {
+    // logi('pc2 ICE state: ' + pc2.iceConnectionState)
+  }
+  
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  // logi('pc1 offer: ', offer.sdp);
+  
+  const answer = await pc2.createAnswer();
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  // console.log('pc2 answer: ', answer.sdp);
+};
+
+const closePeerConnection = () => {
+  if (pc1) {
+    pc1.close();
+    pc1 = null;
+  }
+  if (pc2) {
+    pc2.close();
+    pc2 = null;
+  }
+};
+
+const exchangeIceCandidates = (pc1, pc2) => {
+  function doExchange(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      const { candidate } = event;
+      if (candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(candidate);
+      }
+    });
+  }
+  doExchange(pc1, pc2);
+  doExchange(pc2, pc1);
+};
+
+/**
+ * Uses the captureStream() method of the HTMLMediaElement to returns a MediaStream object which
+ * then streams a real-time capture of the content being rendered in the media element.
+ */
+async function initPeerConnectionAudio() {
+  try {
+    pcAudioSource = document.getElementById('pc-audio-source'); 
+    pcAudioSource.addEventListener('play', async (event) => {
+      // stopPeerConnectionAudio();
+     
+      if (!audioContext) {
+        audioContext = new AudioContext();
+      }
+      
+      if (pcMediaElementSource) {
+        return;
+      }
+      
+      // Note: As a consequence of calling createMediaElementSource(), audio playback from the
+      // HTMLMediaElement will be re-routed into the processing graph of the AudioContext.
+      // So playing/pausing the media can still be done through the media element API and the player
+      // controls.
+      // https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createMediaElementSource
+      pcMediaElementSource = audioContext.createMediaElementSource(pcAudioSource);
+      
+      pcMediaSourceDestination = audioContext.createMediaStreamDestination();
+      pcMediaElementSource.connect(pcMediaSourceDestination);
+      pcLocalStream = pcMediaSourceDestination.stream;
+      
+      await setupPeerConnection();
+      await remoteStreamReady;
+      
+      pcAudio.srcObject = pcRemoteStream;
+      updateSourceLabel(pcAudio);
+      
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
+      logi('[PeerConnection] playout starts ' +
+          `[source: ${pcAudioSource.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+    });
+    
+    pcAudioSource.addEventListener('pause', async (event) => {
+      // stopPeerConnectionAudio();
+    });
+    
+  } catch (e) {
+    loge(e);
+  };
+};
+
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
@@ -226,6 +370,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   });
   
   await initWebAudio();
+  await initPeerConnectionAudio();
   
   gumAudios.forEach((element) => {
     element.tag = 'gUM';
@@ -234,6 +379,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
     element.tag = 'gUM';
   });
   gdmAudio.tag = 'gDM';
+  pcAudio.tag = 'PC';
   
   // Set default sink and source for all audio elements and the audio context.
   changeAudioOutput();
@@ -390,6 +536,16 @@ gdmAudio.addEventListener('pause', (event) => {
     `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
 });
 
+pcAudio.addEventListener('play', (event) => {
+  logi('<PeerConnection> playout starts ' +
+    `[source: ${pcAudio.currentSourceLabel}][sink: ${pcAudio.currentSinkLabel}]`);
+});
+
+pcAudio.addEventListener('pause', (event) => {
+  logi('<PeerConnection> playout stops ' +
+    `[source: ${pcAudio.currentSourceLabel}][sink: ${pcAudio.currentSinkLabel}]`);
+});
+
 function updateDevices(listElement, devices) {
   listElement.innerHTML = '';
   devices.map(device => {
@@ -446,7 +602,7 @@ async function enumerateDevices() {
   try {
     // MediaDevices: enumerateDevices()
     // 
-    // Returns an array of `MediaDeviceInfaso` objects. Each object in the array
+    // Returns an array of `MediaDeviceInfo` objects. Each object in the array
     // describes one of the available media input and output devices.
     // The order is significant — the default capture devices will be listed first.
     //
@@ -504,7 +660,7 @@ async function changeAudioOutput() {
   const deviceLabel = options[options.selectedIndex].label;
   
   // Set sink ID on these six audio elements using the spreading operator (...). 
-  const audioElements = [htmlAudio, ...gumAudios, ...gumRecordedAudios, gdmAudio];
+  const audioElements = [htmlAudio, ...gumAudios, ...gumRecordedAudios, gdmAudio, pcAudio];
   await Promise.all(audioElements.map(element => attachSinkId(element, deviceId, deviceLabel)));
   if (audioContext) {
     // await audioCtx.setSinkId({ type : 'none' });
@@ -535,8 +691,8 @@ async function attachSinkId(element, sinkId, label) {
      */
     await element.setSinkId(sinkId);
     updateAudioElement(element, sinkId, label);
-    logi('<audio> playout sets audio output [source: ' +
-      `${element.currentSourceLabel}][sink: ${element.currentSinkLabel}]`);
+    logi(`<${element.tag}> playout sets audio output [source: ${element.currentSourceLabel}]` +
+      `[sink: ${element.currentSinkLabel}]`);
   } catch (e) {
      // Jump back to first output device in the list as it's the default.
      audioOutputSelect.selectedIndex = 0;
@@ -567,7 +723,7 @@ async function playoutOnAudioContext(index) {
   const source = track.label;
   const deviceId = audioOutputSelect.value;
   
-  // Start playing out the local stream on a WebAudio context usin an MSS.
+  // Start playing out the local stream on a WebAudio context using an MSS.
   if (gumPlayAudioContextCheckboxes[index].checked) {
     mediaStreamSources[index] = audioContext.createMediaStreamSource(stream);
     mediaStreamSources[index].connect(audioContext.destination);

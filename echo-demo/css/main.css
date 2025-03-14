@@ -240,6 +240,10 @@ figure {
   margin-right: 10px;
 }
 
+#webaudio-audio {
+  margin-right: 10px;
+}
+
 #error-message {
   margin-top: 10px;
   color: red;

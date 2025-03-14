@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/main.css"/>
   </head>
   
+  <h3>MediaDevices</h3>
+  
   <body>
     <div class="audio-device-container">
       <label for="audio-input">Audio input:</label>
@@ -20,6 +22,8 @@
       <input id="restart-audio" type="checkbox">Restart audio streams when devices are added or removed</input>
     </div>
     
+    <h3>Audio sources</h3>
+    
     <figure>
       <figcaption>Play audio on &lt;audio&gt; tag:</figcaption>
       <!-- The file is copied from https://filesamples.com/formats/wav -->
@@ -30,11 +34,21 @@
       <audio id="webaudio-audio" controls loop>
         <source src="audio/soft.mp3" type="audio/mp3">
       </audio>
+      <figcaption>Play voice from RTCPeerConnection:</figcaption>
+      <audio id="pc-audio-source" controls loop>
+        <source src="audio/concatenate_female.wav" type="audio/wav">
+      </audio>
     </figure>
+    
+    <div class="peer-connection-audio-container">
+      <audio id="pc-audio-destination" loop autoplay></audio>
+    </div>
     
     <div class="gum-audio-container">
       <audio class="gum-audio"></audio>
     </div>
+    
+    <h3>MediaStreamTracks</h3>
     
     <div class="gum-container">
       <div class="comment">getUserMedia with audio processing</div>
