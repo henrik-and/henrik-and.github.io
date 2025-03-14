@@ -107,6 +107,31 @@ const selectors = [audioInputSelect, audioOutputSelect];
 // const fontSize = styles.getPropertyValue('font-size');
 // logi('button font-size: ' + fontSize);
 
+
+class TrackedAudioContext extends AudioContext {
+  constructor() {
+    super();
+    this.activeConnections = 0;
+  }
+
+  trackConnect(source, destination) {
+    source.connect(destination);
+    this.activeConnections++;
+    console.log(`[WebAudio] Connected: ${this.activeConnections} active sources`);
+  }
+
+  trackDisconnect(source, destination) {
+    source.disconnect(destination);
+    this.activeConnections = Math.max(0, this.activeConnections - 1);
+    console.log(`[WebAudio] Disconnected: ${this.activeConnections} active sources`);
+
+    // Automatically suspend when no sources are active
+    // if (this.activeConnections === 0) {
+    //  this.suspend().then(() => console.log("AudioContext suspended"));
+    // }
+  }
+}
+
 const loge = (error) => {
   if (typeof error === 'object' && error !== null && 'name' in error && 'message' in error) {
     errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
@@ -187,27 +212,32 @@ function initWebAudio() {
       if (!audioContext) {
         // Context must be resumed (or created) after a user gesture on the page.
         audioContext = new AudioContext();
-        // The MediaElementAudioSourceNode interface represents an audio source consisting of an
-        // HTML <audio> or <video> element. It is an AudioNode that acts as an audio source.
-        // When we create a media element source, the Web Audio API takes over the audio routing,
-        // meaning the audio now flows through the processing graph.
-        mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
-        mediaElementSource.connect(audioContext.destination);
-        
-        const deviceId = audioOutputSelect.value;
-        if ('setSinkId' in audioContext) {
-          // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
-          if (deviceId !== 'default') {
-          await audioContext.setSinkId(deviceId);
-            logi('[WebAudio] playout sets audio ouput ' +
-              `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
-          }
-        } else {
-          logw('AudioContext.setSinkId is not supported');
-        }
       }
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+      
+      if (mediaElementSource) {
+        // if (audioContext.state === 'suspended') {
+        //  await audioContext.resume();
+        // }
+        return;
+      }
+      
+      // The MediaElementAudioSourceNode interface represents an audio source consisting of an
+      // HTML <audio> or <video> element. It is an AudioNode that acts as an audio source.
+      // When we create a media element source, the Web Audio API takes over the audio routing,
+      // meaning the audio now flows through the processing graph.
+      mediaElementSource = audioContext.createMediaElementSource(webAudioElement);
+      mediaElementSource.connect(audioContext.destination);
+      
+      const deviceId = audioOutputSelect.value;
+      if ('setSinkId' in audioContext) {
+        // Avoid explicitly setting `default` as sink ID since it is not supported on all browsers.
+        if (deviceId !== 'default') {
+        await audioContext.setSinkId(deviceId);
+          logi('[WebAudio] playout sets audio ouput ' +
+            `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
+        }
+      } else {
+        logw('AudioContext.setSinkId is not supported');
       }
       logi('[WebAudio] playout starts ' +
           `[source: ${webAudioElement.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
@@ -215,9 +245,9 @@ function initWebAudio() {
     
     // Suspend the audio context and stop playing audio when pause is pressed in the audio control.
     webAudioElement.addEventListener('pause', async (event) => {
-      if (audioContext.state === 'running') {
-        await audioContext.suspend();
-      };
+      //if (audioContext.state === 'running') {
+      //  await audioContext.suspend();
+      //};
     });
   } catch (e) {
     loge(e);
@@ -311,17 +341,18 @@ const exchangeIceCandidates = (pc1, pc2) => {
 async function initPeerConnectionAudio() {
   try {
     pcAudioSource = document.getElementById('pc-audio-source'); 
-    pcAudioSource.addEventListener('play', async (event) => {
-      // stopPeerConnectionAudio();
-     
+    pcAudioSource.addEventListener('play', async (event) => {    
       if (!audioContext) {
         audioContext = new AudioContext();
       }
       
       if (pcMediaElementSource) {
+        // if (audioContext.state === 'suspended') {
+        //  await audioContext.resume();
+        // }
         return;
       }
-      
+
       // Note: As a consequence of calling createMediaElementSource(), audio playback from the
       // HTMLMediaElement will be re-routed into the processing graph of the AudioContext.
       // So playing/pausing the media can still be done through the media element API and the player
@@ -338,17 +369,12 @@ async function initPeerConnectionAudio() {
       
       pcAudio.srcObject = pcRemoteStream;
       updateSourceLabel(pcAudio);
-      
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-      
+       
       logi('[PeerConnection] playout starts ' +
           `[source: ${pcAudioSource.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
     });
     
     pcAudioSource.addEventListener('pause', async (event) => {
-      // stopPeerConnectionAudio();
     });
     
   } catch (e) {
