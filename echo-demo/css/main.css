@@ -236,6 +236,26 @@ figure {
   background-color: aliceblue; /* Light blue background color */
 }
 
+/* Wrap first audio + dropdown properly */
+.audio-container {
+  display: flex;
+  flex-direction: column;   /* Stack audio & dropdown */
+  align-items: flex-start;  /* Left-align to match other audio elements */
+  justify-content: center;  /* Ensure proper vertical alignment */
+}
+
+/* Keep the first audio aligned with the others */
+.audio-container audio {
+  align-self: center;  /* Ensures it aligns with the other audio elements */
+}
+
+/* Ensure dropdown is only as wide as needed */
+#audio-file-select {
+  margin-top: 5px;
+  min-width: auto;   /* Let it fit the content */
+  width: max-content; /* Ensures it doesn't stretch unnecessarily */
+}
+
 #html-audio {
   margin-right: 10px;
 }

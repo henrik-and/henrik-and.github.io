@@ -382,6 +382,8 @@ async function initPeerConnectionAudio() {
   };
 };
 
+
+
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
@@ -393,6 +395,18 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   htmlAudio.addEventListener('play', (event) => {
     logi('<audio> playout starts ' +
       `[source: ${htmlAudio.currentSourceLabel}][sink: ${htmlAudio.currentSinkLabel}]`);
+  });
+  
+  // Event listener to update audio source when the selection changes
+  document.getElementById('audio-file-select').addEventListener('change', (event) => {
+    const selectedFile = document.getElementById('audio-file-select').value;
+    const wasPlaying = !htmlAudio.paused;
+    logi(wasPlaying);
+    htmlAudio.src = selectedFile;
+    htmlAudio.load();
+    if (wasPlaying) {
+      htmlAudio.play();
+    }
   });
   
   await initWebAudio();

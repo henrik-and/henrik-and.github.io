@@ -26,10 +26,18 @@
     
     <figure>
       <figcaption>Play audio on &lt;audio&gt; tag:</figcaption>
-      <!-- The file is copied from https://filesamples.com/formats/wav -->
-      <audio id="html-audio" controls loop>
-        <source src="audio/sample2.wav" type="audio/wav">
-      </audio>
+      
+      <!-- Wrap first audio + dropdown for proper alignment -->
+      <div class="audio-container">
+        <audio id="html-audio" controls loop>
+          <source id="audio-source" src="audio/music_beat.wav" type="audio/wav">
+        </audio>
+        <select id="audio-file-select">
+          <option value="audio/music_beat.wav">music_beat.wav</option>
+          <option value="audio/stereo_knocking.wav">stereo_knocking.wav</option>
+        </select>
+      </div>
+      
       <figcaption>Play audio in Web Audio context:</figcaption>
       <audio id="webaudio-audio" controls loop>
         <source src="audio/soft.mp3" type="audio/mp3">
