@@ -32,7 +32,7 @@
         <audio id="html-audio" controls loop>
           <source id="audio-source" src="audio/music_beat.wav" type="audio/wav">
         </audio>
-        <select id="audio-file-select">
+        <select id="audio-file-select" class="file-select-style">
           <option value="audio/music_beat.wav">music_beat.wav</option>
           <option value="audio/left_right_stereo_test.wav">left_right_stereo_test.wav</option>
           <option value="audio/stereo_knocking.wav">stereo_knocking.wav</option>
@@ -44,10 +44,18 @@
       <audio id="webaudio-audio" controls loop>
         <source src="audio/soft.mp3" type="audio/mp3">
       </audio>
-      <figcaption>Play voice from RTCPeerConnection:</figcaption>
-      <audio id="pc-audio-source" controls loop>
-        <source src="audio/concatenate_female.wav" type="audio/wav">
-      </audio>
+      
+      <figcaption>Play from RTCPeerConnection:</figcaption>
+      
+      <div class="audio-container">
+        <audio id="pc-audio-source" controls loop>
+          <source src="audio/concatenate_female.wav" type="audio/wav">
+        </audio>
+        <select id="pc-audio-file-select" class="file-select-style">
+          <option value="audio/concatenate_female.wav">female_voice.wav</option>
+          <option value="audio/female_lead_voice_music.wav">female_soul_music.wav</option>
+        </select>
+      </div>
     </figure>
     
     <div class="peer-connection-audio-container">

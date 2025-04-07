@@ -250,7 +250,7 @@ figure {
 }
 
 /* Ensure dropdown is only as wide as needed */
-#audio-file-select {
+.file-select-style {
   margin-top: 5px;
   min-width: auto;   /* Let it fit the content */
   width: max-content; /* Ensures it doesn't stretch unnecessarily */

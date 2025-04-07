@@ -334,6 +334,21 @@ const exchangeIceCandidates = (pc1, pc2) => {
   doExchange(pc2, pc1);
 };
 
+/*
+pcAudioSource.addEventListener('loadeddata', async () => {
+  if (wasPlaying) {
+    try {
+      await pcAudioSource.play();
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        // Ignore AbortError if it happens due to switching files
+        console.error('Playback failed:', e);
+      }
+    }
+  }
+}, { once: true });
+*/
+
 /**
  * Uses the captureStream() method of the HTMLMediaElement to returns a MediaStream object which
  * then streams a real-time capture of the content being rendered in the media element.
@@ -374,6 +389,18 @@ async function initPeerConnectionAudio() {
           `[source: ${pcAudioSource.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
     });
     
+    // Event listener to update audio source when the selection changes
+    document.getElementById('pc-audio-file-select').addEventListener('change', async (event) => {
+      const selectedFile = document.getElementById('pc-audio-file-select').value;
+      const wasPlaying = !pcAudioSource.paused;
+      logi('Audio was playing before change: ', wasPlaying);
+      pcAudioSource.src = selectedFile;
+      if (wasPlaying) {
+        await pcAudioSource.play();
+      }
+        
+    });
+    
     pcAudioSource.addEventListener('pause', async (event) => {
     });
     
@@ -398,14 +425,13 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   });
   
   // Event listener to update audio source when the selection changes
-  document.getElementById('audio-file-select').addEventListener('change', (event) => {
+  document.getElementById('audio-file-select').addEventListener('change', async (event) => {
     const selectedFile = document.getElementById('audio-file-select').value;
     const wasPlaying = !htmlAudio.paused;
-    logi(wasPlaying);
+    logi('Audio was playing before change: ', wasPlaying);
     htmlAudio.src = selectedFile;
-    htmlAudio.load();
     if (wasPlaying) {
-      htmlAudio.play();
+      await htmlAudio.play();
     }
   });
   
