@@ -383,7 +383,6 @@ async function initPeerConnectionAudio() {
       logi('Audio was playing before change: ', wasPlaying);
       
       pcAudioSource.src = selectedFile;
-      pcAudioSource.currentSourceLabel = pcAudioSource.src;
       
       async function playWhenReady() {
         // Remove the listener to prevent multiple runs.
