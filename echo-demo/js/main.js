@@ -334,37 +334,23 @@ const exchangeIceCandidates = (pc1, pc2) => {
   doExchange(pc2, pc1);
 };
 
-/*
-pcAudioSource.addEventListener('loadeddata', async () => {
-  if (wasPlaying) {
-    try {
-      await pcAudioSource.play();
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        // Ignore AbortError if it happens due to switching files
-        console.error('Playback failed:', e);
-      }
-    }
-  }
-}, { once: true });
-*/
-
 /**
  * Uses the captureStream() method of the HTMLMediaElement to returns a MediaStream object which
  * then streams a real-time capture of the content being rendered in the media element.
  */
 async function initPeerConnectionAudio() {
   try {
-    pcAudioSource = document.getElementById('pc-audio-source'); 
-    pcAudioSource.addEventListener('play', async (event) => {    
+    pcAudioSource = document.getElementById('pc-audio-source');
+    
+    pcAudioSource.addEventListener('play', async (event) => {
       if (!audioContext) {
         audioContext = new AudioContext();
       }
       
       if (pcMediaElementSource) {
-        // if (audioContext.state === 'suspended') {
-        //  await audioContext.resume();
-        // }
+        // Update logs if a new file is now playing
+        logi('[PeerConnection] playout starts ' +
+          `[source: ${pcAudioSource.currentSrc}][sink: ${getSelectedDevice(audioOutputSelect)}]`);
         return;
       }
 
@@ -392,13 +378,27 @@ async function initPeerConnectionAudio() {
     // Event listener to update audio source when the selection changes
     document.getElementById('pc-audio-file-select').addEventListener('change', async (event) => {
       const selectedFile = document.getElementById('pc-audio-file-select').value;
-      const wasPlaying = !pcAudioSource.paused;
+      
+      const wasPlaying = !pcAudioSource.paused && pcAudioSource.currentTime > 0;
       logi('Audio was playing before change: ', wasPlaying);
+      
       pcAudioSource.src = selectedFile;
-      if (wasPlaying) {
-        await pcAudioSource.play();
+      pcAudioSource.currentSourceLabel = pcAudioSource.src;
+      
+      async function playWhenReady() {
+        // Remove the listener to prevent multiple runs.
+        pcAudioSource.removeEventListener('canplay', playWhenReady);
+
+        if (wasPlaying) {
+          try {
+            await pcAudioSource.play();
+          } catch (e) {
+            loge(e);
+          }
+        }
       }
-        
+      
+      pcAudioSource.addEventListener('canplay', playWhenReady);
     });
     
     pcAudioSource.addEventListener('pause', async (event) => {
@@ -427,12 +427,27 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   // Event listener to update audio source when the selection changes
   document.getElementById('audio-file-select').addEventListener('change', async (event) => {
     const selectedFile = document.getElementById('audio-file-select').value;
-    const wasPlaying = !htmlAudio.paused;
+    
+    const wasPlaying = !htmlAudio.paused && htmlAudio.currentTime > 0;
     logi('Audio was playing before change: ', wasPlaying);
+    
     htmlAudio.src = selectedFile;
-    if (wasPlaying) {
-      await htmlAudio.play();
+    htmlAudio.currentSourceLabel = htmlAudio.src;
+    
+    async function playWhenReady() {
+      // Remove the listener to prevent multiple runs.
+      htmlAudio.removeEventListener('canplay', playWhenReady);
+
+      if (wasPlaying) {
+        try {
+          await htmlAudio.play();
+        } catch (e) {
+          loge(e);
+        }
+      }
     }
+    
+    htmlAudio.addEventListener('canplay', playWhenReady);
   });
   
   await initWebAudio();
