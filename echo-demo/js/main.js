@@ -30,6 +30,7 @@ const gdmNsCheckbox = document.getElementById('gdm-ns');
 const gdmAgcCheckbox = document.getElementById('gdm-agc');
 const gdmLocalAudioPlaybackCheckbox = document.getElementById('gdm-local-audio-playback');
 const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
+const gdmRestrictOwnAudioCheckbox = document.getElementById('gdm-restrict-own-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
 const gdmSelfBrowserSurfaceCheckbox = document.getElementById('gdm-self-browser-surface');
 const gdmSurfaceSwitchingCheckbox = document.getElementById('gdm-surface-switching');
@@ -97,6 +98,7 @@ gdmNsCheckbox.disabled = false;
 gdmAgcCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
+gdmRestrictOwnAudioCheckbox.disabled = false;
 gdmPreferCurrentTabCheckbox.disabled = false;
 gdmSelfBrowserSurfaceCheckbox.disabled = false;
 gdmSurfaceSwitchingCheckbox.disabled = false;
@@ -512,7 +514,8 @@ function printGdmAudioSettings(settings, options) {
     'autoGainControl',
     'noiseSuppression',
     'sampleRate',
-    'voiceIsolation'
+    'voiceIsolation',
+    'restrictOwnAudio'
   ];
   
   // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
@@ -1229,6 +1232,7 @@ async function startGdm() {
         autoGainControl: gdmAgcCheckbox.checked,
         noiseSuppression: gdmNsCheckbox.checked,
         suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
+        restrictOwnAudio: gdmRestrictOwnAudioCheckbox.checked,
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
       preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
@@ -1245,6 +1249,7 @@ async function startGdm() {
     const [audioTrack] = gdmStream.getAudioTracks();
     if (audioTrack) {
       const settings = audioTrack.getSettings();
+      logi(settings);
       printGdmAudioSettings(settings, options);
       printGdmAudioTrack(audioTrack);
     
@@ -1277,6 +1282,7 @@ async function startGdm() {
       gdmAgcCheckbox.disabled = true;
       gdmLocalAudioPlaybackCheckbox.disabled = true;
       gdmSystemAudioCheckbox.disabled = true;
+      gdmRestrictOwnAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
       gdmSelfBrowserSurfaceCheckbox.disabled = true;
       gdmSurfaceSwitchingCheckbox.disabled = true;
@@ -1320,6 +1326,7 @@ function stopGdm() {
     gdmSurfaceSwitchingCheckbox.disabled = false;
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
+    gdmRestrictOwnAudioCheckbox.disabled = false;
     gdmMuteCheckbox.disabled = true;
     gdmRecordButton.textContent = 'Start Recording';
     gdmRecordButton.disabled = true;

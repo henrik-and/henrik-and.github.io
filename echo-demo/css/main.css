@@ -64,6 +64,11 @@ label[for="gdm-system-audio"] {
   margin: 0;
 }
 
+label[for="gdm-restrict-own-audio"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gum-mute"] {
   font-size: 13.3333px;
   margin: 0;
