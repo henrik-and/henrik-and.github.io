@@ -256,7 +256,7 @@ function initWebAudio() {
   };
 };
 
-const insertStereoSupport = (sdp) => {
+const insertStereoSupportForOpus = (sdp) => {
   // Early exit if Opus codec is not present
   if (!sdp.includes("a=rtpmap:111 opus/48000")) {
     logw("Opus codec (111) not found in SDP. Stereo support not added.");
@@ -331,7 +331,7 @@ const setupPeerConnection = async () => {
   logi('pc1 offer: ', offer.sdp);
   
   const answer = await pc2.createAnswer();
-  answer.sdp = insertStereoSupport(answer.sdp);
+  answer.sdp = insertStereoSupportForOpus(answer.sdp);
   await pc2.setLocalDescription(answer);
   await pc1.setRemoteDescription(answer);
   console.log('pc2 answer: ', answer.sdp);
