@@ -256,6 +256,30 @@ function initWebAudio() {
   };
 };
 
+const insertStereoSupport = (sdp) => {
+  // Early exit if Opus codec is not present
+  if (!sdp.includes("a=rtpmap:111 opus/48000")) {
+    logw("Opus codec (111) not found in SDP. Stereo support not added.");
+    return sdp;
+  }
+  
+  // Split SDP into lines
+  const lines = sdp.split('\r\n');
+
+  // Map through each line, find the target line, and append stereo support.
+  const newSdp = lines.map((line) => {
+    if (line.startsWith("a=fmtp:111")) {
+      if (!line.includes("stereo=1")) {
+        return `${line};stereo=1`;
+      }
+    }
+    return line;
+  });
+
+  // Join the lines back into a string with proper line breaks.
+  return newSdp.join("\r\n");
+};
+
 function stopPeerConnectionAudio() {
   closePeerConnection();
   if (pcLocalStream) {
@@ -304,12 +328,13 @@ const setupPeerConnection = async () => {
   const offer = await pc1.createOffer();
   await pc1.setLocalDescription(offer);
   await pc2.setRemoteDescription(offer);
-  // logi('pc1 offer: ', offer.sdp);
+  logi('pc1 offer: ', offer.sdp);
   
   const answer = await pc2.createAnswer();
+  answer.sdp = insertStereoSupport(answer.sdp);
   await pc2.setLocalDescription(answer);
   await pc1.setRemoteDescription(answer);
-  // console.log('pc2 answer: ', answer.sdp);
+  console.log('pc2 answer: ', answer.sdp);
 };
 
 const closePeerConnection = () => {
