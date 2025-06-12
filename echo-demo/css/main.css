@@ -64,6 +64,15 @@ label[for="gdm-system-audio"] {
   margin: 0;
 }
 
+label[for="gdm-window-audio"] {
+  font-size: 13.3333px;
+  margin-right: 0;
+}
+
+#gdm-window-audio {
+  margin-left: 0; /* Adjusts space after the dropdown */
+}
+
 label[for="gdm-restrict-own-audio"] {
   font-size: 13.3333px;
   margin: 0;

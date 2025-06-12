@@ -30,6 +30,7 @@ const gdmNsCheckbox = document.getElementById('gdm-ns');
 const gdmAgcCheckbox = document.getElementById('gdm-agc');
 const gdmLocalAudioPlaybackCheckbox = document.getElementById('gdm-local-audio-playback');
 const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
+const gdmWindowAudioSelect = document.getElementById('gdm-window-audio');
 const gdmRestrictOwnAudioCheckbox = document.getElementById('gdm-restrict-own-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
 const gdmSelfBrowserSurfaceCheckbox = document.getElementById('gdm-self-browser-surface');
@@ -98,6 +99,7 @@ gdmNsCheckbox.disabled = false;
 gdmAgcCheckbox.disabled = false;
 gdmLocalAudioPlaybackCheckbox.disabled = false;
 gdmSystemAudioCheckbox.disabled = false;
+gdmWindowAudioSelect.disabled = false;
 gdmRestrictOwnAudioCheckbox.disabled = false;
 gdmPreferCurrentTabCheckbox.disabled = false;
 gdmSelfBrowserSurfaceCheckbox.disabled = false;
@@ -1260,6 +1262,7 @@ async function startGdm() {
         restrictOwnAudio: gdmRestrictOwnAudioCheckbox.checked,
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
+      windowAudio: gdmWindowAudioSelect.value,
       preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
       selfBrowserSurface: (gdmSelfBrowserSurfaceCheckbox.checked ? 'include' : 'exclude'),
       surfaceSwitching: (gdmSurfaceSwitchingCheckbox.checked ? 'include' : 'exclude'),
@@ -1306,6 +1309,7 @@ async function startGdm() {
       gdmNsCheckbox.disabled = true;
       gdmAgcCheckbox.disabled = true;
       gdmLocalAudioPlaybackCheckbox.disabled = true;
+      gdmWindowAudioSelect.disabled = true;
       gdmSystemAudioCheckbox.disabled = true;
       gdmRestrictOwnAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
@@ -1351,6 +1355,7 @@ function stopGdm() {
     gdmSurfaceSwitchingCheckbox.disabled = false;
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
+    gdmWindowAudioSelect.disable = false;
     gdmRestrictOwnAudioCheckbox.disabled = false;
     gdmMuteCheckbox.disabled = true;
     gdmRecordButton.textContent = 'Start Recording';
