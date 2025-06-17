@@ -1274,10 +1274,15 @@ async function startGdm() {
      * MediaDevices: getDisplayMedia()
      */
     gdmStream = await navigator.mediaDevices.getDisplayMedia(options);
+    const [videoTrack] = gdmStream.getVideoTracks();
+    if (videoTrack) {
+      const settings = videoTrack.getSettings();
+      logi('[gDM] videoTrack.getSettings: ', settings);
+    }
     const [audioTrack] = gdmStream.getAudioTracks();
     if (audioTrack) {
       const settings = audioTrack.getSettings();
-      logi(settings);
+      logi('[gDM] audioTrack.getSettings: ', settings);
       printGdmAudioSettings(settings, options);
       printGdmAudioTrack(audioTrack);
     
