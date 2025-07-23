@@ -1331,7 +1331,7 @@ async function startGdm() {
         videoTrack.stop();
         gdmStream = null;
       }
-      loge(`No audio track exists for the selected source: ${deviceId}`);
+      logw(`No audio track exists for the selected source: ${deviceId}`);
     }
   } catch (e) {
     loge(e);
