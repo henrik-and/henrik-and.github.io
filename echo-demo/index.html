@@ -119,8 +119,19 @@
     <div class="gum-container">
       <div class="comment">getUserMedia without audio processing</div>
       <button class="gum">getUserMedia</button>
-      <input id="gum-aec-hidden" type="checkbox" checked class="hidden-element"></input>
-      <label for="gum-aec-hidden" class="hidden-element">AEC</label>
+      
+      <label for="gum-aec-hidden" class="hidden-element">AEC:</label>
+      <select id="gum-aec-hidden" class="hidden-element">
+        <optgroup label="Boolean Type">
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </optgroup>
+        <optgroup label="String Type">
+          <option value="all">all</option>
+          <option value="renote-only">remote only</option>
+        </optgroup>
+      </select>
+      
       <input id="gum-ns-hidden" type="checkbox" checked class="hidden-element"></input>
       <label for="gum-ns-hidden" class="hidden-element">NS</label>
       <input id="gum-agc-hidden" type="checkbox" checked class="hidden-element"></input>

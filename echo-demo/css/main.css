@@ -47,6 +47,11 @@ label[for="gum-ns"] {
 label[for="gum-aec-hidden"] {
   font-size: 13.3333px;
   margin: 0;
+  margin-left: 10px;
+}
+
+#gum-aec-hidden {
+  margin-left: 0; /* Adjusts space after the dropdown */
 }
 
 label[for="gum-agc-hidden"] {
