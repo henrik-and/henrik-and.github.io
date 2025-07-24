@@ -27,6 +27,11 @@ label[for="restart-audio"] {
 label[for="gum-aec"] {
   font-size: 13.3333px;
   margin: 0;
+  margin-left: 10px;
+}
+
+#gum-aec {
+  margin-left: 0; /* Adjusts space after the dropdown */
 }
 
 label[for="gum-agc"] {

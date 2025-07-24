@@ -72,8 +72,19 @@
     <div class="gum-container">
       <div class="comment">getUserMedia with audio processing</div>
       <button class="gum">getUserMedia</button>
-      <input id="gum-aec" type="checkbox" checked></input>
-      <label for="gum-aec">AEC</label>
+      
+      <label for="gum-aec">AEC:</label>
+      <select id="gum-aec">
+        <optgroup label="Boolean Type">
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </optgroup>
+        <optgroup label="String Type">
+          <option value="all">all</option>
+          <option value="renote-only">remote only</option>
+        </optgroup>
+      </select>
+      
       <input id="gum-ns" type="checkbox" checked></input>
       <label for="gum-ns">NS</label>
       <input id="gum-agc" type="checkbox" checked></input>
@@ -144,11 +155,11 @@
     <div class="gdm-container">
       <div class="comment">getDisplayMedia with audio processing</div>
       <button id="gdm">getDisplayMedia</button>
-      <input id="gdm-aec" type="checkbox" checked></input>
+      <input id="gdm-aec" type="checkbox"></input>
       <label for="gdm-aec">AEC</label>
-      <input id="gdm-ns" type="checkbox" checked></input>
+      <input id="gdm-ns" type="checkbox"></input>
       <label for="gdm-ns">NS</label>
-      <input id="gdm-agc" type="checkbox" checked></input>
+      <input id="gdm-agc" type="checkbox"></input>
       <label for="gdm-agc">AGC</label>
       <input id="gdm-local-audio-playback" type="checkbox" checked></input>
       <label for="gdm-local-audio-playback">LocalAudioPlayback</label>

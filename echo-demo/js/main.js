@@ -13,7 +13,7 @@ const gumPlayAudioContextCheckboxes = document.querySelectorAll('.gum-play-audio
 const gumRecordedAudios = document.querySelectorAll('.gum-recorded-audio');
 const gumButtons = document.querySelectorAll('.gum');
 const gumRecordButtons = document.querySelectorAll('.gum-record');
-const gumAecCheckbox = document.getElementById('gum-aec');
+const gumAecSelect = document.getElementById('gum-aec');
 const gumNsCheckbox = document.getElementById('gum-ns');
 const gumAgcCheckbox = document.getElementById('gum-agc');
 const gumStopButtons = document.querySelectorAll('.gum-stop');
@@ -90,7 +90,7 @@ gdmStopButton.disabled = true;
 gumMuteCheckboxes.forEach((checkbox) => {
   checkbox.disabled = true;
 });
-gumAecCheckbox.disabled = false;
+gumAecSelect.disabled = false;
 gumNsCheckbox.disabled = false;
 gumAgcCheckbox.disabled = false;
 gdmMuteCheckbox.disabled = false;
@@ -138,7 +138,11 @@ class TrackedAudioContext extends AudioContext {
 
 const loge = (error) => {
   if (typeof error === 'object' && error !== null && 'name' in error && 'message' in error) {
-    errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
+    if (error.name === 'OverconstrainedError') {
+      errorElement.textContent = `DOMException: ${error.name} [${error.constraint}]`;
+    } else {
+      errorElement.textContent = `DOMException: ${error.name} [${error.message}]`;
+    }
   } else {
     errorElement.textContent = error === '' ? '' : `ERROR: ${error}`;
   }
@@ -899,6 +903,17 @@ async function startLevelMeter(stream, canvas) {
   return animationFrameId;
 };
 
+function parseAecModes(value) {
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  // It's not a boolean string, so return it as-is.
+  return value;
+}
+
 async function startGum(index) {
   logi(`startGum(${index})`);
   // Get the input device ID based on what is currently selected.
@@ -926,7 +941,9 @@ async function startGum(index) {
     };
     // Set processed constraints for the first guM stream.
     if (index === 0) {
-      constraints.audio.echoCancellation = {exact: gumAecCheckbox.checked};
+      const aecMode = parseAecModes(gumAecSelect.value);
+      logi('final AEC mode in constraints: ' + aecMode);
+      constraints.audio.echoCancellation = {exact: aecMode};
       constraints.audio.autoGainControl = {exact: gumAgcCheckbox.checked};
       constraints.audio.noiseSuppression = {exact: gumNsCheckbox.checked};
     }
@@ -972,7 +989,7 @@ async function startGum(index) {
     gumButtons[index].disabled = true;
     gumStopButtons[index].disabled = false;
     gumMuteCheckboxes[index].disabled = false;
-    gumAecCheckbox.disabled = true;
+    gumAecSelect.disabled = true;
     gumNsCheckbox.disabled = true;
     gumAgcCheckbox.disabled = true;
     gumRecordButtons[index].disabled = false;
@@ -1003,7 +1020,7 @@ function stopGum(index) {
   gumButtons[index].disabled = false;
   gumStopButtons[index].disabled = true;
   gumMuteCheckboxes[index].disabled = true;
-  gumAecCheckbox.disabled = false;
+  gumAecSelect.disabled = false;
   gumNsCheckbox.disabled = false;
   gumAgcCheckbox.disabled = false;
   gumRecordButtons[index].textContent = 'Start Recording';
