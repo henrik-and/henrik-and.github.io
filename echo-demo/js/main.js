@@ -43,11 +43,12 @@ const gdmRecordedAudio = document.getElementById('gdm-recorded-audio');
 const gdmRecordButton = document.getElementById('gdm-record');
 const gdmRecordedDiv = document.getElementById('gdm-recorded');
 const errorElement = document.getElementById('error-message');
+const warningElement = document.getElementById('warning-message');
 const gumCanvases = document.querySelectorAll('.gum-level-meter');
 const gdmCanvas = document.getElementById('gdm-level-meter');
 const pcAudio = document.getElementById('pc-audio-destination');
 
-import { logi, logw, prettyJson } from './utils.js';
+import { logi, prettyJson } from './utils.js';
 
 // Set to true when the user has granted user media permissions.
 let hasMicrophonePermission = false;
@@ -148,6 +149,13 @@ const loge = (error) => {
   }
   if (error !== '') {
     console.error(error);
+  }
+};
+
+const logw = (warning) => {
+  warningElement.textContent = warning === '' ? '' : `WARNING: ${warning}`;
+  if (warning !== '') {
+    console.warn(warning);
   }
 };
 
@@ -1268,6 +1276,7 @@ async function startGdm() {
    * See also https://developer.chrome.com/docs/web-platform/screen-sharing-controls/.
    */
   try {
+    logw('');
     loge('');
     let options = {
       video: true,
@@ -1340,13 +1349,17 @@ async function startGdm() {
       gdmMuteCheckbox.disabled = false;
       gdmRecordButton.disabled = false;
     } else {
+      // Keep video alive to ensure that the sharing pop-up UI is displayed. 
       let deviceId;
       const [videoTrack] = gdmStream.getVideoTracks();
       if (videoTrack) {
+        videoTrack.addEventListener('ended', () => {
+          logi('[gDM] MediaStreamTrack.ended: ' + videoTrack.label);
+          stopGdm();
+        });
+        
         const settings = videoTrack.getSettings();
         deviceId = settings.deviceId;
-        videoTrack.stop();
-        gdmStream = null;
       }
       logw(`No audio track exists for the selected source: ${deviceId}`);
     }
@@ -1361,9 +1374,13 @@ gdmButton.onclick = async () => {
 
 function stopGdm() {
   if (gdmStream) {
-    const [track] = gdmStream.getAudioTracks();
-    if (track) {
-      track.stop();
+    const [videoTrack] = gdmStream.getVideoTracks();
+    if (videoTrack) {
+      videoTrack.stop();
+    }
+    const [audioTrack] = gdmStream.getAudioTracks();
+    if (audioTrack) {
+      audioTrack.stop();
     }
     gdmStream = null;
     gdmAudio.srcObject = null;
