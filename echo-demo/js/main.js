@@ -1288,12 +1288,14 @@ async function startGdm() {
         restrictOwnAudio: gdmRestrictOwnAudioCheckbox.checked,
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
-      windowAudio: gdmWindowAudioSelect.value,
       preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
       selfBrowserSurface: (gdmSelfBrowserSurfaceCheckbox.checked ? 'include' : 'exclude'),
       surfaceSwitching: (gdmSurfaceSwitchingCheckbox.checked ? 'include' : 'exclude'),
       monitorTypeSurfaces: 'include',
     };
+    if (gdmWindowAudioSelect.value != 'notset') {
+      options['windowAudio'] = gdmWindowAudioSelect.value;
+    }
     logi('requested options to getDisplayMedia: ', prettyJson(options));
     
     /** 
