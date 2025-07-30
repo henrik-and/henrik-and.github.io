@@ -1011,10 +1011,10 @@ async function startGum(index) {
       logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
       printGumAudioTrack(audioTrack);
     };
-    audioTrack.addEventListener('ended', () => {
-      logi('[gUM] MediaStreamTrack.ended: ' + audioTrack.label);
-      stopGum();
-    });
+    audioTrack.onended = (event) => {
+      logi('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
+      stopGum(index);
+    };
     
     // The `autoplay` attribute of the audio tag is not set.
     gumAudios[index].srcObject = gumStreams[index];
@@ -1054,6 +1054,9 @@ function stopGum(index) {
   logi(`stopGum(${index})`);
   const streamId = gumStreams[index].id;
   const [track] = gumStreams[index].getAudioTracks();
+  track.onmute = null;
+  track.onumute = null;
+  track.onended = null;
   track.stop();
   gumStreams[index] = null;
   openMicId = undefined;
