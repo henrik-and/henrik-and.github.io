@@ -969,6 +969,8 @@ async function startGum(index) {
   stopGum(index);
   
   try {
+    logw('');
+    loge('');
     // Constraints without any `deviceId` property in the `audio` object.
     // Use non-processed constraints as default.
     let constraints = {
@@ -1005,14 +1007,15 @@ async function startGum(index) {
      
     audioTrack.onmute = (event) => {
       logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGumAudioTrack(audioTrack);
+      printGumAudioTrack(audioTrack, index);
     }
     audioTrack.onunmute = (event) => {
       logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGumAudioTrack(audioTrack);
+      printGumAudioTrack(audioTrack, index);
     };
     audioTrack.onended = (event) => {
       logi('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
+      logw('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
       stopGum(index);
     };
     
