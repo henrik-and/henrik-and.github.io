@@ -18,6 +18,7 @@ const gumNsCheckbox = document.getElementById('gum-ns');
 const gumAgcCheckbox = document.getElementById('gum-agc');
 const gumStopButtons = document.querySelectorAll('.gum-stop');
 const gumMuteCheckboxes = document.querySelectorAll('.gum-mute');
+const gumRequestedConstraintsDivs = document.querySelectorAll('.gum-requested-constraints');
 const gumConstraintsDivs = document.querySelectorAll('.gum-constraints');
 const gumTrackDivs = document.querySelectorAll('.gum-track');
 const gumRecordedDivs = document.querySelectorAll('.gum-recorded');
@@ -522,6 +523,24 @@ function clearGdmInfoContainer() {
   });
 };
 
+function printGumRequestedConstraints(constraints, index) {
+  if (gumRequestedConstraintsDivs[index]) {
+    // Create a deep copy of the audio constraints to avoid modifying the original object.
+    const constraintsToDisplay = JSON.parse(JSON.stringify(constraints.audio));
+
+    // Check if deviceId.exact exists and is a string.
+    if (constraintsToDisplay.deviceId && typeof constraintsToDisplay.deviceId.exact === 'string') {
+      const fullId = constraintsToDisplay.deviceId.exact;
+      if (fullId.length > 16) {
+        // Display first 8 and last 8 characters.
+        constraintsToDisplay.deviceId.exact = `${fullId.substring(0, 8)}..${fullId.substring(fullId.length - 8)}`;
+      }
+    }
+    gumRequestedConstraintsDivs[index].textContent = '[gUM] Requested constraints:\n' + prettyJson(constraintsToDisplay);
+  }
+}
+
+
 function printGumAudioSettings(settings, index) {
   const propertiesToPrint = [
     'deviceId',
@@ -532,14 +551,26 @@ function printGumAudioSettings(settings, index) {
     'voiceIsolation'
   ];
 
-  //  MediaStreamTrack: getSettings is the current configuration of the track's constraints.
+  // Create a deep copy of the settings object to avoid modifying the original.
+  const settingsToDisplay = JSON.parse(JSON.stringify(settings));
+
+  // Abbreviate the deviceId if it exists and is a string.
+  if (settingsToDisplay.deviceId && typeof settingsToDisplay.deviceId === 'string') {
+    const fullId = settingsToDisplay.deviceId;
+    if (fullId.length > 16) {
+      // Display first 8 and last 8 characters.
+      settingsToDisplay.deviceId = `${fullId.substring(0, 8)}..${fullId.substring(fullId.length - 8)}`;
+    }
+  }
+
+  // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
   const filteredSettings = propertiesToPrint.reduce((obj, prop) => {
-    obj[prop] = settings[prop];
+    obj[prop] = settingsToDisplay[prop];
     return obj;
   }, {});
   gumConstraintsDivs[index].textContent = '[gUM] Active constraints:\n' + prettyJson(filteredSettings);
-  // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));    
-};
+  // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));
+}
 
 /**
  * TODO: figure out why MediaStreamTrack: getSettings() does not include `systemAudio`.
@@ -564,6 +595,7 @@ function printGdmAudioSettings(settings, options) {
   }, {});
   // Adding more properties manually from the supplied options.
   filteredSettings.systemAudio = options.systemAudio;
+  filteredSettings.windowAudio = options.windowAudio;
   filteredSettings.preferCurrentTab = options.preferCurrentTab;
   filteredSettings.selfBrowserSurface = options.selfBrowserSurface;
   filteredSettings.surfaceSwitching = options.surfaceSwitching;
@@ -960,6 +992,7 @@ async function startGum(index) {
       constraints.audio.deviceId = audioSource ? {exact: audioSource} : undefined;
     }
     logi('requested constraints to getUserMedia: ', prettyJson(constraints));
+    printGumRequestedConstraints(constraints, index);
     // MediaDevices: getUserMedia()
     gumStreams[index] = await navigator.mediaDevices.getUserMedia(constraints);
     const [audioTrack] = gumStreams[index].getAudioTracks();
@@ -980,7 +1013,7 @@ async function startGum(index) {
     };
     audioTrack.addEventListener('ended', () => {
       logi('[gUM] MediaStreamTrack.ended: ' + audioTrack.label);
-      stopGdm();
+      stopGum();
     });
     
     // The `autoplay` attribute of the audio tag is not set.
