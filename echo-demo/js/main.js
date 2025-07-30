@@ -568,7 +568,7 @@ function printGumAudioSettings(settings, index) {
     obj[prop] = settingsToDisplay[prop];
     return obj;
   }, {});
-  gumConstraintsDivs[index].textContent = '[gUM] Active constraints:\n' + prettyJson(filteredSettings);
+  gumConstraintsDivs[index].textContent = '[gUM] Active settings:\n' + prettyJson(filteredSettings);
   // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));
 }
 
