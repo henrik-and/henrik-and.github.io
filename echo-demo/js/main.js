@@ -1006,15 +1006,14 @@ async function startGum(index) {
     openMicId = settings.deviceId;
      
     audioTrack.onmute = (event) => {
-      logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      logw('[gUM] MediaStreamTrack.onmute: ' + audioTrack.label);
       printGumAudioTrack(audioTrack, index);
     }
     audioTrack.onunmute = (event) => {
-      logi('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
+      logw('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
       printGumAudioTrack(audioTrack, index);
     };
     audioTrack.onended = (event) => {
-      logi('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
       logw('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
       stopGum(index);
     };
