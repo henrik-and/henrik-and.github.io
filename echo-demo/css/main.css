@@ -298,15 +298,24 @@ figure {
   color: green;
 }
 
-/* Styles for the toggle controls */
+/* Styles for the toggle controls container */
 #stream-toggles {
   margin-bottom: 20px;
   margin-left: 10px;
 }
 
+/* Styles for the labels within the toggle container */
 #stream-toggles label {
-  margin-left: 0px;
-  margin-right: 10px;
+  font-size: 13.3333px; /* Match existing label font size */
+  margin: 0;            /* Remove default margins */
+  margin-right: 15px;   /* Add some space between each checkbox/label group */
+  margin-left: 0;     /* Remove or reduce left margin to bring text closer */
+  vertical-align: middle; /* Align label text vertically with the checkbox */
+}
+
+#stream-toggles input[type="checkbox"] {
+  vertical-align: middle; /* Align checkbox vertically with the label */
+  margin-right: 0px; /* Add a small margin to the right of the checkbox */
 }
 
 /* Class to hide sections */
