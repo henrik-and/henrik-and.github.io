@@ -505,6 +505,33 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   
   // Set default sink and source for all audio elements and the audio context.
   changeAudioOutput();
+  
+  // Logic for toggling the visibility of the media stream sections
+  const toggleGum1 = document.getElementById('toggle-gum1');
+  const toggleGum2 = document.getElementById('toggle-gum2');
+  const toggleGdm = document.getElementById('toggle-gdm');
+
+  const gumSection1 = document.getElementById('gum-section-1');
+  const gumSection2 = document.getElementById('gum-section-2');
+  const gdmSection = document.getElementById('gdm-section');
+
+  toggleGum1.addEventListener('change', () => {
+    if (gumSection1) {
+        gumSection1.classList.toggle('hidden-section', !toggleGum1.checked);
+    }
+  });
+
+  toggleGum2.addEventListener('change', () => {
+    if (gumSection2) {
+        gumSection2.classList.toggle('hidden-section', !toggleGum2.checked);
+    }
+  });
+
+  toggleGdm.addEventListener('change', () => {
+    if (gdmSection) {
+        gdmSection.classList.toggle('hidden-section', !toggleGdm.checked);
+    }
+  });
 });
 
 function clearGumInfoContainer() {

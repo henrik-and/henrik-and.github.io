@@ -297,3 +297,19 @@ figure {
   margin-top: 10px;
   color: green;
 }
+
+/* Styles for the toggle controls */
+#stream-toggles {
+  margin-bottom: 20px;
+  margin-left: 10px;
+}
+
+#stream-toggles label {
+  margin-left: 0px;
+  margin-right: 10px;
+}
+
+/* Class to hide sections */
+.hidden-section {
+  display: none;
+}
