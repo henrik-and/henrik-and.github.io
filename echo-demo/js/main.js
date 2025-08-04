@@ -48,6 +48,8 @@ const warningElement = document.getElementById('warning-message');
 const gumCanvases = document.querySelectorAll('.gum-level-meter');
 const gdmCanvas = document.getElementById('gdm-level-meter');
 const pcAudio = document.getElementById('pc-audio-destination');
+const audioInputInfoDiv = document.getElementById('audio-input-info');
+const audioOutputInfoDiv = document.getElementById('audio-output-info');
 
 import { logi, prettyJson } from './utils.js';
 
@@ -455,6 +457,7 @@ async function initPeerConnectionAudio() {
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
+  await updateDeviceInfo();
     
   htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
@@ -767,6 +770,52 @@ function getSelectedDevice(select) {
   return deviceLabel;
 };
 
+
+async function updateDeviceInfo() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const selectedInputId = audioInputSelect.value;
+  const selectedOutputId = audioOutputSelect.value;
+
+  let inputDevice;
+  if (selectedInputId === 'default') {
+    inputDevice = devices.find(d => d.kind === 'audioinput');
+  } else if (selectedInputId === 'communications') {
+    inputDevice = devices.find(d => d.deviceId === 'communications' && d.kind === 'audioinput');
+  } else {
+    inputDevice = devices.find(d => d.deviceId === selectedInputId);
+  }
+
+  let outputDevice;
+  if (selectedOutputId === 'default') {
+    outputDevice = devices.find(d => d.kind === 'audiooutput');
+  } else if (selectedOutputId === 'communications') {
+    outputDevice = devices.find(d => d.deviceId === 'communications' && d.kind === 'audiooutput');
+  } else {
+    outputDevice = devices.find(d => d.deviceId === selectedOutputId);
+  }
+
+  if (inputDevice) {
+    audioInputInfoDiv.textContent = `Audio input device:\n` +
+                                `  kind: ${inputDevice.kind}\n` +
+                                `  label: ${inputDevice.label}\n` +
+                                `  deviceId: ${inputDevice.deviceId}\n` +
+                                `  groupId: ${inputDevice.groupId}`;
+  } else {
+    audioInputInfoDiv.textContent = `Audio input device: Not Found`;
+  }
+
+  if (outputDevice) {
+    audioOutputInfoDiv.textContent = `Audio output device:\n` +
+                                 `  kind: ${outputDevice.kind}\n` +
+                                 `  label: ${outputDevice.label}\n` +
+                                 `  deviceId: ${outputDevice.deviceId}\n` +
+                                 `  groupId: ${outputDevice.groupId}`;
+  } else {
+    audioOutputInfoDiv.textContent = `Audio output device: Not Found`;
+  }
+}
+
+
 /**
  * Enumerate all devices and  deliver results (internally) as `MediaDeviceInfo` objects.
  * TODO: ensure that a device selection is maintained after a device is added or removed.
@@ -794,6 +843,7 @@ async function enumerateDevices() {
     // Chrome issue: https://g-issues.chromium.org/issues/390333516
     
     const devices = await navigator.mediaDevices.enumerateDevices();
+    logi(devices);
     
     // Filter out array of InputDeviceInfo objects.
     const deviceInfosInput = devices.filter(device => device.kind === 'audioinput');
@@ -1217,7 +1267,8 @@ gumRecordButtons.forEach((button, index) => {
 /** Restart the local MediaStreamTrack (gUM) when a new input device is selected. */
 audioInputSelect.onchange = async () => {
   const deviceLabel = getSelectedDevice(audioInputSelect);
-  logi(`Selected input device: ${deviceLabel}`); 
+  logi(`Selected input device: ${deviceLabel}`);
+  await updateDeviceInfo();
   // Restart active streams using the new device selection.
   gumStreams.forEach(async (stream, index) => {
     if (stream) {
@@ -1229,7 +1280,8 @@ audioInputSelect.onchange = async () => {
 /** Set sink ID for all audio elements based on the latest output device selection. */
 audioOutputSelect.onchange = async () => {
   const deviceLabel = getSelectedDevice(audioOutputSelect);
-  logi(`Selected output device: ${deviceLabel}`); 
+  logi(`Selected output device: ${deviceLabel}`);
+  await updateDeviceInfo();  
   await changeAudioOutput();
 };
 
@@ -1483,8 +1535,10 @@ gdmStopButton.onclick = () => {
 gdmMuteCheckbox.onclick = () => {
   if (gdmStream) {
     const [track] = gdmStream.getAudioTracks();
-    track.enabled = !checkbox;
-    printGdmAudioTrack(track, index);
+    if (!track) {
+      track.enabled = !checkbox;
+      printGdmAudioTrack(track);
+    }
   }
 };
 
