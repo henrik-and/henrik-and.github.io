@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
       `[source: ${element.currentSourceLabel}][sink: ${element.currentSinkLabel}]`);
   }
   
-  // Attach listeners ---
+  // Attach listeners.
   htmlAudio.addEventListener('play', logAudioPlay);
   htmlAudio.addEventListener('pause', logAudioPause);
 
