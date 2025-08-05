@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSFiddle 9ea1tkd2</title>
+
+  <style>
+    
+  </style>
+
+  
+</head>
+<body>
+  <button onclick="start();" id ="start_button">
+  Start
+</button>
+<button onclick="loadDevices();" id ="start_button">
+  load
+</button>
+<button onclick="play()">
+  Play
+</button>
+<button onclick="stop()">
+  Stop
+</button>
+<div id="outputs">
+
+</div>
+
+
+  <script>
+    // Original code from https://jsfiddle.net/ashercoren/9o8mtrp5/4/.
+
+var ac;
+var audio;
+var o;
+var dest;
+
+function play() {
+  if (!o) {
+    o = ac.createOscillator();
+    o.connect(dest);
+    o.start();
+  }
+}
+
+function stop() {
+  if (o) {
+    o.disconnect();
+    o.stop();
+    o = null;
+  }
+}
+
+function loadDevices() {
+  const outputsDiv = document.getElementById("outputs");
+  navigator.mediaDevices.enumerateDevices()
+    .then(function(deviceInfos) {
+      for (var i = 0; i !== deviceInfos.length; ++i) {
+        var deviceInfo = deviceInfos[i];
+        if (deviceInfo.kind === 'audiooutput') {
+          console.log(deviceInfo);
+        	var button = document.createElement('button');
+          button.innerHTML = `${deviceInfo.label} (${deviceInfo.deviceId.substring(0, 8)}...)`;
+          button.value = deviceInfo.deviceId;
+          button.onclick = setOutput;
+          outputsDiv.append(button);
+        }
+      }
+    })
+    .catch(function(error) {
+      console.log('mediaDevices error: ', error);
+    });
+}
+
+function start() {
+  document.getElementById("start_button").disabled = true;
+
+  ac = new AudioContext();
+	audio = new Audio();
+  dest = ac.createMediaStreamDestination();
+  audio.srcObject = dest.stream;
+  audio.play();
+
+  navigator.mediaDevices.getUserMedia({audio:true})
+    .then(function(stream) {
+      console.log("audio system allowed")
+      window.stream = stream;
+    })
+    .catch(function(error) {
+      console.log('getUserMedia error: ', error);
+    });
+}
+
+function setOutput(event) {
+console.log('setSinkId(deviceId=' + event.target.value + ')')
+	audio.setSinkId(event.target.value)
+    .then(function(data) {
+      console.log("connected to output: " + event.target.value)
+    })
+    .catch(function(error) {
+      console.log("Error when attacheing audio: " + error)
+    });
+}
+
+//start();
+
+  </script>
+</body>
+</html>
