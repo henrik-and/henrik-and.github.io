@@ -452,8 +452,6 @@ async function initPeerConnectionAudio() {
   };
 };
 
-
-
 document.addEventListener('DOMContentLoaded', async (event) => {
   await ensureMicrophonePermission();
   await enumerateDevices();
@@ -462,11 +460,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
   htmlAudio.tag = 'HTML';
-   
-  htmlAudio.addEventListener('play', (event) => {
-    logi('<audio> playout starts ' +
-      `[source: ${htmlAudio.currentSourceLabel}][sink: ${htmlAudio.currentSinkLabel}]`);
-  });
   
   // Event listener to update audio source when the selection changes
   document.getElementById('audio-file-select').addEventListener('change', async (event) => {
@@ -505,6 +498,38 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   });
   gdmAudio.tag = 'gDM';
   pcAudio.tag = 'PC';
+  
+  // Helper functions for logging audio play/pause.
+  function logAudioPlay(event) {
+    const element = event.target;
+    logi(`<${element.tag}> playout starts ` +
+      `[source: ${element.currentSourceLabel}][sink: ${element.currentSinkLabel}]`);
+  }
+  function logAudioPause(event) {
+    const element = event.target;
+    logi(`<${element.tag}> playout stops ` +
+      `[source: ${element.currentSourceLabel}][sink: ${element.currentSinkLabel}]`);
+  }
+  
+  // Attach listeners ---
+  htmlAudio.addEventListener('play', logAudioPlay);
+  htmlAudio.addEventListener('pause', logAudioPause);
+
+  gumAudios.forEach(audio => {
+    audio.addEventListener('play', logAudioPlay);
+    audio.addEventListener('pause', logAudioPause);
+  });
+
+  gumRecordedAudios.forEach(audio => {
+    audio.addEventListener('play', logAudioPlay);
+    audio.addEventListener('pause', logAudioPause);
+  });
+
+  gdmAudio.addEventListener('play', logAudioPlay);
+  gdmAudio.addEventListener('pause', logAudioPause);
+
+  pcAudio.addEventListener('play', logAudioPlay);
+  pcAudio.addEventListener('pause', logAudioPause);
   
   // Set default sink and source for all audio elements and the audio context.
   changeAudioOutput();
@@ -651,47 +676,6 @@ function printMediaRecorderInfo(recorder, element) {
   }, {});
   element.textContent = `MediaRecorder:\n` + prettyJson(filteredRecorder);
 }
-
-gumAudios.forEach(audio => {
-  audio.addEventListener('play', (event) => {
-    logi('<audio> playout starts ' +
-      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
-  });
-});
-
-gumAudios.forEach(audio => {
-  audio.addEventListener('pause', (event) => {
-    logi('<audio> playout stops ' +
-      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
-  });
-});
-
-gumRecordedAudios.forEach(audio => {
-  audio.addEventListener('play', (event) => {
-    logi('<audio> playout starts ' +
-      `[source: ${audio.currentSourceLabel}][sink: ${audio.currentSinkLabel}]`);
-  });
-});
-
-gdmAudio.addEventListener('play', (event) => {
-  logi('<audio> playout starts ' +
-    `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
-});
-
-gdmAudio.addEventListener('pause', (event) => {
-  logi('<audio> playout stops ' +
-    `[source: ${gdmAudio.currentSourceLabel}][sink: ${gdmAudio.currentSinkLabel}]`);
-});
-
-pcAudio.addEventListener('play', (event) => {
-  logi('<PeerConnection> playout starts ' +
-    `[source: ${pcAudio.currentSourceLabel}][sink: ${pcAudio.currentSinkLabel}]`);
-});
-
-pcAudio.addEventListener('pause', (event) => {
-  logi('<PeerConnection> playout stops ' +
-    `[source: ${pcAudio.currentSourceLabel}][sink: ${pcAudio.currentSinkLabel}]`);
-});
 
 function updateDevices(listElement, devices) {
   listElement.innerHTML = '';
