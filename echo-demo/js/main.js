@@ -553,6 +553,13 @@ function clearGdmInfoContainer() {
   });
 };
 
+function abbreviateDeviceId(deviceId) {
+  if (typeof deviceId === 'string' && deviceId.length > 16) {
+    return `${deviceId.substring(0, 8)}..${deviceId.substring(deviceId.length - 8)}`;
+  }
+  return deviceId;
+}
+
 function printGumRequestedConstraints(constraints, index) {
   if (gumRequestedConstraintsDivs[index]) {
     // Create a deep copy of the audio constraints to avoid modifying the original object.
@@ -560,13 +567,9 @@ function printGumRequestedConstraints(constraints, index) {
 
     // Check if deviceId.exact exists and is a string.
     if (constraintsToDisplay.deviceId && typeof constraintsToDisplay.deviceId.exact === 'string') {
-      const fullId = constraintsToDisplay.deviceId.exact;
-      if (fullId.length > 16) {
-        // Display first 8 and last 8 characters.
-        constraintsToDisplay.deviceId.exact = `${fullId.substring(0, 8)}..${fullId.substring(fullId.length - 8)}`;
-      }
+      constraintsToDisplay.deviceId.exact = abbreviateDeviceId(constraintsToDisplay.deviceId.exact);
     }
-    gumRequestedConstraintsDivs[index].textContent = '[gUM] Requested constraints:\n' + prettyJson(constraintsToDisplay);
+    gumRequestedConstraintsDivs[index].textContent = 'Requested constraints:\n' + prettyJson(constraintsToDisplay);
   }
 }
 
@@ -586,11 +589,7 @@ function printGumAudioSettings(settings, index) {
 
   // Abbreviate the deviceId if it exists and is a string.
   if (settingsToDisplay.deviceId && typeof settingsToDisplay.deviceId === 'string') {
-    const fullId = settingsToDisplay.deviceId;
-    if (fullId.length > 16) {
-      // Display first 8 and last 8 characters.
-      settingsToDisplay.deviceId = `${fullId.substring(0, 8)}..${fullId.substring(fullId.length - 8)}`;
-    }
+    settingsToDisplay.deviceId = abbreviateDeviceId(settingsToDisplay.deviceId);
   }
 
   // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
@@ -598,7 +597,7 @@ function printGumAudioSettings(settings, index) {
     obj[prop] = settingsToDisplay[prop];
     return obj;
   }, {});
-  gumConstraintsDivs[index].textContent = '[gUM] Active settings:\n' + prettyJson(filteredSettings);
+  gumConstraintsDivs[index].textContent = 'Active settings:\n' + prettyJson(filteredSettings);
   // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));
 }
 
@@ -630,64 +629,28 @@ function printGdmAudioSettings(settings, options) {
   filteredSettings.selfBrowserSurface = options.selfBrowserSurface;
   filteredSettings.surfaceSwitching = options.surfaceSwitching;
   filteredSettings.monitorTypeSurfaces = options.monitorTypeSurfaces;
-  gdmOptionsDiv.textContent = '[gDM] Active options:\n' + prettyJson(filteredSettings);    
+  gdmOptionsDiv.textContent = 'Active options:\n' + prettyJson(filteredSettings);    
 };
 
-function printGumAudioTrack(track, index) {
+function printMediaTrackInfo(track, element) {
   const propertiesToPrint = [
-    'label',
-    'id',
-    'kind',
-    'enabled',
-    'muted',
-    'readyState'
+      'label', 'id', 'kind', 'enabled', 'muted', 'readyState'
   ];
   const filteredTrack = propertiesToPrint.reduce((obj, prop) => {
-    obj[prop] = track[prop];
-    return obj;
+      obj[prop] = track[prop];
+      return obj;
   }, {});
-  gumTrackDivs[index].textContent = '[gUM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
-};
+  element.textContent = `MediaStreamTrack:\n` + prettyJson(filteredTrack);
+}
 
-function printGdmAudioTrack(track) {
-  const propertiesToPrint = [
-    'label',
-    'id',
-    'kind',
-    'enabled',
-    'muted',
-    'readyState'
-  ];
-  const filteredTrack = propertiesToPrint.reduce((obj, prop) => {
-    obj[prop] = track[prop];
-    return obj;
-  }, {});
-  gdmTrackDiv.textContent = '[gDM] MediaStreamTrack:\n' + prettyJson(filteredTrack);
-};
-
-function printGumMediaRecorder(recorder, index) {
-  const propertiesToPrint = [
-    'mimeType',
-    'state'
-  ];
+function printMediaRecorderInfo(recorder, element) {
+  const propertiesToPrint = ['mimeType', 'state'];
   const filteredRecorder = propertiesToPrint.reduce((obj, prop) => {
-    obj[prop] = recorder[prop];
-    return obj;
+      obj[prop] = recorder[prop];
+      return obj;
   }, {});
-  gumRecordedDivs[index].textContent = '[gUM] MediaRecorder:\n' + prettyJson(filteredRecorder);
-};
-
-function printGdmMediaRecorder(recorder) {
-  const propertiesToPrint = [
-    'mimeType',
-    'state'
-  ];
-  const filteredRecorder = propertiesToPrint.reduce((obj, prop) => {
-    obj[prop] = recorder[prop];
-    return obj;
-  }, {});
-  gdmRecordedDiv.textContent = '[gDM] MediaRecorder:\n' + prettyJson(filteredRecorder);
-};
+  element.textContent = `MediaRecorder:\n` + prettyJson(filteredRecorder);
+}
 
 gumAudios.forEach(audio => {
   audio.addEventListener('play', (event) => {
@@ -1078,17 +1041,17 @@ async function startGum(index) {
  
     const settings = audioTrack.getSettings();
     printGumAudioSettings(settings, index);
-    printGumAudioTrack(audioTrack, index);
+    printMediaTrackInfo(audioTrack, gumTrackDivs[index]);
     // Store the currently selected and active (unique) microphone ID.
     openMicId = settings.deviceId;
      
     audioTrack.onmute = (event) => {
       logw('[gUM] MediaStreamTrack.onmute: ' + audioTrack.label);
-      printGumAudioTrack(audioTrack, index);
+      printMediaTrackInfo(audioTrack, gumTrackDivs[index]);
     }
     audioTrack.onunmute = (event) => {
       logw('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-      printGumAudioTrack(audioTrack, index);
+      printMediaTrackInfo(audioTrack, gumTrackDivs[index]);
     };
     audioTrack.onended = (event) => {
       logw('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
@@ -1173,7 +1136,7 @@ gumMuteCheckboxes.forEach((checkbox, index) => {
     if (gumStreams[index]) {
       const [track] = gumStreams[index].getAudioTracks();
       track.enabled = !checkbox.checked;
-      printGumAudioTrack(track, index);
+      printMediaTrackInfo(track, gumTrackDivs[index]);
     }
   };
 });
@@ -1222,7 +1185,7 @@ function startGumRecording(index) {
     gumRecordButtons[index].textContent = 'Stop Recording';
     
     gumMediaRecorders[index].onstart = (event) => {
-      printGumMediaRecorder(gumMediaRecorders[index], index);
+      printMediaRecorderInfo(gumMediaRecorders[index], gumRecordedDivs[index]);
     };
     
     gumMediaRecorders[index].onstop = (event) => {
@@ -1231,7 +1194,7 @@ function startGumRecording(index) {
       gumRecordedAudios[index].srcObject = null;
       gumRecordedAudios[index].src = URL.createObjectURL(superBuffer);
       updateSourceLabel(gumRecordedAudios[index]);
-      printGumMediaRecorder(gumMediaRecorders[index], index);
+      printMediaRecorderInfo(gumMediaRecorders[index], gumRecordedDivs[index]);
       gumRecordedDivs[index].textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
@@ -1332,7 +1295,7 @@ function startGdmRecording() {
     gdmRecordButton.textContent = 'Stop Recording';
     
     gdmMediaRecorder.onstart = (event) => {
-      printGdmMediaRecorder(gdmMediaRecorder);
+      printMediaRecorderInfo(gdmMediaRecorder, gdmRecordedDiv);
     };
     
     gdmMediaRecorder.onstop = (event) => {
@@ -1341,7 +1304,7 @@ function startGdmRecording() {
       gdmRecordedAudio.srcObject = null;
       gdmRecordedAudio.src = URL.createObjectURL(superBuffer);
       updateSourceLabel(gdmRecordedAudio);
-      printGdmMediaRecorder(gdmMediaRecorder);
+      printMediaRecorderInfo(gdmMediaRecorder, gdmRecordedDiv);
       gdmRecordedDiv.textContent += '\nrecorded blob size: ' + superBuffer.size;
     };
     
@@ -1429,15 +1392,15 @@ async function startGdm() {
       const settings = audioTrack.getSettings();
       logi('[gDM] audioTrack.getSettings: ', settings);
       printGdmAudioSettings(settings, options);
-      printGdmAudioTrack(audioTrack);
+      printMediaTrackInfo(audioTrack, gdmTrackDiv);
     
       audioTrack.onmute = (event) => {
         logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-        printGdmAudioTrack(audioTrack);
+        printMediaTrackInfo(audioTrack, gdmTrackDiv);
       }
       audioTrack.onunmute = (event) => {
         logi('[gDM] MediaStreamTrack.onunmute: ' + audioTrack.label);
-        printGdmAudioTrack(audioTrack);
+        printMediaTrackInfo(audioTrack, gdmTrackDiv);
       };
       audioTrack.addEventListener('ended', () => {
         logi('[gDM] MediaStreamTrack.ended: ' + audioTrack.label);
