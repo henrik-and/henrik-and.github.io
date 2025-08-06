@@ -162,8 +162,10 @@ label[for="gum-play-audio-context"] {
   margin-left: 10px; 
 }
 
-.gum-container > *:last-child { /* Select the last child */
-  margin-right: 0;  /* Remove margin from the last element */
+.gum-recorded-audio {
+  width: 300px;  /* Set a fixed width, adjust as needed to match others */
+  max-width: 100%; /* Ensures it shrinks if the container is too narrow */
+  min-width: 220px;  /* Crucial for visibility on Android */
 }
 
 .hidden-element {
