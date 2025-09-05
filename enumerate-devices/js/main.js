@@ -66,6 +66,7 @@ audioOutputFilter.addEventListener('change', enumerateDevices);
 videoInputFilter.addEventListener('change', enumerateDevices);
 copyButton.addEventListener('click', copyToClipboard);
 refreshButton.addEventListener('click', enumerateDevices);
+navigator.mediaDevices.addEventListener('devicechange', enumerateDevices);
 
 // Initial call to populate the list on page load.
 enumerateDevices();
