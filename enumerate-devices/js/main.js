@@ -24,26 +24,29 @@ async function enumerateDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     deviceList.innerHTML = ''; // Clear previous list
+
+    const filteredDevices = devices.filter(device => {
+        return (audioInputFilter.checked && device.kind === 'audioinput') ||
+               (audioOutputFilter.checked && device.kind === 'audiooutput') ||
+               (videoInputFilter.checked && device.kind === 'videoinput');
+    });
+
+    const totalCount = filteredDevices.length;
+    const numDigits = String(totalCount).length;
     let count = 1;
 
-    devices.forEach(device => {
-      const shouldDisplay = 
-        (audioInputFilter.checked && device.kind === 'audioinput') ||
-        (audioOutputFilter.checked && device.kind === 'audiooutput') ||
-        (videoInputFilter.checked && device.kind === 'videoinput');
-
-      if (shouldDisplay) {
+    filteredDevices.forEach(device => {
         const line = document.createElement('div');
         line.className = device.kind;
-        line.textContent = `${count++} [${device.kind}] ${device.label} [${device.deviceId}]`;
+        const countStr = String(count++).padStart(numDigits, ' ');
+        line.textContent = `${countStr} [${device.kind}] ${device.label} [${device.deviceId}]`;
         if (device.deviceId === 'default') {
             line.style.fontWeight = 'bold';
         }
         deviceList.appendChild(line);
-      }
     });
 
-    if (deviceList.innerHTML === '') {
+    if (totalCount === 0) {
         deviceList.textContent = 'No devices found for the selected filter.';
     }
 
