@@ -67,3 +67,7 @@ h1 {
   padding: 10px 20px;
   font-family: inherit;
 }
+
+.bug-link-container {
+  margin-top: 10px;
+}
