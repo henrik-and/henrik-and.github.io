@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-t">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediaDevices: enumerateDevices() Demo</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <h1><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices" target="_blank" rel="noopener noreferrer">MediaDevices: enumerateDevices()</a> Demo</h1>
+
+  <div class="filter-section">
+    <label>Filter devices:</label>
+    <input type="checkbox" id="audioinput" name="kind" value="audioinput" checked>
+    <label for="audioinput">audioinput</label>
+    <input type="checkbox" id="audiooutput" name="kind" value="audiooutput" checked>
+    <label for="audiooutput">audiooutput</label>
+    <input type="checkbox" id="videoinput" name="kind" value="videoinput" checked>
+    <label for="videoinput">videoinput</label>
+  </div>
+
+  <div class="device-list-container">
+    <div id="device-list"></div>
+    <button id="copy-button">Copy to Clipboard</button>
+  </div>
+
+  <div class="refresh-button-container">
+    <button id="refresh-button">Refresh</button>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
