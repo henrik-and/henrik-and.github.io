@@ -5,21 +5,45 @@ const videoInputFilter = document.getElementById('videoinput');
 const copyButton = document.getElementById('copy-button');
 const refreshButton = document.getElementById('refresh-button');
 
+async function checkAndRequestPermissions() {
+    let cameraPermission, microphonePermission;
+    try {
+        cameraPermission = await navigator.permissions.query({ name: 'camera' });
+        microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+    } catch (e) {
+        console.error("Permissions API not supported, falling back to getUserMedia.", e);
+        // Fallback for browsers that don't support the Permissions API.
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            stream.getTracks().forEach(track => track.stop());
+        } catch (err) {
+            console.error('getUserMedia error:', err);
+        }
+        return;
+    }
+
+    if (cameraPermission.state === 'granted' && microphonePermission.state === 'granted') {
+        // Permissions already granted.
+        return;
+    }
+
+    // If not granted, we need to request them.
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+        console.error('getUserMedia error:', err);
+        // We can still proceed, but device labels might be empty.
+    }
+}
+
 async function enumerateDevices() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
     deviceList.textContent = 'enumerateDevices() not supported.';
     return;
   }
 
-  try {
-    // Request permission to access media devices.
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    // Stop the tracks immediately since we only need permission.
-    stream.getTracks().forEach(track => track.stop());
-  } catch (err) {
-    console.error('getUserMedia error:', err);
-    // We can still proceed, but device labels might be empty.
-  }
+  await checkAndRequestPermissions();
 
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
