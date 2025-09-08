@@ -453,7 +453,7 @@ async function initPeerConnectionAudio() {
 };
 
 document.addEventListener('DOMContentLoaded', async (event) => {
-  await ensureMicrophonePermission();
+  await checkAndRequestPermissions();
   await enumerateDevices();
   await updateDeviceInfo();
     
@@ -689,22 +689,35 @@ function updateDevices(listElement, devices) {
 };
 
 /** Ensures that we always start with microphone permission. */
-async function ensureMicrophonePermission() {
-  logi('ensureMicrophonePermission');
-  const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
-  logi(permissionStatus);
-  if (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt') {
+async function checkAndRequestPermissions() {
+  let cameraPermission, microphonePermission;
+  try {
+    cameraPermission = await navigator.permissions.query({ name: 'camera' });
+    microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+  } catch (e) {
+    console.error("Permissions API not supported, falling back to getUserMedia.", e);
+    // Fallback for browsers that don't support the Permissions API.
     try {
-      // Call mediaDevices.getUserMedia() to explicitly ask for microphone permissions.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // await new Promise(resolve => setTimeout(resolve, 1000));
-      if (stream) {
-        const [track] = stream.getAudioTracks();
-        track.stop();
-      }
-    } catch (e) {
-      loge(e);
-    };
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+        console.error('getUserMedia error:', err);
+    }
+    return;
+  }
+
+  if (cameraPermission.state === 'granted' && microphonePermission.state === 'granted') {
+    // Permissions already granted.
+    return;
+  }
+
+  // If not granted, we need to request them.
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    stream.getTracks().forEach(track => track.stop());
+  } catch (err) {
+    console.error('getUserMedia error:', err);
+    // We can still proceed, but device labels might be empty.
   }
 }
 
