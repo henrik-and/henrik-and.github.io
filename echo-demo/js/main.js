@@ -34,7 +34,6 @@ const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
 const gdmWindowAudioSelect = document.getElementById('gdm-window-audio');
 const gdmRestrictOwnAudioCheckbox = document.getElementById('gdm-restrict-own-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
-const gdmSelfBrowserSurfaceCheckbox = document.getElementById('gdm-self-browser-surface');
 const gdmSurfaceSwitchingCheckbox = document.getElementById('gdm-surface-switching');
 const gdmStopButton = document.getElementById('gdm-stop');
 const gdmMuteCheckbox = document.getElementById('gdm-mute');
@@ -106,7 +105,6 @@ gdmSystemAudioCheckbox.disabled = false;
 gdmWindowAudioSelect.disabled = false;
 gdmRestrictOwnAudioCheckbox.disabled = false;
 gdmPreferCurrentTabCheckbox.disabled = false;
-gdmSelfBrowserSurfaceCheckbox.disabled = false;
 gdmSurfaceSwitchingCheckbox.disabled = false;
 
 const selectors = [audioInputSelect, audioOutputSelect];
@@ -651,7 +649,6 @@ function printGdmAudioSettings(settings, options) {
   filteredSettings.systemAudio = options.systemAudio;
   filteredSettings.windowAudio = options.windowAudio;
   filteredSettings.preferCurrentTab = options.preferCurrentTab;
-  filteredSettings.selfBrowserSurface = options.selfBrowserSurface;
   filteredSettings.surfaceSwitching = options.surfaceSwitching;
   filteredSettings.monitorTypeSurfaces = options.monitorTypeSurfaces;
   gdmOptionsDiv.textContent = 'Active options:\n' + prettyJson(filteredSettings);    
@@ -1366,7 +1363,6 @@ async function startGdm() {
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
       preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
-      selfBrowserSurface: (gdmSelfBrowserSurfaceCheckbox.checked ? 'include' : 'exclude'),
       surfaceSwitching: (gdmSurfaceSwitchingCheckbox.checked ? 'include' : 'exclude'),
       monitorTypeSurfaces: 'include',
     };
@@ -1423,7 +1419,6 @@ async function startGdm() {
       gdmSystemAudioCheckbox.disabled = true;
       gdmRestrictOwnAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
-      gdmSelfBrowserSurfaceCheckbox.disabled = true;
       gdmSurfaceSwitchingCheckbox.disabled = true;
       gdmMuteCheckbox.disabled = false;
       gdmRecordButton.disabled = false;
@@ -1469,7 +1464,6 @@ function stopGdm() {
     gdmNsCheckbox.disabled = false;
     gdmAgcCheckbox.disabled = false;
     gdmPreferCurrentTabCheckbox.disabled = false;
-    gdmSelfBrowserSurfaceCheckbox.disabled = false;
     gdmSurfaceSwitchingCheckbox.disabled = false;
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
