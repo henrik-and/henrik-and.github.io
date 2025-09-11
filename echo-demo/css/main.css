@@ -83,6 +83,9 @@ label[for="gdm-window-audio"] {
   margin-left: 0; /* Adjusts space after the dropdown */
 }
 
+#gdm {margin-top: 10px; margin-bottom: 10px;}
+.gum {margin-top: 10px; margin-bottom: 10px;}
+
 label[for="gdm-restrict-own-audio"] {
   font-size: 13.3333px;
   margin: 0;
@@ -154,6 +157,7 @@ label[for="gum-play-audio-context"] {
   border: 1px solid darkgrey;
   padding: 5px; /* Add some padding inside the container */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   margin: 0 10px; /* Add 10px margins to the left and right */
 }
@@ -240,12 +244,13 @@ canvas {
   border: 1px solid darkgrey;
   padding: 5px; /* Add some padding inside the container */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   margin: 0 10px; /* Add 10px margins to the left and right */
 }
 
 .gdm-container > * { /* Select all direct children of .gdm-container */
-  margin-left: 10px; 
+  margin-left: 10px;
 }
 
 .gdm-container > *:last-child { /* Select the last child */
