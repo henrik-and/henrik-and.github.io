@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en-US">
   <head>
     <meta charset="utf-8">
@@ -189,12 +189,20 @@
       <div class="gdm-container">
         <div class="comment">getDisplayMedia with audio processing</div>
         <button id="gdm">getDisplayMedia</button>
-        <input id="gdm-aec" type="checkbox"></input>
-        <label for="gdm-aec">AEC</label>
-        <input id="gdm-ns" type="checkbox"></input>
-        <label for="gdm-ns">NS</label>
-        <input id="gdm-agc" type="checkbox"></input>
-        <label for="gdm-agc">AGC</label>
+        <div class="gdm-controls">
+          <div>
+            <input id="gdm-aec" type="checkbox"></input>
+            <label for="gdm-aec">AEC</label>
+          </div>
+          <div>
+            <input id="gdm-ns" type="checkbox"></input>
+            <label for="gdm-ns">NS</label>
+          </div>
+          <div>
+            <input id="gdm-agc" type="checkbox"></input>
+            <label for="gdm-agc">AGC</label>
+          </div>
+        </div>
         <input id="gdm-local-audio-playback" type="checkbox" checked></input>
         <label for="gdm-local-audio-playback">LocalAudioPlayback</label>
         <input id="gdm-system-audio" type="checkbox" checked></input>
@@ -240,4 +248,3 @@
     <script type="module" src="js/main.js" defer></script>
   </body>
 </html>
-

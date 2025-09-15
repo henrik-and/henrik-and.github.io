@@ -257,6 +257,16 @@ canvas {
   margin-right: 0;  /* Remove margin from the last element */
 }
 
+.gdm-controls {
+  display: flex;
+  flex-direction: column;
+}
+
+.gdm-controls div {
+  display: flex;
+  align-items: center;
+}
+
 figure {
   display: flex;
   align-items: center;
