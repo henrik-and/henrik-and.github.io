@@ -662,7 +662,12 @@ function printGdmAudioSettings(settings, options) {
 
 function printMediaTrackInfo(track, element) {
   const propertiesToPrint = [
-      'label', 'id', 'kind', 'enabled', 'muted', 'readyState'
+      'enabled',
+      'id',
+      'kind',
+      'label',
+      'muted',
+      'readyState'
   ];
   const filteredTrack = propertiesToPrint.reduce((obj, prop) => {
       obj[prop] = track[prop];
@@ -1038,7 +1043,7 @@ async function startGum(index) {
     // MediaDevices: getUserMedia()
     gumStreams[index] = await navigator.mediaDevices.getUserMedia(constraints);
     const [audioTrack] = gumStreams[index].getAudioTracks();
- 
+    logi('[gUM] audioTrack: ', audioTrack);
     const settings = audioTrack.getSettings();
     logi('[gUM] MediaStreamTrack: getSettings: ', settings);
     printGumAudioSettings(settings, index);
@@ -1390,6 +1395,7 @@ async function startGdm() {
     const [audioTrack] = gdmStream.getAudioTracks();
     if (audioTrack) {
       const settings = audioTrack.getSettings();
+      logi('[gDM] audioTrack: ', audioTrack);
       logi('[gDM] audioTrack.getSettings: ', settings);
       printGdmAudioSettings(settings, options);
       printMediaTrackInfo(audioTrack, gdmTrackDiv);
