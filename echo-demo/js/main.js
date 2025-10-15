@@ -597,9 +597,11 @@ function printGumRequestedConstraints(constraints, index) {
 
 function printGumAudioSettings(settings, index) {
   const propertiesToPrint = [
+    'autoGainControl',
+    'channelCount',
     'deviceId',
     'echoCancellation',
-    'autoGainControl',
+    'groupId',
     'noiseSuppression',
     'sampleRate',
     'voiceIsolation'
@@ -611,6 +613,11 @@ function printGumAudioSettings(settings, index) {
   // Abbreviate the deviceId if it exists and is a string.
   if (settingsToDisplay.deviceId && typeof settingsToDisplay.deviceId === 'string') {
     settingsToDisplay.deviceId = abbreviateDeviceId(settingsToDisplay.deviceId);
+  }
+  
+  // Abbreviate the deviceId if it exists and is a string.
+  if (settingsToDisplay.groupId && typeof settingsToDisplay.groupId === 'string') {
+    settingsToDisplay.groupId = abbreviateDeviceId(settingsToDisplay.groupId);
   }
 
   // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
@@ -628,14 +635,15 @@ function printGumAudioSettings(settings, index) {
  */
 function printGdmAudioSettings(settings, options) {
   const propertiesToPrint = [
-    'deviceId',
-    'suppressLocalAudioPlayback',
-    'echoCancellation',
     'autoGainControl',
+    'channelCount',
+    'deviceId',
+    'echoCancellation',
     'noiseSuppression',
+    'restrictOwnAudio',
     'sampleRate',
+    'suppressLocalAudioPlayback',
     'voiceIsolation',
-    'restrictOwnAudio'
   ];
   
   // MediaStreamTrack: getSettings is the current configuration of the track's constraints.
