@@ -34,7 +34,6 @@ const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
 const gdmWindowAudioSelect = document.getElementById('gdm-window-audio');
 const gdmRestrictOwnAudioCheckbox = document.getElementById('gdm-restrict-own-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
-const gdmSurfaceSwitchingCheckbox = document.getElementById('gdm-surface-switching');
 const gdmStopButton = document.getElementById('gdm-stop');
 const gdmMuteCheckbox = document.getElementById('gdm-mute');
 const gdmAudio = document.getElementById('gdm-audio');
@@ -105,7 +104,6 @@ gdmSystemAudioCheckbox.disabled = false;
 gdmWindowAudioSelect.disabled = false;
 gdmRestrictOwnAudioCheckbox.disabled = false;
 gdmPreferCurrentTabCheckbox.disabled = false;
-gdmSurfaceSwitchingCheckbox.disabled = false;
 
 const selectors = [audioInputSelect, audioOutputSelect];
 
@@ -1034,6 +1032,7 @@ async function startGum(index) {
     const [audioTrack] = gumStreams[index].getAudioTracks();
  
     const settings = audioTrack.getSettings();
+    logi('[gUM] MediaStreamTrack: getSettings: ', settings);
     printGumAudioSettings(settings, index);
     printMediaTrackInfo(audioTrack, gumTrackDivs[index]);
     // Store the currently selected and active (unique) microphone ID.
@@ -1363,7 +1362,7 @@ async function startGdm() {
       },
       systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
       preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
-      surfaceSwitching: (gdmSurfaceSwitchingCheckbox.checked ? 'include' : 'exclude'),
+      surfaceSwitching: 'exclude',
       monitorTypeSurfaces: 'include',
     };
     if (gdmWindowAudioSelect.value != 'notset') {
@@ -1419,9 +1418,7 @@ async function startGdm() {
       gdmSystemAudioCheckbox.disabled = true;
       gdmRestrictOwnAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
-      gdmSurfaceSwitchingCheckbox.disabled = true;
       gdmMuteCheckbox.disabled = false;
-      gdmRecordButton.disabled = false;
     } else {
       // Keep video alive to ensure that the sharing pop-up UI is displayed. 
       let deviceId;
@@ -1464,7 +1461,6 @@ function stopGdm() {
     gdmNsCheckbox.disabled = false;
     gdmAgcCheckbox.disabled = false;
     gdmPreferCurrentTabCheckbox.disabled = false;
-    gdmSurfaceSwitchingCheckbox.disabled = false;
     gdmLocalAudioPlaybackCheckbox.disabled = false;
     gdmSystemAudioCheckbox.disabled = false;
     gdmWindowAudioSelect.disable = false;
