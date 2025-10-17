@@ -1433,6 +1433,7 @@ async function startGdm() {
       gdmRestrictOwnAudioCheckbox.disabled = true;
       gdmPreferCurrentTabCheckbox.disabled = true;
       gdmMuteCheckbox.disabled = false;
+      gdmRecordButton.disabled = false;
     } else {
       // Keep video alive to ensure that the sharing pop-up UI is displayed. 
       let deviceId;
