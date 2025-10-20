@@ -34,6 +34,7 @@ const gdmSystemAudioCheckbox = document.getElementById('gdm-system-audio');
 const gdmWindowAudioSelect = document.getElementById('gdm-window-audio');
 const gdmRestrictOwnAudioCheckbox = document.getElementById('gdm-restrict-own-audio');
 const gdmPreferCurrentTabCheckbox = document.getElementById('gdm-prefer-current-tab');
+const gdmDefaultOptionsCheckbox = document.getElementById('gdm-default-options');
 const gdmStopButton = document.getElementById('gdm-stop');
 const gdmMuteCheckbox = document.getElementById('gdm-mute');
 const gdmAudio = document.getElementById('gdm-audio');
@@ -1364,22 +1365,27 @@ async function startGdm() {
   try {
     logw('');
     loge('');
-    let options = {
-      video: true,
-      audio: {
-        echoCancellation: gdmAecCheckbox.checked,
-        autoGainControl: gdmAgcCheckbox.checked,
-        noiseSuppression: gdmNsCheckbox.checked,
-        suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
-        restrictOwnAudio: gdmRestrictOwnAudioCheckbox.checked,
-      },
-      systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
-      preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
-      surfaceSwitching: 'exclude',
-      monitorTypeSurfaces: 'include',
-    };
-    if (gdmWindowAudioSelect.value != 'notset') {
-      options['windowAudio'] = gdmWindowAudioSelect.value;
+    let options;
+    if (gdmDefaultOptionsCheckbox.checked) {
+      options = { video: true, audio: true };
+    } else {
+      options = {
+        video: true,
+        audio: {
+          echoCancellation: gdmAecCheckbox.checked,
+          autoGainControl: gdmAgcCheckbox.checked,
+          noiseSuppression: gdmNsCheckbox.checked,
+          suppressLocalAudioPlayback: !gdmLocalAudioPlaybackCheckbox.checked,
+          restrictOwnAudio: gdmRestrictOwnAudioCheckbox.checked,
+        },
+        systemAudio: (gdmSystemAudioCheckbox.checked ? 'include' : 'exclude'),
+        preferCurrentTab: gdmPreferCurrentTabCheckbox.checked,
+        surfaceSwitching: 'exclude',
+        monitorTypeSurfaces: 'include',
+      };
+      if (gdmWindowAudioSelect.value != 'notset') {
+        options['windowAudio'] = gdmWindowAudioSelect.value;
+      }
     }
     logi('requested options to getDisplayMedia: ', prettyJson(options));
     
@@ -1472,14 +1478,16 @@ function stopGdm() {
     gdmAudio.srcObject = null;
     gdmButton.disabled = false;
     gdmStopButton.disabled = true;
-    gdmAecCheckbox.disabled = false;
-    gdmNsCheckbox.disabled = false;
-    gdmAgcCheckbox.disabled = false;
-    gdmPreferCurrentTabCheckbox.disabled = false;
-    gdmLocalAudioPlaybackCheckbox.disabled = false;
-    gdmSystemAudioCheckbox.disabled = false;
-    gdmWindowAudioSelect.disable = false;
-    gdmRestrictOwnAudioCheckbox.disabled = false;
+    if (!gdmDefaultOptionsCheckbox.checked) {
+      gdmAecCheckbox.disabled = false;
+      gdmNsCheckbox.disabled = false;
+      gdmAgcCheckbox.disabled = false;
+      gdmPreferCurrentTabCheckbox.disabled = false;
+      gdmLocalAudioPlaybackCheckbox.disabled = false;
+      gdmSystemAudioCheckbox.disabled = false;
+      gdmWindowAudioSelect.disabled = false;
+      gdmRestrictOwnAudioCheckbox.disabled = false;
+    }
     gdmMuteCheckbox.disabled = true;
     gdmRecordButton.textContent = 'Start Recording';
     gdmRecordButton.disabled = true;
@@ -1518,5 +1526,17 @@ gdmPlayAudioButton.onclick = async () => {
     }
   }
 };
+
+gdmDefaultOptionsCheckbox.addEventListener('change', () => {
+  const disabled = gdmDefaultOptionsCheckbox.checked;
+  gdmAecCheckbox.disabled = disabled;
+  gdmNsCheckbox.disabled = disabled;
+  gdmAgcCheckbox.disabled = disabled;
+  gdmLocalAudioPlaybackCheckbox.disabled = disabled;
+  gdmSystemAudioCheckbox.disabled = disabled;
+  gdmWindowAudioSelect.disabled = disabled;
+  gdmRestrictOwnAudioCheckbox.disabled = disabled;
+  gdmPreferCurrentTabCheckbox.disabled = disabled;
+});
 
 

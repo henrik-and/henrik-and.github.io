@@ -111,6 +111,11 @@ label[for="gdm-agc"] {
   margin: 0;
 }
 
+label[for="gdm-default-options"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 label[for="gdm-prefer-current-tab"] {
   font-size: 13.3333px;
   margin: 0;
