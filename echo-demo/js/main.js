@@ -13,6 +13,7 @@ const gumPlayAudioContextCheckboxes = document.querySelectorAll('.gum-play-audio
 const gumRecordedAudios = document.querySelectorAll('.gum-recorded-audio');
 const gumButtons = document.querySelectorAll('.gum');
 const gumRecordButtons = document.querySelectorAll('.gum-record');
+const gumDefaultConstraintsCheckbox = document.getElementById('gum-default-constraints');
 const gumAecSelect = document.getElementById('gum-aec');
 const gumNsCheckbox = document.getElementById('gum-ns');
 const gumAgcCheckbox = document.getElementById('gum-agc');
@@ -585,7 +586,7 @@ function abbreviateDeviceId(deviceId) {
 function printGumRequestedConstraints(constraints, index) {
   if (gumRequestedConstraintsDivs[index]) {
     // Create a deep copy of the audio constraints to avoid modifying the original object.
-    const constraintsToDisplay = JSON.parse(JSON.stringify(constraints.audio));
+    const constraintsToDisplay = JSON.parse(JSON.stringify(constraints));
 
     // Check if deviceId.exact exists and is a string.
     if (constraintsToDisplay.deviceId && typeof constraintsToDisplay.deviceId.exact === 'string') {
@@ -629,6 +630,14 @@ function printGumAudioSettings(settings, index) {
   gumConstraintsDivs[index].textContent = 'Active settings:\n' + prettyJson(filteredSettings);
   // logi('capabilities:', prettyJson(audioTrack.getCapabilities()));
 }
+
+gumDefaultConstraintsCheckbox.addEventListener('change', () => {
+  const disabled = gumDefaultConstraintsCheckbox.checked;
+  gumAecSelect.disabled = disabled;
+  gumNsCheckbox.disabled = disabled;
+  gumAgcCheckbox.disabled = disabled;
+});
+
 
 /**
  * TODO: figure out why MediaStreamTrack: getSettings() does not include `systemAudio`.
@@ -1017,27 +1026,30 @@ async function startGum(index) {
   try {
     logw('');
     loge('');
-    // Constraints without any `deviceId` property in the `audio` object.
-    // Use non-processed constraints as default.
-    let constraints = {
-      audio: {
-        echoCancellation: {exact: false},
-        autoGainControl: {exact: false},
-        noiseSuppression: {exact: false},
-      },
-      video: false,
-    };
-    // Set processed constraints for the first guM stream.
-    if (index === 0) {
-      const aecMode = parseAecModes(gumAecSelect.value);
-      logi('final AEC mode in constraints: ' + aecMode);
-      constraints.audio.echoCancellation = {exact: aecMode};
-      constraints.audio.autoGainControl = {exact: gumAgcCheckbox.checked};
-      constraints.audio.noiseSuppression = {exact: gumNsCheckbox.checked};
-    }
-    // Add a `deviceId` property to the `audio` object if a microphone is available.
-    if (hasMicrophone) {
-      constraints.audio.deviceId = audioSource ? {exact: audioSource} : undefined;
+    let constraints;
+    if (gumDefaultConstraintsCheckbox.checked) {
+      constraints = { audio: true, video: false };
+    } else {
+      constraints = {
+        audio: {
+          echoCancellation: {exact: false},
+          autoGainControl: {exact: false},
+          noiseSuppression: {exact: false},
+        },
+        video: false,
+      };
+      // Set processed constraints for the first guM stream.
+      if (index === 0) {
+        const aecMode = parseAecModes(gumAecSelect.value);
+        logi('final AEC mode in constraints: ' + aecMode);
+        constraints.audio.echoCancellation = {exact: aecMode};
+        constraints.audio.autoGainControl = {exact: gumAgcCheckbox.checked};
+        constraints.audio.noiseSuppression = {exact: gumNsCheckbox.checked};
+      }
+      // Add a `deviceId` property to the `audio` object if a microphone is available.
+      if (hasMicrophone) {
+        constraints.audio.deviceId = audioSource ? {exact: audioSource} : undefined;
+      }
     }
     logi('requested constraints to getUserMedia: ', prettyJson(constraints));
     printGumRequestedConstraints(constraints, index);
@@ -1059,11 +1071,11 @@ async function startGum(index) {
     audioTrack.onunmute = (event) => {
       logw('[gUM] MediaStreamTrack.onunmute: ' + audioTrack.label);
       printMediaTrackInfo(audioTrack, gumTrackDivs[index]);
-    };
+    }
     audioTrack.onended = (event) => {
       logw('[gUM] MediaStreamTrack.onended: ' + audioTrack.label);
       stopGum(index);
-    };
+    }
     
     // The `autoplay` attribute of the audio tag is not set.
     gumAudios[index].srcObject = gumStreams[index];
@@ -1113,9 +1125,11 @@ function stopGum(index) {
   gumButtons[index].disabled = false;
   gumStopButtons[index].disabled = true;
   gumMuteCheckboxes[index].disabled = true;
-  gumAecSelect.disabled = false;
-  gumNsCheckbox.disabled = false;
-  gumAgcCheckbox.disabled = false;
+  if (!gumDefaultConstraintsCheckbox.checked) {
+    gumAecSelect.disabled = false;
+    gumNsCheckbox.disabled = false;
+    gumAgcCheckbox.disabled = false;
+  }
   gumRecordButtons[index].textContent = 'Start Recording';
   gumRecordButtons[index].disabled = true;
   clearGumInfoContainer();

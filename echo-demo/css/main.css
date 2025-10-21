@@ -30,6 +30,11 @@ label[for="gum-aec"] {
   margin-left: 10px;
 }
 
+label[for="gum-default-constraints"] {
+  font-size: 13.3333px;
+  margin: 0;
+}
+
 #gum-aec {
   margin-left: 0; /* Adjusts space after the dropdown */
 }
