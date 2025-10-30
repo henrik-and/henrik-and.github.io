@@ -89,9 +89,26 @@ button:disabled {
 
 #stream-controls-container {
   display: none; /* Hidden by default */
+  flex-direction: column;
   align-items: center;
   margin-top: 20px;
+  gap: 10px;
 }
+
+#checkbox-container {
+  display: flex;
+  align-items: center;
+}
+
+#checkbox-container label {
+  margin-right: 20px;
+}
+
+#visualizer-and-stop-container {
+  display: flex;
+  align-items: center;
+}
+
 #audio-visualizer {
   background-color: rgb(250, 250, 250);
   border: 1px solid #444;
@@ -110,4 +127,8 @@ button:disabled {
 }
 #stop-button:hover {
   background-color: #a00000;
+}
+
+#audio-playback {
+  display: none;
 }

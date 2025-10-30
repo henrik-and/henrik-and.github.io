@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvasCtx = visualizerCanvas.getContext('2d');
   const stopButton = document.querySelector('#stop-button');
   const streamControlsContainer = document.querySelector('#stream-controls-container');
+  const muteCheckbox = document.querySelector('#mute-checkbox');
+  const playCheckbox = document.querySelector('#play-checkbox');
+  const audioPlayback = document.querySelector('#audio-playback');
 
   let localStream;
   let audioContext;
@@ -31,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasPermissions = devices.every(device => device.label);
     if (!hasPermissions) {
       try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const tempStream = await navigator.mediaDevices.getUserMedia(
+            { audio: true, video: false });
         tempStream.getTracks().forEach(track => track.stop());
         devices = await navigator.mediaDevices.enumerateDevices();
       } catch (err) {
@@ -49,16 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioDevices = devices.filter(device => device.kind === 'audioinput');
 
     audioDevices.forEach((device, index) => {
-      const option = new Option(device.label || `Microphone ${index + 1}`, device.deviceId);
+      const option = new Option(device.label || `Microphone ${index + 1}`,
+          device.deviceId);
       audioDeviceSelect.appendChild(option);
     });
 
-    if ([...audioDeviceSelect.options].some(option => option.value === selectedDeviceId)) {
+    if ([...audioDeviceSelect.options].some(option => 
+        option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
   }
 
-  // Sets up the Web Audio API to process the audio stream and prepares it for visualization.
+  // Sets up the Web Audio API to process the audio stream and prepares it for 
+  // visualization.
   function visualizeAudio(stream) {
     // Stop any previous audio context to prevent multiple contexts from running.
     if (audioContext) {
@@ -71,22 +78,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create an analyser node to get frequency data.
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
-    // Connect the source to the analyser. The analyser does not need to be connected to a destination
-    // to get the data.
+    // Connect the source to the analyser. The analyser does not need to be 
+    // connected to a destination to get the data.
     source.connect(analyser);
 
     // Start the drawing loop.
     drawVisualizer();
   }
 
-  // This function is the core of the visualization. It's a self-contained loop that
-  // continuously draws the audio visualization on the canvas.
+  // This function is the core of the visualization. It's a self-contained loop 
+  // that continuously draws the audio visualization on the canvas.
   function drawVisualizer() {
-    // The loop is driven by requestAnimationFrame, which tells the browser to call this function
-    // again before the next repaint. The update rate is typically synced with the display's
-    // refresh rate, which is usually 60 frames per second (60Hz).
+    // The loop is driven by requestAnimationFrame, which tells the browser to 
+    // call this function again before the next repaint. The update rate is 
+    // typically synced with the display's refresh rate, which is usually 60 
+    // frames per second (60Hz).
 
-    // If the context is closed (e.g., by the stop button), clear the canvas and stop the loop.
+    // If the context is closed (e.g., by the stop button), clear the canvas and 
+    // stop the loop.
     if (!audioContext || audioContext.state === 'closed') {
       canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
       return;
@@ -158,11 +167,24 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('getUserMedia() successful');
       const [audioTrack] = stream.getAudioTracks();
       console.log('audioTrack:', audioTrack);
-      // On success, enable the stop button. The gumButton and constraints remain disabled.
+      audioTrack.onmute = (event) => {
+        console.log('Audio track muted:', event);
+      };
+      audioTrack.onunmute = (event) => {
+        console.log('Audio track unmuted:', event);
+      };
+      // On success, enable the stop button. The gumButton and constraints 
+      // remain disabled.
       stopButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
       visualizeAudio(localStream);
       await populateAudioDevices();
+
+      // No autoplay: the audio stream is connected to the audio element,
+      // but playback is controlled by the 'Play' checkbox.
+      audioPlayback.srcObject = localStream;
+      playCheckbox.checked = false;
+
     } catch (err) {
       console.error(err);
       errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
@@ -187,7 +209,85 @@ document.addEventListener('DOMContentLoaded', () => {
     gumButton.disabled = false;
     stopButton.disabled = true;
     setConstraintsDisabled(false);
+    audioPlayback.pause();
+    audioPlayback.srcObject = null;
+    muteCheckbox.checked = false;
+    playCheckbox.checked = false;
     console.log('Stream stopped and visualizer cleared.');
+  });
+
+  muteCheckbox.addEventListener('change', () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !muteCheckbox.checked;
+        console.log('Audio track enabled:', audioTrack.enabled);
+      }
+    }
+  });
+
+  playCheckbox.addEventListener('change', async () => {
+    if (localStream) {
+      if (playCheckbox.checked) {
+        await audioPlayback.play();
+      } else {
+        await audioPlayback.pause();
+      }
+    }
+  });
+
+  audioPlayback.addEventListener('play', async () => {
+    console.log('Audio playback started.');
+    try {
+      // 1. Check if the setSinkId API is even supported by the browser.
+      if (!('sinkId' in audioPlayback)) {
+        console.log(
+            'Playing on OS default device. (The setSinkId API is not ' +
+            'supported in this browser.)');
+        return;
+      }
+
+      const sinkId = audioPlayback.sinkId;
+
+      // 2. A blank sinkId means it's playing to the default device.
+      if (sinkId === "") {
+        console.log('Playing on default output device.');
+        return;
+      }
+
+      // 3. If we have a specific sinkId, let's find its name.
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      
+      // 4. Find the matching 'audiooutput' device.
+      const outputDevice = devices.find(
+        (device) =>
+          device.kind === 'audiooutput' && device.deviceId === sinkId
+      );
+
+      if (outputDevice) {
+        // 5. Check if the label is available (it's often hidden!)
+        if (outputDevice.label) {
+          console.log(`Playing on output device: "${outputDevice.label}"`);
+        } else {
+          // This is the "permission not granted" case.
+          console.log(
+              `Playing on output device with ID: ${sinkId}. (Label is hidden ` +
+              `until microphone permission is granted.)`);
+        }
+      } else {
+        // This is a rare case, but good to handle.
+        console.log(
+            `Playing on unknown output device with ID: ${sinkId} (Device not ` +
+            `found in list)`);
+      }
+
+    } catch (err) {
+      console.error('Error getting output device info:', err);
+    }
+  });
+
+  audioPlayback.addEventListener('pause', () => {
+    console.log('Audio playback paused.');
   });
 
   navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);

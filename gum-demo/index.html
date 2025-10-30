@@ -55,9 +55,17 @@
     </div>
   </div>
   <div id="stream-controls-container">
-    <canvas id="audio-visualizer" width="150" height="34"></canvas>
+    <div id="checkbox-container">
+      <input type="checkbox" id="mute-checkbox" />
+      <label for="mute-checkbox">Mute</label>
+      <input type="checkbox" id="play-checkbox" />
+      <label for="play-checkbox">Play</label>
+    </div>
+    <div id="visualizer-and-stop-container">
+      <canvas id="audio-visualizer" width="150" height="34"></canvas>
     <button id="stop-button">Stop Stream</button>
   </div>
+  <audio id="audio-playback"></audio>
   <p id="error-message" class="error"></p>
   <script type="module" src="js/main.js" defer></script>
 </body>
