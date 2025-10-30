@@ -41,8 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const audioDevices = devices.filter(device => device.kind === 'audioinput');
 
-    audioDeviceSelect.appendChild(new Option('default', 'default'));
-
     audioDevices.forEach((device, index) => {
       // Create a new Option element for the dropdown.
       // The first argument is the visible text, and the second is the actual value.
