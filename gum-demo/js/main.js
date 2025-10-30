@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const muteCheckbox = document.querySelector('#mute-checkbox');
   const playCheckbox = document.querySelector('#play-checkbox');
   const audioPlayback = document.querySelector('#audio-playback');
+  const trackSettingsElement = document.querySelector('#track-settings');
+  const trackPropertiesElement = document.querySelector('#track-properties');
 
   let localStream;
   let audioContext;
@@ -165,6 +167,33 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('getUserMedia() successful');
       const [audioTrack] = stream.getAudioTracks();
       console.log('audioTrack:', audioTrack);
+      const settings = audioTrack.getSettings();
+      console.log('Audio track settings:', settings);
+
+      if (settings.groupId && typeof settings.groupId === 'string') {
+        settings.groupId = settings.groupId.substring(0, 8) + '..'
+                           + settings.groupId.substring(settings.groupId.length - 8);
+      }
+      if (settings.deviceId && typeof settings.deviceId === 'string' &&
+          settings.deviceId !== 'default') {
+        settings.deviceId = settings.deviceId.substring(0, 8) + '..'
+                            + settings.deviceId.substring(settings.deviceId.length - 8);
+      }
+      
+      const settingsString = JSON.stringify(settings, null, 2);
+      trackSettingsElement.textContent = 'Audio track settings:\n' + settingsString;
+
+      const trackProperties = {
+        id: audioTrack.id,
+        kind: audioTrack.kind,
+        label: audioTrack.label,
+        enabled: audioTrack.enabled,
+        muted: audioTrack.muted,
+        readyState: audioTrack.readyState,
+      };
+      const propertiesString = JSON.stringify(trackProperties, null, 2);
+      trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + propertiesString;
+
       audioTrack.onmute = (event) => {
         console.log('Audio track muted:', event);
       };
@@ -210,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
     playCheckbox.checked = false;
+    trackSettingsElement.textContent = '';
+    trackPropertiesElement.textContent = '';
     console.log('Stream stopped and visualizer cleared.');
   });
 
