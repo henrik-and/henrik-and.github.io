@@ -1,37 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
   const gumButton = document.getElementById('gum-button');
-  const stopButton = document.getElementById('stop-button');
   const echoCancellationSelect = document.getElementById('echoCancellation');
   const autoGainControlSelect = document.getElementById('autoGainControl');
   const noiseSuppressionSelect = document.getElementById('noiseSuppression');
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
+  
+  const visualizerCanvas = document.querySelector('#audio-visualizer');
+  const canvasCtx = visualizerCanvas.getContext('2d');
+  const stopButton = document.querySelector('#stop-button');
+  const streamControlsContainer = document.querySelector('#stream-controls-container');
 
-  let stream = null;
+  let localStream;
+  let audioContext;
+  let analyser;
 
   stopButton.disabled = true;
+
+  function setConstraintsDisabled(disabled) {
+    echoCancellationSelect.disabled = disabled;
+    autoGainControlSelect.disabled = disabled;
+    noiseSuppressionSelect.disabled = disabled;
+    audioDeviceSelect.disabled = disabled;
+  }
 
   async function populateAudioDevices() {
     console.log('Populating audio devices...');
     
-    // Check if we have permission to access media devices.
-    // If not, the device labels won't be available.
     let devices = await navigator.mediaDevices.enumerateDevices();
     const hasPermissions = devices.every(device => device.label);
     if (!hasPermissions) {
       try {
-        // This will trigger a permission prompt.
         const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        // Stop the tracks immediately since we only needed the permission.
         tempStream.getTracks().forEach(track => track.stop());
-        // Re-populate devices now that we have permission and labels.
         devices = await navigator.mediaDevices.enumerateDevices();
       } catch (err) {
         console.error('Error getting media permissions:', err);
         errorMessageElement.textContent = 
             `Error getting permissions: ${err.name} - ${err.message}`;
         errorMessageElement.style.display = 'block';
-        // Do not proceed if we can't get permissions.
         return;
       }
     }
@@ -42,25 +49,74 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioDevices = devices.filter(device => device.kind === 'audioinput');
 
     audioDevices.forEach((device, index) => {
-      // Create a new Option element for the dropdown.
-      // The first argument is the visible text, and the second is the actual value.
-      // If device.label is empty (e.g., before permissions are granted), a generic name is used.
       const option = new Option(device.label || `Microphone ${index + 1}`, device.deviceId);
       audioDeviceSelect.appendChild(option);
     });
 
-    // Restore the previously selected device if it still exists.
-    // This logic handles the case where the list is refreshed (e.g., on
-    // devicechange or after the permission is granted). It checks if the device
-    // the user had selected before is still in the new list. If it is, it
-    // re-selects it for them. This prevents the dropdown from resetting to
-    // "default" every time they plug in a new device.
     if ([...audioDeviceSelect.options].some(option => option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
   }
 
+  // Sets up the Web Audio API to process the audio stream and prepares it for visualization.
+  function visualizeAudio(stream) {
+    // Stop any previous audio context to prevent multiple contexts from running.
+    if (audioContext) {
+      audioContext.close();
+    }
+    // Create a new audio context.
+    audioContext = new AudioContext();
+    // Create a source node from the media stream.
+    const source = audioContext.createMediaStreamSource(stream);
+    // Create an analyser node to get frequency data.
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    // Connect the source to the analyser. The analyser does not need to be connected to a destination
+    // to get the data.
+    source.connect(analyser);
+
+    // Start the drawing loop.
+    drawVisualizer();
+  }
+
+  // This function is the core of the visualization. It's a self-contained loop that
+  // continuously draws the audio visualization on the canvas.
+  function drawVisualizer() {
+    // The loop is driven by requestAnimationFrame, which tells the browser to call this function
+    // again before the next repaint. The update rate is typically synced with the display's
+    // refresh rate, which is usually 60 frames per second (60Hz).
+
+    // If the context is closed (e.g., by the stop button), clear the canvas and stop the loop.
+    if (!audioContext || audioContext.state === 'closed') {
+      canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+      return;
+    }
+
+    // Request the next frame of the animation.
+    requestAnimationFrame(drawVisualizer);
+
+    // Get the frequency data from the analyser.
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+
+    // Calculate the average volume of the audio.
+    let sum = dataArray.reduce((a, b) => a + b, 0);
+    let average = sum / bufferLength;
+
+    // Draw the visualization on the canvas.
+    canvasCtx.fillStyle = 'rgb(250, 250, 250)';
+    canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+    const barWidth = (average / 255) * visualizerCanvas.width;
+    canvasCtx.fillStyle = '#00FF00';
+    canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
+  }
+
   gumButton.addEventListener('click', async () => {
+    // Disable the button and constraints immediately to prevent a race condition.
+    gumButton.disabled = true;
+    setConstraintsDisabled(true);
+
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
 
@@ -97,27 +153,41 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('constraints:', JSON.stringify(constraints, null, 2));
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStream = stream;
       console.log('getUserMedia() successful');
       const [audioTrack] = stream.getAudioTracks();
       console.log('audioTrack:', audioTrack);
-      gumButton.disabled = true;
+      // On success, enable the stop button. The gumButton and constraints remain disabled.
       stopButton.disabled = false;
+      streamControlsContainer.style.display = 'flex';
+      visualizeAudio(localStream);
       await populateAudioDevices();
     } catch (err) {
       console.error(err);
       errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
       errorMessageElement.style.display = 'block';
+      // If the call fails, re-enable the gumButton and constraints.
+      gumButton.disabled = false;
+      setConstraintsDisabled(false);
     }
   });
 
   stopButton.addEventListener('click', () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      stream = null;
-      gumButton.disabled = false;
-      stopButton.disabled = true;
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
     }
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+    streamControlsContainer.style.display = 'none';
+    gumButton.disabled = false;
+    stopButton.disabled = true;
+    setConstraintsDisabled(false);
+    console.log('Stream stopped and visualizer cleared.');
   });
 
   navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);
