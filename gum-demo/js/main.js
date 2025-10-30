@@ -64,8 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Sets up the Web Audio API to process the audio stream and prepares it for 
-  // visualization.
+  // Sets up the Web Audio API to process the audio stream and prepares it for visualization.
   function visualizeAudio(stream) {
     // Stop any previous audio context to prevent multiple contexts from running.
     if (audioContext) {
@@ -86,13 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
     drawVisualizer();
   }
 
-  // This function is the core of the visualization. It's a self-contained loop 
-  // that continuously draws the audio visualization on the canvas.
+  // This function is the core of the visualization. It's a self-contained loop that continuously
+  // draws the audio visualization on the canvas.
   function drawVisualizer() {
-    // The loop is driven by requestAnimationFrame, which tells the browser to 
-    // call this function again before the next repaint. The update rate is 
-    // typically synced with the display's refresh rate, which is usually 60 
-    // frames per second (60Hz).
+    // The loop is driven by requestAnimationFrame, which tells the browser to call this function
+    // again before the next repaint. The update rate is typically synced with the display's
+    // refresh rate, which is usually 60 frames per second (60Hz).
 
     // If the context is closed (e.g., by the stop button), clear the canvas and 
     // stop the loop.
@@ -173,8 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
       audioTrack.onunmute = (event) => {
         console.log('Audio track unmuted:', event);
       };
-      // On success, enable the stop button. The gumButton and constraints 
-      // remain disabled.
+      // On success, enable the stop button. The gumButton and constraints remain disabled.
       stopButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
       visualizeAudio(localStream);
@@ -241,8 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // 1. Check if the setSinkId API is even supported by the browser.
       if (!('sinkId' in audioPlayback)) {
-        console.log(
-            'Playing on OS default device. (The setSinkId API is not ' +
+        console.log('Playing on OS default device. (The setSinkId API is not ' +
             'supported in this browser.)');
         return;
       }
@@ -270,15 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
           console.log(`Playing on output device: "${outputDevice.label}"`);
         } else {
           // This is the "permission not granted" case.
-          console.log(
-              `Playing on output device with ID: ${sinkId}. (Label is hidden ` +
-              `until microphone permission is granted.)`);
+                    console.log(`Playing on output device with ID: ${sinkId}. (Label is ` +
+                        `hidden until microphone permission is granted.)`);
         }
       } else {
         // This is a rare case, but good to handle.
-        console.log(
-            `Playing on unknown output device with ID: ${sinkId} (Device not ` +
-            `found in list)`);
+        console.log(`Playing on unknown output device with ID: ${sinkId} ` +
+            `(Device not found in list)`);
       }
 
     } catch (err) {
