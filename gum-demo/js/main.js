@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         muted: audioTrack.muted,
         readyState: audioTrack.readyState,
       };
+      console.log('MediaStreamTrack:', trackProperties);
       const propertiesString = JSON.stringify(trackProperties, null, 2);
       trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + propertiesString;
 
