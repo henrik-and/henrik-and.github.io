@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>gum-demo</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">MediaDevices: getUserMedia()</a> Demo</h1>
+  <div class="api-call-container">
+    <div class="button-container">
+      <button id="gum-button">getUserMedia</button>
+    </div>
+    <div class="settings-container">
+      <pre>constraints = {
+  audio: {</pre>
+      <div class="setting">
+        <label for="echoCancellation">echoCancellation:</label>
+        <select id="echoCancellation">
+          <option value="undefined">undefined</option>
+          <optgroup label="Booleans">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </optgroup>
+          <optgroup label="Strings">
+            <option value="all">all</option>
+            <option value="remote-only">remote-only</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="autoGainControl">autoGainControl:</label>
+        <select id="autoGainControl">
+          <option value="undefined">undefined</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="noiseSuppression">noiseSuppression:</label>
+        <select id="noiseSuppression">
+          <option value="undefined">undefined</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="audioDevice">deviceId:</label>
+        <select id="audioDevice">
+          <option value="default">default</option>
+        </select>
+      </div>
+      <pre>  },
+  video: false
+}</pre>
+    </div>
+    <div class="button-container">
+      <button id="stop-button">Stop</button>
+    </div>
+  </div>
+  <p id="error-message" class="error"></p>
+  <script type="module" src="js/main.js" defer></script>
+</body>
+</html>

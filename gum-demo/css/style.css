@@ -1,0 +1,67 @@
+body {
+  font-family: "Lucida Console", "Courier New", monospace;
+  font-size: 14px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.api-call-container {
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+  gap: 20px;
+}
+
+.button-container {
+}
+
+.settings-container {
+  border: 1px solid darkgrey;
+  padding: 10px;
+  background-color: rgb(250, 250, 250);
+}
+
+.settings-container pre {
+  font-family: inherit;
+  margin: 0;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  margin-left: 2em;
+}
+
+.setting label {
+  display: inline-block;
+  min-width: 130px; /* Adjust as needed */
+  font-family: monospace;
+  margin-right: 10px;
+}
+
+#gum-button,
+#stop-button {
+  padding: 10px 20px;
+  font-family: inherit;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #D8000C; /* A clear, strong red */
+  font-family: inherit;
+  font-size: inherit;
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #FFD2D2; /* A light red background */
+  border-radius: 8px;
+  border: 1px solid #D8000C;
+  display: none; /* Start hidden */
+}
