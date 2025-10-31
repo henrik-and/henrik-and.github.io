@@ -9,24 +9,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const visualizerCanvas = document.querySelector('#audio-visualizer');
   const canvasCtx = visualizerCanvas.getContext('2d');
   const stopButton = document.querySelector('#stop-button');
+  const recordButton = document.querySelector('#record-button');
   const streamControlsContainer = document.querySelector('#stream-controls-container');
   const muteCheckbox = document.querySelector('#mute-checkbox');
   const playCheckbox = document.querySelector('#play-checkbox');
   const audioPlayback = document.querySelector('#audio-playback');
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
+  const recordedAudio = document.querySelector('#recorded-audio');
 
   let localStream;
   let audioContext;
   let analyser;
+  let isRecording = false;
+  let mediaRecorder;
+  let recordedChunks = [];
 
   stopButton.disabled = true;
+  recordButton.disabled = true;
 
   function setConstraintsDisabled(disabled) {
     echoCancellationSelect.disabled = disabled;
     autoGainControlSelect.disabled = disabled;
     noiseSuppressionSelect.disabled = disabled;
     audioDeviceSelect.disabled = disabled;
+  }
+
+  function updateRecordButtonUI() {
+    if (isRecording) {
+      recordButton.classList.add('recording-active');
+      recordButton.innerHTML = 'Stop';
+    } else {
+      recordButton.classList.remove('recording-active');
+      recordButton.innerHTML = '<span class="record-dot"></span>Rec';
+    }
+  }
+
+  function findSupportedMimeType() {
+    const mimeTypes = [
+      'audio/webm; codecs=pcm',
+      'audio/webm; codecs=opus',
+      'audio/webm',
+      'audio/ogg; codecs=opus',
+      'audio/ogg',
+    ];
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        console.log(`Using supported mimeType: ${mimeType}`);
+        return mimeType;
+      }
+    }
+    console.warn('No preferred mimeType supported. Using default.');
+    return ''; // Let the browser decide
   }
 
   async function populateAudioDevices() {
@@ -203,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       // On success, enable the stop button. The gumButton and constraints remain disabled.
       stopButton.disabled = false;
+      recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
       visualizeAudio(localStream);
       await populateAudioDevices();
@@ -211,6 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // but playback is controlled by the 'Play' checkbox.
       audioPlayback.srcObject = localStream;
       playCheckbox.checked = false;
+      isRecording = false;
+      updateRecordButtonUI();
 
     } catch (err) {
       console.error(err);
@@ -223,6 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   stopButton.addEventListener('click', () => {
+    // Stop any active recording to prevent errors
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       localStream = null;
@@ -235,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     streamControlsContainer.style.display = 'none';
     gumButton.disabled = false;
     stopButton.disabled = true;
+    recordButton.disabled = true;
     setConstraintsDisabled(false);
     audioPlayback.pause();
     audioPlayback.srcObject = null;
@@ -242,7 +284,93 @@ document.addEventListener('DOMContentLoaded', () => {
     playCheckbox.checked = false;
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
+    recordedAudio.style.display = 'none'; // Hide recorded audio
+    recordedAudio.src = ''; // Clear recorded audio source
+    if (recordedAudio.src) {
+      URL.revokeObjectURL(recordedAudio.src);
+    }
+    isRecording = false;
+    updateRecordButtonUI();
     console.log('Stream stopped and visualizer cleared.');
+  });
+
+  recordButton.addEventListener('click', () => {
+    isRecording = !isRecording;
+    updateRecordButtonUI();
+
+    if (isRecording) {
+      if (!localStream) {
+        console.error('Cannot record: No active stream.');
+        return;
+      }
+
+      recordedAudio.style.display = 'none'; // Hide recorded audio when starting a new recording
+      recordedAudio.src = ''; // Clear recorded audio source
+      if (recordedAudio.src) {
+        URL.revokeObjectURL(recordedAudio.src);
+      }
+
+      // Reset chunks to prevent memory leaks from previous recordings
+      recordedChunks = [];
+      const mimeType = findSupportedMimeType();
+      
+      try {
+        mediaRecorder = new MediaRecorder(localStream, { mimeType });
+
+        mediaRecorder.onstart = () => {
+          console.log('MediaRecorder started.', 'Using MimeType:', mimeType, 'Stream:', mediaRecorder.stream);
+        };
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+            console.log('Data available, chunk size:', event.data.size);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          console.log('MediaRecorder stopped.');
+          console.log('Total chunks recorded:', recordedChunks.length);
+          
+          const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
+          console.log('Recorded Blob:', recordedBlob, 'Size:', recordedBlob.size);
+
+          const audioUrl = URL.createObjectURL(recordedBlob);
+          recordedAudio.src = audioUrl;
+          recordedAudio.style.display = 'block'; // Make the audio element visible
+        };
+
+        recordedAudio.addEventListener('play', () => {
+          console.log('Recorded audio playback started.');
+        });
+
+        recordedAudio.addEventListener('pause', () => {
+          console.log('Recorded audio playback paused.');
+        });
+
+        recordedAudio.addEventListener('ended', () => {
+          console.log('Recorded audio playback ended.');
+        });
+        
+        mediaRecorder.onerror = (event) => {
+          console.error('MediaRecorder error:', event.error);
+          errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
+          errorMessageElement.style.display = 'block';
+        };
+
+        // Start recording
+        mediaRecorder.start();
+
+      } catch (err) {
+        console.error('Failed to create MediaRecorder:', err);
+        errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
+        errorMessageElement.style.display = 'block';
+      }
+    } else {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+    }
   });
 
   muteCheckbox.addEventListener('change', () => {
@@ -304,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         // This is a rare case, but good to handle.
         console.log(`Playing on unknown output device with ID: ${sinkId} ` +
-            `(Device not found in list)`);
+            `(Device not found in list)`)
       }
 
     } catch (err) {
