@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
   const recordedAudio = document.querySelector('#recorded-audio');
+  const recordedVisualizer = document.querySelector('#recorded-visualizer');
+  const highestFreqDisplay = document.querySelector('#highest-freq-display');
 
   let localStream;
   let audioContext;
@@ -24,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let isRecording = false;
   let mediaRecorder;
   let recordedChunks = [];
+  let recordedAudioContext;
+  let recordedAnalyser;
+  let maxFrequencyOfRecording = 0;
+  let recordedVisualizationFrameRequest;
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -100,54 +106,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Sets up the Web Audio API to process the audio stream and prepares it for visualization.
   function visualizeAudio(stream) {
-    // Stop any previous audio context to prevent multiple contexts from running.
     if (audioContext) {
       audioContext.close();
     }
-    // Create a new audio context.
     audioContext = new AudioContext();
-    // Create a source node from the media stream.
     const source = audioContext.createMediaStreamSource(stream);
-    // Create an analyser node to get frequency data.
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
-    // Connect the source to the analyser. The analyser does not need to be 
-    // connected to a destination to get the data.
     source.connect(analyser);
-
-    // Start the drawing loop.
     drawVisualizer();
   }
 
-  // This function is the core of the visualization. It's a self-contained loop that continuously
-  // draws the audio visualization on the canvas.
   function drawVisualizer() {
-    // The loop is driven by requestAnimationFrame, which tells the browser to call this function
-    // again before the next repaint. The update rate is typically synced with the display's
-    // refresh rate, which is usually 60 frames per second (60Hz).
-
-    // If the context is closed (e.g., by the stop button), clear the canvas and 
-    // stop the loop.
     if (!audioContext || audioContext.state === 'closed') {
       canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
       return;
     }
-
-    // Request the next frame of the animation.
     requestAnimationFrame(drawVisualizer);
-
-    // Get the frequency data from the analyser.
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-
-    // Calculate the average volume of the audio.
     let sum = dataArray.reduce((a, b) => a + b, 0);
     let average = sum / bufferLength;
-
-    // Draw the visualization on the canvas.
     canvasCtx.fillStyle = 'rgb(250, 250, 250)';
     canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     const barWidth = (average / 255) * visualizerCanvas.width;
@@ -155,46 +136,57 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
   }
 
+  function drawRecordedVisualizer() {
+    recordedVisualizationFrameRequest = requestAnimationFrame(drawRecordedVisualizer);
+    const bufferLength = recordedAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    recordedAnalyser.getByteFrequencyData(dataArray);
+    const canvas = recordedVisualizer;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let barHeight;
+    let x = 0;
+    let maxFreqIndex = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      barHeight = dataArray[i];
+      if (barHeight > (dataArray[maxFreqIndex] || 0)) {
+        maxFreqIndex = i;
+      }
+      ctx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
+      ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+      x += barWidth + 1;
+    }
+    const nyquist = recordedAudioContext.sampleRate / 2;
+    const highestFrequency = Math.round((maxFreqIndex * nyquist) / bufferLength);
+    if (highestFrequency > maxFrequencyOfRecording) {
+      maxFrequencyOfRecording = highestFrequency;
+    }
+    highestFreqDisplay.textContent = `Highest frequency: ${highestFrequency} Hz`;
+  }
+
   gumButton.addEventListener('click', async () => {
-    // Disable the button and constraints immediately to prevent a race condition.
     gumButton.disabled = true;
     setConstraintsDisabled(true);
-
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
-
     const audioConstraints = {};
-
     const echoCancellation = echoCancellationSelect.value;
     if (echoCancellation !== 'undefined') {
-      if (echoCancellation === 'true') {
-        audioConstraints.echoCancellation = true;
-      } else if (echoCancellation === 'false') {
-        audioConstraints.echoCancellation = false;
-      } else {
-        audioConstraints.echoCancellation = { exact: echoCancellation };
-      }
+      audioConstraints.echoCancellation = echoCancellation === 'true' ? true :
+          (echoCancellation === 'false' ? false : { exact: echoCancellation });
     }
-
     const autoGainControl = autoGainControlSelect.value;
     if (autoGainControl !== 'undefined') {
       audioConstraints.autoGainControl = autoGainControl === 'true';
     }
-
     const noiseSuppression = noiseSuppressionSelect.value;
     if (noiseSuppression !== 'undefined') {
       audioConstraints.noiseSuppression = noiseSuppression === 'true';
     }
-
     audioConstraints.deviceId = { exact: audioDeviceSelect.value };
-    
-    const constraints = {
-      audio: audioConstraints,
-      video: false
-    };
-
+    const constraints = { audio: audioConstraints, video: false };
     console.log('constraints:', JSON.stringify(constraints, null, 2));
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStream = stream;
@@ -203,64 +195,40 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('audioTrack:', audioTrack);
       const settings = audioTrack.getSettings();
       console.log('Audio track settings:', settings);
-
       if (settings.groupId && typeof settings.groupId === 'string') {
-        settings.groupId = settings.groupId.substring(0, 8) + '..'
-                           + settings.groupId.substring(settings.groupId.length - 8);
+        settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
       }
-      if (settings.deviceId && typeof settings.deviceId === 'string' &&
-          settings.deviceId !== 'default') {
-        settings.deviceId = settings.deviceId.substring(0, 8) + '..'
-                            + settings.deviceId.substring(settings.deviceId.length - 8);
+      if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
+        settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
       }
-      
-      const settingsString = JSON.stringify(settings, null, 2);
-      trackSettingsElement.textContent = 'Audio track settings:\n' + settingsString;
-
+      trackSettingsElement.textContent = 'Audio track settings:\n' + JSON.stringify(settings, null, 2);
       const trackProperties = {
-        id: audioTrack.id,
-        kind: audioTrack.kind,
-        label: audioTrack.label,
-        enabled: audioTrack.enabled,
-        muted: audioTrack.muted,
-        readyState: audioTrack.readyState,
+        id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
+        enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
       };
       console.log('MediaStreamTrack:', trackProperties);
-      const propertiesString = JSON.stringify(trackProperties, null, 2);
-      trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + propertiesString;
-
-      audioTrack.onmute = (event) => {
-        console.log('Audio track muted:', event);
-      };
-      audioTrack.onunmute = (event) => {
-        console.log('Audio track unmuted:', event);
-      };
-      // On success, enable the stop button. The gumButton and constraints remain disabled.
+      trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + JSON.stringify(trackProperties, null, 2);
+      audioTrack.onmute = (event) => console.log('Audio track muted:', event);
+      audioTrack.onunmute = (event) => console.log('Audio track unmuted:', event);
       stopButton.disabled = false;
       recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
       visualizeAudio(localStream);
       await populateAudioDevices();
-
-      // No autoplay: the audio stream is connected to the audio element,
-      // but playback is controlled by the 'Play' checkbox.
       audioPlayback.srcObject = localStream;
       playCheckbox.checked = false;
       isRecording = false;
       updateRecordButtonUI();
-
     } catch (err) {
       console.error(err);
       errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
       errorMessageElement.style.display = 'block';
-      // If the call fails, re-enable the gumButton and constraints.
       gumButton.disabled = false;
       setConstraintsDisabled(false);
     }
   });
 
   stopButton.addEventListener('click', () => {
-    // Stop any active recording to prevent errors
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
@@ -272,6 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
       audioContext.close();
       audioContext = null;
     }
+    if (recordedAudioContext) {
+      recordedAudioContext.close();
+      recordedAudioContext = null;
+    }
+    cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
     gumButton.disabled = false;
@@ -284,11 +257,13 @@ document.addEventListener('DOMContentLoaded', () => {
     playCheckbox.checked = false;
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
-    recordedAudio.style.display = 'none'; // Hide recorded audio
-    recordedAudio.src = ''; // Clear recorded audio source
+    recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
+      recordedAudio.src = '';
     }
+    recordedVisualizer.style.display = 'none';
+    highestFreqDisplay.style.display = 'none';
     isRecording = false;
     updateRecordButtonUI();
     console.log('Stream stopped and visualizer cleared.');
@@ -297,70 +272,41 @@ document.addEventListener('DOMContentLoaded', () => {
   recordButton.addEventListener('click', () => {
     isRecording = !isRecording;
     updateRecordButtonUI();
-
     if (isRecording) {
       if (!localStream) {
         console.error('Cannot record: No active stream.');
         return;
       }
-
-      recordedAudio.style.display = 'none'; // Hide recorded audio when starting a new recording
-      recordedAudio.src = ''; // Clear recorded audio source
+      recordedAudio.style.display = 'none';
       if (recordedAudio.src) {
         URL.revokeObjectURL(recordedAudio.src);
+        recordedAudio.src = '';
       }
-
-      // Reset chunks to prevent memory leaks from previous recordings
+      recordedVisualizer.style.display = 'none';
+      highestFreqDisplay.style.display = 'none';
       recordedChunks = [];
       const mimeType = findSupportedMimeType();
-      
       try {
         mediaRecorder = new MediaRecorder(localStream, { mimeType });
-
-        mediaRecorder.onstart = () => {
-          console.log('MediaRecorder started.', 'Using MimeType:', mimeType, 'Stream:', mediaRecorder.stream);
-        };
-
+        mediaRecorder.onstart = () => console.log('MediaRecorder started.', 'MimeType:', mimeType);
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             recordedChunks.push(event.data);
-            console.log('Data available, chunk size:', event.data.size);
           }
         };
-
         mediaRecorder.onstop = () => {
           console.log('MediaRecorder stopped.');
-          console.log('Total chunks recorded:', recordedChunks.length);
-          
           const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
-          console.log('Recorded Blob:', recordedBlob, 'Size:', recordedBlob.size);
-
           const audioUrl = URL.createObjectURL(recordedBlob);
           recordedAudio.src = audioUrl;
-          recordedAudio.style.display = 'block'; // Make the audio element visible
+          recordedAudio.style.display = 'block';
         };
-
-        recordedAudio.addEventListener('play', () => {
-          console.log('Recorded audio playback started.');
-        });
-
-        recordedAudio.addEventListener('pause', () => {
-          console.log('Recorded audio playback paused.');
-        });
-
-        recordedAudio.addEventListener('ended', () => {
-          console.log('Recorded audio playback ended.');
-        });
-        
         mediaRecorder.onerror = (event) => {
           console.error('MediaRecorder error:', event.error);
           errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
           errorMessageElement.style.display = 'block';
         };
-
-        // Start recording
         mediaRecorder.start();
-
       } catch (err) {
         console.error('Failed to create MediaRecorder:', err);
         errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
@@ -373,13 +319,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  recordedAudio.addEventListener('play', () => {
+    console.log('Recorded audio playback started.');
+    maxFrequencyOfRecording = 0;
+    recordedVisualizer.style.display = 'block';
+    highestFreqDisplay.style.display = 'block';
+    if (!recordedAudioContext) {
+      recordedAudioContext = new AudioContext();
+      const source = recordedAudioContext.createMediaElementSource(recordedAudio);
+      recordedAnalyser = recordedAudioContext.createAnalyser();
+      recordedAnalyser.fftSize = 2048;
+      source.connect(recordedAnalyser);
+      recordedAnalyser.connect(recordedAudioContext.destination);
+    }
+    drawRecordedVisualizer();
+  });
+
+  function stopRecordedVisualization() {
+    cancelAnimationFrame(recordedVisualizationFrameRequest);
+    highestFreqDisplay.textContent = `Maximum frequency: ${maxFrequencyOfRecording} Hz`;
+  }
+
+  recordedAudio.addEventListener('pause', () => {
+    console.log('Recorded audio playback paused.');
+    stopRecordedVisualization();
+  });
+
+  recordedAudio.addEventListener('ended', () => {
+    console.log('Recorded audio playback ended.');
+    stopRecordedVisualization();
+  });
+
   muteCheckbox.addEventListener('change', () => {
     if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !muteCheckbox.checked;
-        console.log('Audio track enabled:', audioTrack.enabled);
-      }
+      localStream.getAudioTracks()[0].enabled = !muteCheckbox.checked;
     }
   });
 
@@ -396,45 +369,22 @@ document.addEventListener('DOMContentLoaded', () => {
   audioPlayback.addEventListener('play', async () => {
     console.log('Audio playback started.');
     try {
-      // 1. Check if the setSinkId API is even supported by the browser.
       if (!('sinkId' in audioPlayback)) {
-        console.log('Playing on OS default device. (The setSinkId API is not ' +
-            'supported in this browser.)');
+        console.log('Playing on OS default device (setSinkId API not supported).');
         return;
       }
-
       const sinkId = audioPlayback.sinkId;
-
-      // 2. A blank sinkId means it's playing to the default device.
       if (sinkId === "") {
         console.log('Playing on default output device.');
         return;
       }
-
-      // 3. If we have a specific sinkId, let's find its name.
       const devices = await navigator.mediaDevices.enumerateDevices();
-      
-      // 4. Find the matching 'audiooutput' device.
-      const outputDevice = devices.find(
-        (device) =>
-          device.kind === 'audiooutput' && device.deviceId === sinkId
-      );
-
+      const outputDevice = devices.find(d => d.kind === 'audiooutput' && d.deviceId === sinkId);
       if (outputDevice) {
-        // 5. Check if the label is available (it's often hidden!)
-        if (outputDevice.label) {
-          console.log(`Playing on output device: "${outputDevice.label}"`);
-        } else {
-          // This is the "permission not granted" case.
-                    console.log(`Playing on output device with ID: ${sinkId}. (Label is ` +
-                        `hidden until microphone permission is granted.)`);
-        }
+        console.log(`Playing on output device: "${outputDevice.label || 'Label hidden'}"`);
       } else {
-        // This is a rare case, but good to handle.
-        console.log(`Playing on unknown output device with ID: ${sinkId} ` +
-            `(Device not found in list)`)
+        console.log(`Playing on unknown output device with ID: ${sinkId}`);
       }
-
     } catch (err) {
       console.error('Error getting output device info:', err);
     }
