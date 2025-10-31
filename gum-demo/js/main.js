@@ -136,6 +136,18 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
   }
 
+  function visualizeRecordedAudio() {
+    if (!recordedAudioContext) {
+      recordedAudioContext = new AudioContext();
+      const source = recordedAudioContext.createMediaElementSource(recordedAudio);
+      recordedAnalyser = recordedAudioContext.createAnalyser();
+      recordedAnalyser.fftSize = 2048;
+      source.connect(recordedAnalyser);
+      recordedAnalyser.connect(recordedAudioContext.destination);
+    }
+    drawRecordedVisualizer();
+  }
+
   function drawRecordedVisualizer() {
     recordedVisualizationFrameRequest = requestAnimationFrame(drawRecordedVisualizer);
     const bufferLength = recordedAnalyser.frequencyBinCount;
@@ -320,19 +332,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   recordedAudio.addEventListener('play', () => {
-    console.log('Recorded audio playback started.');
-    maxFrequencyOfRecording = 0;
-    recordedVisualizer.style.display = 'block';
-    highestFreqDisplay.style.display = 'block';
-    if (!recordedAudioContext) {
-      recordedAudioContext = new AudioContext();
-      const source = recordedAudioContext.createMediaElementSource(recordedAudio);
-      recordedAnalyser = recordedAudioContext.createAnalyser();
-      recordedAnalyser.fftSize = 2048;
-      source.connect(recordedAnalyser);
-      recordedAnalyser.connect(recordedAudioContext.destination);
+    try {
+      console.log('Recorded audio playback started.');
+      maxFrequencyOfRecording = 0;
+      recordedVisualizer.style.display = 'block';
+      highestFreqDisplay.style.display = 'block';
+      if (!recordedAudioContext) {
+        recordedAudioContext = new AudioContext();
+        const source = recordedAudioContext.createMediaElementSource(recordedAudio);
+        recordedAnalyser = recordedAudioContext.createAnalyser();
+        recordedAnalyser.fftSize = 2048;
+        source.connect(recordedAnalyser);
+        recordedAnalyser.connect(recordedAudioContext.destination);
+      }
+      drawRecordedVisualizer();
+    } catch (err) {
+      console.error('Error visualizing recorded audio:', err);
+      errorMessageElement.textContent = `Visualization Error: ${err.message}`;
+      errorMessageElement.style.display = 'block';
     }
-    drawRecordedVisualizer();
   });
 
   function stopRecordedVisualization() {
