@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
       recordedAudioContext = new AudioContext();
       const source = recordedAudioContext.createMediaElementSource(recordedAudio);
       recordedAnalyser = recordedAudioContext.createAnalyser();
-      recordedAnalyser.fftSize = 2048;
+      recordedAnalyser.fftSize = 16384;
       source.connect(recordedAnalyser);
       recordedAnalyser.connect(recordedAudioContext.destination);
     }
@@ -339,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!recordedAudioContext) {
         console.log('Creating new (and final) recorded audio context.');
         recordedAudioContext = new AudioContext();
+        console.log('AudioContext sample rate:', recordedAudioContext.sampleRate);
       }
       
       if (!recordedSourceNode) {
