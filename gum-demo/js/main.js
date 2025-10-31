@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const trackPropertiesElement = document.querySelector('#track-properties');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
-  const highestFreqDisplay = document.querySelector('#highest-freq-display');
 
   let localStream;
   let audioContext;
@@ -29,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedAudioContext;
   let recordedAnalyser;
   let recordedSourceNode;
-  let maxFrequencyOfRecording = 0;
   let recordedVisualizationFrameRequest;
 
   stopButton.disabled = true;
@@ -170,12 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
       x += barWidth + 1;
     }
-    const nyquist = recordedAudioContext.sampleRate / 2;
-    const highestFrequency = Math.round((maxFreqIndex * nyquist) / bufferLength);
-    if (highestFrequency > maxFrequencyOfRecording) {
-      maxFrequencyOfRecording = highestFrequency;
-    }
-    highestFreqDisplay.textContent = `Highest frequency: ${highestFrequency} Hz`;
   }
 
   gumButton.addEventListener('click', async () => {
@@ -272,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
       recordedAudio.src = '';
     }
     recordedVisualizer.style.display = 'none';
-    highestFreqDisplay.style.display = 'none';
     isRecording = false;
     updateRecordButtonUI();
     console.log('Stream stopped and visualizer cleared.');
@@ -292,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
         recordedAudio.src = '';
       }
       recordedVisualizer.style.display = 'none';
-      highestFreqDisplay.style.display = 'none';
       recordedChunks = [];
       const mimeType = findSupportedMimeType();
       try {
@@ -331,9 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
   recordedAudio.addEventListener('play', () => {
     try {
       console.log('Recorded audio playback started.');
-      maxFrequencyOfRecording = 0;
       recordedVisualizer.style.display = 'block';
-      highestFreqDisplay.style.display = 'block';
       
       // Create the context and source node only once.
       if (!recordedAudioContext) {
@@ -366,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function stopRecordedVisualization() {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
-    highestFreqDisplay.textContent = `Maximum frequency: ${maxFrequencyOfRecording} Hz`;
   }
 
   recordedAudio.addEventListener('pause', () => {

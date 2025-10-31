@@ -182,12 +182,6 @@ button:disabled {
   border-radius: 8px;
 }
 
-#highest-freq-display {
-  display: none;
-  font-size: 12px;
-  font-family: "Lucida Console", "Courier New", monospace;
-  margin-left: 5px;
-}
 
 #track-settings-container {
   width: 100%;
