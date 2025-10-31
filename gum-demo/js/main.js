@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedChunks = [];
   let recordedAudioContext;
   let recordedAnalyser;
+  let recordedSourceNode;
   let maxFrequencyOfRecording = 0;
   let recordedVisualizationFrameRequest;
 
@@ -252,10 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
       audioContext.close();
       audioContext = null;
     }
-    if (recordedAudioContext) {
-      recordedAudioContext.close();
-      recordedAudioContext = null;
-    }
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
@@ -337,14 +334,27 @@ document.addEventListener('DOMContentLoaded', () => {
       maxFrequencyOfRecording = 0;
       recordedVisualizer.style.display = 'block';
       highestFreqDisplay.style.display = 'block';
+      
+      // Create the context and source node only once.
       if (!recordedAudioContext) {
+        console.log('Creating new (and final) recorded audio context.');
         recordedAudioContext = new AudioContext();
-        const source = recordedAudioContext.createMediaElementSource(recordedAudio);
-        recordedAnalyser = recordedAudioContext.createAnalyser();
-        recordedAnalyser.fftSize = 2048;
-        source.connect(recordedAnalyser);
-        recordedAnalyser.connect(recordedAudioContext.destination);
       }
+      
+      if (!recordedSourceNode) {
+        console.log('Creating new (and final) media element source node.');
+        recordedSourceNode = recordedAudioContext.createMediaElementSource(recordedAudio);
+      }
+
+      // Always create a new analyser and connect the nodes.
+      // Disconnect the source from any *old* analyser first.
+      recordedSourceNode.disconnect();
+      
+      recordedAnalyser = recordedAudioContext.createAnalyser();
+      recordedAnalyser.fftSize = 2048;
+      recordedSourceNode.connect(recordedAnalyser);
+      recordedAnalyser.connect(recordedAudioContext.destination);
+      
       drawRecordedVisualizer();
     } catch (err) {
       console.error('Error visualizing recorded audio:', err);
