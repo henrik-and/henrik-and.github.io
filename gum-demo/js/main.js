@@ -170,6 +170,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function updateTrackProperties(audioTrack) {
+    const trackProperties = {
+      id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
+      enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
+    };
+    console.log('MediaStreamTrack:', trackProperties);
+    trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + JSON.stringify(trackProperties, null, 2);
+  }
+
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     setConstraintsDisabled(true);
@@ -207,14 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
         settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
       }
       trackSettingsElement.textContent = 'Audio track settings:\n' + JSON.stringify(settings, null, 2);
-      const trackProperties = {
-        id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
-        enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
-      };
-      console.log('MediaStreamTrack:', trackProperties);
-      trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + JSON.stringify(trackProperties, null, 2);
+      updateTrackProperties(audioTrack);
       audioTrack.onmute = (event) => console.log('Audio track muted:', event);
       audioTrack.onunmute = (event) => console.log('Audio track unmuted:', event);
+      audioTrack.onended = (event) => {
+        console.error('Audio track ended:', event);
+        errorMessageElement.textContent = `Warning: Audio track ended - ${event.type}`;
+        errorMessageElement.style.display = 'block';
+        updateTrackProperties(audioTrack);
+      };
       stopButton.disabled = false;
       recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
@@ -266,6 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
     recordedVisualizer.style.display = 'none';
     isRecording = false;
     updateRecordButtonUI();
+    errorMessageElement.textContent = '';
+    errorMessageElement.style.display = 'none';
     console.log('Stream stopped and visualizer cleared.');
   });
 
