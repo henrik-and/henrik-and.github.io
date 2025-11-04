@@ -116,6 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedDeviceId = audioDeviceSelect.value;
     audioDeviceSelect.innerHTML = '';
 
+    // Add the static "undefined" option first.
+    audioDeviceSelect.appendChild(new Option('undefined', 'undefined'));
+
     const audioDevices = devices.filter(device => device.kind === 'audioinput');
 
     audioDevices.forEach((device, index) => {
@@ -307,8 +310,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (noiseSuppression !== 'undefined') {
       audioConstraints.noiseSuppression = noiseSuppression === 'true';
     }
-    audioConstraints.deviceId = { exact: audioDeviceSelect.value };
-    const constraints = { audio: audioConstraints, video: false };
+    const deviceId = audioDeviceSelect.value;
+    if (deviceId !== 'undefined') {
+      audioConstraints.deviceId = { exact: deviceId };
+    }
+    const constraints = {
+      audio: Object.keys(audioConstraints).length === 0 ? true : audioConstraints,
+      video: false
+    };
     console.log('constraints:', JSON.stringify(constraints, null, 2));
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -582,8 +591,11 @@ document.addEventListener('DOMContentLoaded', () => {
     addParam('noiseSuppression', noiseSuppressionSelect);
     addParam('deviceId', audioDeviceSelect);
 
-    // Construct the full bookmarkable URL.
-    const bookmarkUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    // Construct the full bookmarkable URL, only adding a '?' if there are parameters.
+    const queryString = params.toString();
+    const bookmarkUrl = queryString
+      ? `${window.location.origin}${window.location.pathname}?${queryString}`
+      : `${window.location.origin}${window.location.pathname}`;
     console.log('Bookmark URL:', bookmarkUrl);
     
     // Use the Clipboard API to copy the URL to the user's clipboard.
@@ -610,6 +622,13 @@ document.addEventListener('DOMContentLoaded', () => {
     bookmarkUrlContainer.appendChild(link);
   });
 
-  populateAudioDevices();
-  applyUrlParameters();
+  // Initialize the application.
+  async function init() {
+    // First, populate the list of available audio devices.
+    await populateAudioDevices();
+    // Then, apply any settings that were passed in the URL.
+    applyUrlParameters();
+  }
+
+  init();
 });
