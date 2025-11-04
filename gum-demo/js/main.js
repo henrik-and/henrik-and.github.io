@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedSourceNode;
   let recordedVisualizationFrameRequest;
   let statsInterval;
+  let previousStats = null;
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -184,19 +185,47 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateTrackStats(audioTrack) {
     if (!audioTrack || audioTrack.readyState === 'ended') {
       trackStatsElement.textContent = '';
+      previousStats = null;
       return;
     }
     if (audioTrack.stats) {
-      const trackStats = audioTrack.stats;
-      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(trackStats, null, 2);
+      const currentStats = audioTrack.stats;
+      // Manually create a new object and copy properties to have full control
+      // over the presented output.
+      const extendedStats = {
+        deliveredFrames: currentStats.deliveredFrames,
+        totalFrames: currentStats.totalFrames,
+        droppedFrames: currentStats.totalFrames - currentStats.deliveredFrames,
+      };
+
+      if (previousStats) {
+        const deltaStats = {
+          deliveredFrames: currentStats.deliveredFrames - previousStats.deliveredFrames,
+          totalFrames: currentStats.totalFrames - previousStats.totalFrames,
+          droppedFrames: extendedStats.droppedFrames - previousStats.droppedFrames,
+        };
+        extendedStats.FPS = deltaStats;
+      }
+      extendedStats.averageLatency = currentStats.averageLatency,
+
+      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(extendedStats, null, 2);
+
+      // Update previousStats for the next call, storing only the necessary fields.
+      previousStats = {
+        deliveredFrames: currentStats.deliveredFrames,
+        totalFrames: currentStats.totalFrames,
+        droppedFrames: extendedStats.droppedFrames,
+      };
     } else {
       trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\nNot supported';
+      previousStats = null;
     }
   }
 
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     setConstraintsDisabled(true);
+    previousStats = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     // Reset to default error colors from CSS
@@ -308,6 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
+    previousStats = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
