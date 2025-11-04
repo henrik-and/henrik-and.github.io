@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const audioPlayback = document.querySelector('#audio-playback');
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
+  const trackStatsElement = document.querySelector('#track-stats');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
 
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedAnalyser;
   let recordedSourceNode;
   let recordedVisualizationFrameRequest;
+  let statsInterval;
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -179,11 +181,28 @@ document.addEventListener('DOMContentLoaded', () => {
     trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + JSON.stringify(trackProperties, null, 2);
   }
 
+  function updateTrackStats(audioTrack) {
+    if (!audioTrack || audioTrack.readyState === 'ended') {
+      trackStatsElement.textContent = '';
+      return;
+    }
+    if (audioTrack.stats) {
+      const trackStats = audioTrack.stats;
+      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(trackStats, null, 2);
+    } else {
+      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\nNot supported';
+    }
+  }
+
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     setConstraintsDisabled(true);
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
+    // Reset to default error colors from CSS
+    errorMessageElement.style.color = '';
+    errorMessageElement.style.backgroundColor = '';
+    errorMessageElement.style.borderColor = '';
     const audioConstraints = {};
     const echoCancellation = echoCancellationSelect.value;
     if (echoCancellation !== 'undefined') {
@@ -217,13 +236,32 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       trackSettingsElement.textContent = 'Audio track settings:\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
-      audioTrack.onmute = (event) => console.log('Audio track muted:', event);
-      audioTrack.onunmute = (event) => console.log('Audio track unmuted:', event);
+      statsInterval = setInterval(() => updateTrackStats(audioTrack), 1000);
+      audioTrack.onmute = (event) => {
+        console.log('Audio track muted:', event);
+        errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
+        errorMessageElement.style.display = 'block';
+        errorMessageElement.style.color = '#2F652F';
+        errorMessageElement.style.backgroundColor = '#DFF2BF';
+        errorMessageElement.style.borderColor = '#4F8A10';
+        updateTrackProperties(audioTrack);
+      };
+      audioTrack.onunmute = (event) => {
+        console.log('Audio track unmuted:', event);
+        errorMessageElement.textContent = '';
+        errorMessageElement.style.display = 'none';
+        // Reset to default error colors from CSS
+        errorMessageElement.style.color = '';
+        errorMessageElement.style.backgroundColor = '';
+        errorMessageElement.style.borderColor = '';
+        updateTrackProperties(audioTrack);
+      };
       audioTrack.onended = (event) => {
         console.error('Audio track ended:', event);
         errorMessageElement.textContent = `Warning: Audio track ended - ${event.type}`;
         errorMessageElement.style.display = 'block';
         updateTrackProperties(audioTrack);
+        clearInterval(statsInterval);
       };
       stopButton.disabled = false;
       recordButton.disabled = false;
@@ -255,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
       audioContext.close();
       audioContext = null;
     }
+    clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
@@ -268,6 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     playCheckbox.checked = false;
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
+    trackStatsElement.textContent = '';
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
@@ -278,6 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRecordButtonUI();
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
+    // Reset to default error colors from CSS
+    errorMessageElement.style.color = '';
+    errorMessageElement.style.backgroundColor = '';
+    errorMessageElement.style.borderColor = '';
     console.log('Stream stopped and visualizer cleared.');
   });
 
