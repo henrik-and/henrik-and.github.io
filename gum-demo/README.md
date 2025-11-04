@@ -16,7 +16,7 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
     *   Play the audio through your speakers.
     *   Record and play back the audio.
     *   Stop the stream.
-4.  **Copy Bookmark:** The "Copy Bookmark" button creates a URL with the currently selected constraints, allowing you to save and share specific configurations.
+4.  **Copy Bookmark:** The "Copy Bookmark" button creates a URL with the currently selected constraints, allowing you to save and share specific configurations for future use.
 
 ## Features
 
