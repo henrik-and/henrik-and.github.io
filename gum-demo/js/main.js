@@ -180,10 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
       id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
       enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
     };
-    console.log('MediaStreamTrack:', currentProperties);
+    console.log('MediaStreamTrack properties:', currentProperties);
 
     // Build the HTML string for the properties display.
-    const header = 'MediaStreamTrack:\n';
+    const header = 'MediaStreamTrack properties:\n';
     let content = '{\n';
     // Get an array of [key, value] pairs to use .forEach() and track the index.
     const entries = Object.entries(currentProperties);
@@ -294,14 +294,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const [audioTrack] = stream.getAudioTracks();
       console.log('audioTrack:', audioTrack);
       const settings = audioTrack.getSettings();
-      console.log('Audio track settings:', settings);
+      console.log('MediaStreamTrack settings:', settings);
       if (settings.groupId && typeof settings.groupId === 'string') {
         settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
       }
       if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
         settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
       }
-      trackSettingsElement.textContent = 'Audio track settings:\n' + JSON.stringify(settings, null, 2);
+      trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
       statsInterval = setInterval(() => updateTrackStats(audioTrack), 1000);
       audioTrack.onmute = (event) => {
