@@ -56,6 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setSelectValue('autoGainControl', autoGainControlSelect);
     setSelectValue('noiseSuppression', noiseSuppressionSelect);
     setSelectValue('deviceId', audioDeviceSelect);
+    console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
+    console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
+    console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
+    console.log(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
   }
 
   function setConstraintsDisabled(disabled) {
@@ -114,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const selectedDeviceId = audioDeviceSelect.value;
+    console.log(`populateAudioDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
     audioDeviceSelect.innerHTML = '';
 
     // Add the static "undefined" option first.
@@ -131,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
+    console.log(`populateAudioDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
   }
 
   function visualizeAudio(stream) {
