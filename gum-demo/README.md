@@ -9,7 +9,7 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 ## How to Use
 
 1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio constraints (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
-2.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream.
+2.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
 3.  **Visualize and Control:** Once the stream is active, you can:
     *   See a live visualization of the audio.
     *   Mute/unmute the microphone.
