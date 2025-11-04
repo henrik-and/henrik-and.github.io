@@ -202,3 +202,8 @@ button:disabled {
   white-space: pre-wrap;
   text-align: left;
 }
+
+.highlight {
+  background-color: #FFF59D; /* A more distinct yellow */
+  transition: background-color 0.5s ease-in-out;
+}

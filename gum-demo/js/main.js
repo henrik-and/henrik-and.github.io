@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let recordedVisualizationFrameRequest;
   let statsInterval;
   let previousStats = null;
+  let previousTrackProperties = null;
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -174,12 +175,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateTrackProperties(audioTrack) {
-    const trackProperties = {
+    // Create a plain object of the current track properties we want to display.
+    const currentProperties = {
       id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
       enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
     };
-    console.log('MediaStreamTrack:', trackProperties);
-    trackPropertiesElement.textContent = 'MediaStreamTrack:\n' + JSON.stringify(trackProperties, null, 2);
+    console.log('MediaStreamTrack:', currentProperties);
+
+    // Build the HTML string for the properties display.
+    const header = 'MediaStreamTrack:\n';
+    let content = '{\n';
+    // Get an array of [key, value] pairs to use .forEach() and track the index.
+    const entries = Object.entries(currentProperties);
+    // [key, value] comes from the array's contents, e.g., ["enabled", "true"]
+    // 'index' is the position in the array, e.g., 2.
+    entries.forEach(([key, value], index) => {
+      const isLast = index === entries.length - 1;
+      const valueStr = typeof value === 'string' ? `"${value}"` : value;
+      const leadingSpaces = '  ';
+      const textContent = `"${key}": ${valueStr}${isLast ? '' : ','}`;
+      // Compare the current property value with the previous one.
+      // If it has changed, wrap the line in a span with the 'highlight' class.
+      if (previousTrackProperties && previousTrackProperties[key] !== value) {
+        content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
+      } else {
+        content += `${leadingSpaces}${textContent}\n`;
+      }
+    });
+    content += '}';
+
+    // Update the element's content with the newly generated HTML.
+    trackPropertiesElement.innerHTML = header + content;
+    // Store the current properties to compare against in the next update.
+    previousTrackProperties = currentProperties;
+
+    // Set a timer to remove the highlight effect after a specified duration.
+    setTimeout(() => {
+      const highlightedElements = trackPropertiesElement.querySelectorAll('.highlight');
+      highlightedElements.forEach(el => {
+        // We fade the background color to transparent to smoothly return to the original.
+        el.style.backgroundColor = 'transparent';
+      });
+    }, 2000);
   }
 
   function updateTrackStats(audioTrack) {
@@ -226,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gumButton.disabled = true;
     setConstraintsDisabled(true);
     previousStats = null;
+    previousTrackProperties = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     // Reset to default error colors from CSS
@@ -338,6 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
     previousStats = null;
+    previousTrackProperties = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
@@ -454,7 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   muteCheckbox.addEventListener('change', () => {
     if (localStream) {
-      localStream.getAudioTracks()[0].enabled = !muteCheckbox.checked;
+      const [audioTrack] = localStream.getAudioTracks();
+      audioTrack.enabled = !muteCheckbox.checked;
+      updateTrackProperties(audioTrack);
     }
   });
 
