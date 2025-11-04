@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const trackStatsElement = document.querySelector('#track-stats');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
+  const copyBookmarkButton = document.getElementById('copy-bookmark-button');
+  const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
 
   let localStream;
   let audioContext;
@@ -36,6 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   stopButton.disabled = true;
   recordButton.disabled = true;
+
+  // This function runs on page load and applies any constraint settings passed in the URL.
+  function applyUrlParameters() {
+    const params = new URLSearchParams(window.location.search);
+    // Helper function to set the value of a select element if the param exists.
+    const setSelectValue = (paramName, element) => {
+      if (params.has(paramName)) {
+        element.value = params.get(paramName);
+      }
+    };
+    setSelectValue('echoCancellation', echoCancellationSelect);
+    setSelectValue('autoGainControl', autoGainControlSelect);
+    setSelectValue('noiseSuppression', noiseSuppressionSelect);
+    setSelectValue('deviceId', audioDeviceSelect);
+  }
 
   function setConstraintsDisabled(disabled) {
     echoCancellationSelect.disabled = disabled;
@@ -261,11 +278,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
+    copyBookmarkButton.disabled = true;
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
+    bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
     errorMessageElement.style.color = '';
     errorMessageElement.style.backgroundColor = '';
@@ -344,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
       errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
       errorMessageElement.style.display = 'block';
       gumButton.disabled = false;
+      copyBookmarkButton.disabled = false;
       setConstraintsDisabled(false);
     }
   });
@@ -365,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
     gumButton.disabled = false;
+    copyBookmarkButton.disabled = false;
     stopButton.disabled = true;
     recordButton.disabled = true;
     setConstraintsDisabled(false);
@@ -387,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRecordButtonUI();
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
+    bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
     errorMessageElement.style.color = '';
     errorMessageElement.style.backgroundColor = '';
@@ -538,5 +560,44 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);
+
+  copyBookmarkButton.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    const addParam = (name, selectElement) => {
+      const value = selectElement.value;
+      if (value !== 'undefined') {
+        params.set(name, value);
+      }
+    };
+
+    addParam('echoCancellation', echoCancellationSelect);
+    addParam('autoGainControl', autoGainControlSelect);
+    addParam('noiseSuppression', noiseSuppressionSelect);
+    addParam('deviceId', audioDeviceSelect);
+
+    const bookmarkUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    console.log('Bookmark URL:', bookmarkUrl);
+    
+    navigator.clipboard.writeText(bookmarkUrl).then(() => {
+      const originalText = copyBookmarkButton.textContent;
+      copyBookmarkButton.textContent = 'Copied!';
+      setTimeout(() => {
+        copyBookmarkButton.textContent = originalText;
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy URL: ', err);
+    });
+
+    // Create and display the clickable link
+    bookmarkUrlContainer.innerHTML = ''; // Clear previous link
+    bookmarkUrlContainer.textContent = 'Bookmark URL: ';
+    const link = document.createElement('a');
+    link.href = bookmarkUrl;
+    link.textContent = bookmarkUrl;
+    link.target = '_blank'; // Open in a new tab
+    bookmarkUrlContainer.appendChild(link);
+  });
+
   populateAudioDevices();
+  applyUrlParameters();
 });

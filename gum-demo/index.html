@@ -10,48 +10,51 @@
     <div class="button-container">
       <button id="gum-button">getUserMedia</button>
     </div>
-    <div class="settings-container">
-      <pre>constraints = {
-  audio: {</pre>
-      <div class="setting">
-        <label for="echoCancellation">echoCancellation:</label>
-        <select id="echoCancellation">
-          <option value="undefined" selected>undefined</option>
-          <optgroup label="Booleans">
+    <div class="constraints-container">
+      <div class="settings-container">
+        <pre>constraints = {
+    audio: {</pre>
+        <div class="setting">
+          <label for="echoCancellation">echoCancellation:</label>
+          <select id="echoCancellation">
+            <option value="undefined" selected>undefined</option>
+            <optgroup label="Booleans">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </optgroup>
+            <optgroup label="Strings">
+              <option value="all">all</option>
+              <option value="remote-only">remote-only</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="autoGainControl">autoGainControl:</label>
+          <select id="autoGainControl">
+            <option value="undefined" selected>undefined</option>
             <option value="true">true</option>
             <option value="false">false</option>
-          </optgroup>
-          <optgroup label="Strings">
-            <option value="all">all</option>
-            <option value="remote-only">remote-only</option>
-          </optgroup>
-        </select>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="noiseSuppression">noiseSuppression:</label>
+          <select id="noiseSuppression">
+            <option value="undefined" selected>undefined</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="audioDevice">deviceId:</label>
+          <select id="audioDevice">
+            <option value="default">default</option>
+          </select>
+        </div>
+        <pre>  },
+    video: false
+  }</pre>
       </div>
-      <div class="setting">
-        <label for="autoGainControl">autoGainControl:</label>
-        <select id="autoGainControl">
-          <option value="undefined" selected>undefined</option>
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
-      </div>
-      <div class="setting">
-        <label for="noiseSuppression">noiseSuppression:</label>
-        <select id="noiseSuppression">
-          <option value="undefined" selected>undefined</option>
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
-      </div>
-      <div class="setting">
-        <label for="audioDevice">deviceId:</label>
-        <select id="audioDevice">
-          <option value="default">default</option>
-        </select>
-      </div>
-      <pre>  },
-  video: false
-}</pre>
+      <button id="copy-bookmark-button">Copy Bookmark</button>
     </div>
   </div>
   <div id="stream-controls-container">
@@ -76,6 +79,7 @@
   </div>
   <audio id="audio-playback"></audio>
   <p id="error-message" class="error"></p>
+  <p id="bookmark-url-container"></p>
   <script type="module" src="js/main.js" defer></script>
 </body>
 </html>

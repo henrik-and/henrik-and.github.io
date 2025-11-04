@@ -27,6 +27,12 @@ body {
 .button-container {
 }
 
+.constraints-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .settings-container {
   border: 1px solid darkgrey;
   padding: 10px;
@@ -52,7 +58,8 @@ body {
   margin-right: 5px;
 }
 
-#gum-button {
+#gum-button,
+#copy-bookmark-button {
   background-color: #4CAF50;
   color: white;
   border: none;
@@ -61,12 +68,15 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  height: fit-content;
 }
-#gum-button:hover {
+#gum-button:hover,
+#copy-bookmark-button:hover {
   background-color: #45a049;
 }
 
-#gum-button:disabled {
+#gum-button:disabled,
+#copy-bookmark-button:disabled {
   background-color: #cccccc;
 }
 
@@ -206,4 +216,9 @@ button:disabled {
 .highlight {
   background-color: #FFF59D; /* A more distinct yellow */
   transition: background-color 0.5s ease-in-out;
+}
+
+#bookmark-url-container {
+  margin-top: 20px;
+  word-break: break-all;
 }
