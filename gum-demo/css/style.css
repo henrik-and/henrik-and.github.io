@@ -200,6 +200,7 @@ button:disabled {
   gap: 10px;
 }
 
+#track-constraints,
 #track-settings,
 #track-properties,
 #track-stats {

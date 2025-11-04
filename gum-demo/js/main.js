@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
   const trackStatsElement = document.querySelector('#track-stats');
+  const trackConstraintsElement = document.querySelector('#track-constraints');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
@@ -325,6 +326,17 @@ document.addEventListener('DOMContentLoaded', () => {
       video: false
     };
     console.log('constraints:', JSON.stringify(constraints, null, 2));
+
+    // For display purposes, create a deep copy and truncate the deviceId if it exists.
+    const displayConstraints = structuredClone(constraints);
+    if (displayConstraints.audio && displayConstraints.audio.deviceId && displayConstraints.audio.deviceId.exact) {
+        const id = displayConstraints.audio.deviceId.exact;
+        if (typeof id === 'string' && id !== 'default') {
+            displayConstraints.audio.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
+        }
+    }
+    trackConstraintsElement.textContent = 'constraints:\n' + JSON.stringify(displayConstraints, null, 2);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStream = stream;
@@ -415,6 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
+    trackConstraintsElement.textContent = '';
     previousStats = null;
     previousTrackProperties = null;
     recordedAudio.style.display = 'none';
