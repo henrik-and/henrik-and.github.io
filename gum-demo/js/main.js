@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const gumButton = document.getElementById('gum-button');
   const echoCancellationSelect = document.getElementById('echoCancellation');
   const autoGainControlSelect = document.getElementById('autoGainControl');
@@ -641,13 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bookmarkUrlContainer.appendChild(link);
   });
 
-  // Initialize the application.
-  async function init() {
-    // First, populate the list of available audio devices.
-    await populateAudioDevices();
-    // Then, apply any settings that were passed in the URL.
-    applyUrlParameters();
-  }
-
-  init();
+  // Initialize the application by populating devices and then applying URL parameters.
+  await populateAudioDevices();
+  applyUrlParameters();
 });
