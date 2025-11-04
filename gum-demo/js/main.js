@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         extendedStats.FPS = deltaStats;
       }
-      extendedStats.averageLatency = currentStats.averageLatency,
+      extendedStats.averageLatency = currentStats.averageLatency.toFixed(1);
 
       trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(extendedStats, null, 2);
 
@@ -600,7 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addParam = (name, selectElement) => {
       const value = selectElement.value;
       if (value !== 'undefined') {
-        params.set(name, value);
+        params.set(name, value);latenct
       }
     };
 
