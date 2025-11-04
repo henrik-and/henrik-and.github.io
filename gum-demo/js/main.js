@@ -41,13 +41,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // This function runs on page load and applies any constraint settings passed in the URL.
   function applyUrlParameters() {
+    // Get the query parameters from the current URL.
     const params = new URLSearchParams(window.location.search);
-    // Helper function to set the value of a select element if the param exists.
+    // Helper function to set the value of a select element if a corresponding URL parameter exists.
     const setSelectValue = (paramName, element) => {
+      // Check if the parameter is present in the URL.
       if (params.has(paramName)) {
+        // If it exists, set the dropdown's value to the value from the URL.
         element.value = params.get(paramName);
       }
     };
+    // Apply the URL parameters to each of the constraint dropdowns.
     setSelectValue('echoCancellation', echoCancellationSelect);
     setSelectValue('autoGainControl', autoGainControlSelect);
     setSelectValue('noiseSuppression', noiseSuppressionSelect);
@@ -562,7 +566,9 @@ document.addEventListener('DOMContentLoaded', () => {
   navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);
 
   copyBookmarkButton.addEventListener('click', () => {
+    // Create a new URLSearchParams object to build the query string.
     const params = new URLSearchParams();
+    // Helper function to add a parameter to the search params if its value is not 'undefined'.
     const addParam = (name, selectElement) => {
       const value = selectElement.value;
       if (value !== 'undefined') {
@@ -570,31 +576,37 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
+    // Add the current constraint values to the search parameters.
     addParam('echoCancellation', echoCancellationSelect);
     addParam('autoGainControl', autoGainControlSelect);
     addParam('noiseSuppression', noiseSuppressionSelect);
     addParam('deviceId', audioDeviceSelect);
 
+    // Construct the full bookmarkable URL.
     const bookmarkUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     console.log('Bookmark URL:', bookmarkUrl);
     
+    // Use the Clipboard API to copy the URL to the user's clipboard.
     navigator.clipboard.writeText(bookmarkUrl).then(() => {
+      // Provide visual feedback to the user on the button itself.
       const originalText = copyBookmarkButton.textContent;
       copyBookmarkButton.textContent = 'Copied!';
+      // Revert the button text after a short delay.
       setTimeout(() => {
         copyBookmarkButton.textContent = originalText;
       }, 2000);
     }).catch(err => {
+      // Log an error if the clipboard write fails.
       console.error('Failed to copy URL: ', err);
     });
 
-    // Create and display the clickable link
-    bookmarkUrlContainer.innerHTML = ''; // Clear previous link
+    // Create and display a clickable version of the URL at the bottom of the page.
+    bookmarkUrlContainer.innerHTML = ''; // Clear any previous link.
     bookmarkUrlContainer.textContent = 'Bookmark URL: ';
     const link = document.createElement('a');
     link.href = bookmarkUrl;
     link.textContent = bookmarkUrl;
-    link.target = '_blank'; // Open in a new tab
+    link.target = '_blank'; // Ensure the link opens in a new tab.
     bookmarkUrlContainer.appendChild(link);
   });
 
