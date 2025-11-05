@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const trackPropertiesElement = document.querySelector('#track-properties');
   const trackStatsElement = document.querySelector('#track-stats');
   const trackConstraintsElement = document.querySelector('#track-constraints');
+  const audioInputDeviceElement = document.querySelector('#audio-input-device');
+  const audioInputDeviceContainer = document.querySelector('#audio-input-device-container');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
@@ -383,8 +385,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       stopButton.disabled = false;
       recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
+      audioInputDeviceContainer.style.display = 'flex';
       visualizeAudio(localStream);
       await populateAudioDevices();
+
+      // Display the properties of the audio device that the track is actively using.
+      // This is the source of truth, especially when 'undefined' is selected for deviceId,
+      // as the browser will choose a default device. We get the deviceId from the
+      // track's settings to ensure we display information about the device that is
+      // actually in use.
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
+      if (selectedDevice) {
+        audioInputDeviceElement.textContent = `Active audio input device:\n` +
+            `  kind: ${selectedDevice.kind}\n` +
+            `  label: ${selectedDevice.label}\n` +
+            `  deviceId: ${selectedDevice.deviceId}\n` +
+            `  groupId: ${selectedDevice.groupId}`;
+      }
+
       audioPlayback.srcObject = localStream;
       playCheckbox.checked = false;
       isRecording = false;
@@ -415,6 +434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
+    audioInputDeviceContainer.style.display = 'none';
     gumButton.disabled = false;
     copyBookmarkButton.disabled = false;
     stopButton.disabled = true;
@@ -428,6 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
     trackConstraintsElement.textContent = '';
+    audioInputDeviceElement.textContent = '';
     previousStats = null;
     previousTrackProperties = null;
     recordedAudio.style.display = 'none';

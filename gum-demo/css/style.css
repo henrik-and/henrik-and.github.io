@@ -193,6 +193,14 @@ button:disabled {
 }
 
 
+
+#audio-input-device-container {
+  display: none; /* Hidden by default */
+  width: 100%;
+  justify-content: center;
+  gap: 10px;
+}
+
 #track-settings-container {
   width: 100%;
   display: flex;
@@ -200,10 +208,12 @@ button:disabled {
   gap: 10px;
 }
 
+
 #track-constraints,
 #track-settings,
 #track-properties,
-#track-stats {
+#track-stats,
+#audio-input-device {
   background-color: rgb(250, 250, 250);
   border: 1px solid #444;
   border-radius: 8px;
@@ -213,6 +223,7 @@ button:disabled {
   white-space: pre-wrap;
   text-align: left;
 }
+
 
 .highlight {
   background-color: #FFF59D; /* A more distinct yellow */
