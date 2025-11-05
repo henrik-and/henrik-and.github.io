@@ -15,7 +15,7 @@
 
     async function displayReadme() {
       try {
-        const response = await fetch('README.md');
+        const response = await fetch(`README.md?v=${new Date().getTime()}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
