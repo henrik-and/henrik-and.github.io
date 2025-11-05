@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const noiseSuppressionSelect = document.getElementById('noiseSuppression');
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
+  const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
   
   const visualizerCanvas = document.querySelector('#audio-visualizer');
   const canvasCtx = visualizerCanvas.getContext('2d');
@@ -101,8 +102,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return ''; // Let the browser decide
   }
 
-  async function populateAudioDevices() {
-    console.log('Populating audio devices...');
+  async function populateAudioInputDevices() {
+    console.log('Populating audio input devices...');
     
     let devices = await navigator.mediaDevices.enumerateDevices();
     const hasPermissions = devices.every(device => device.label);
@@ -122,15 +123,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const selectedDeviceId = audioDeviceSelect.value;
-    console.log(`populateAudioDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
+    console.log(`populateAudioInputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
     audioDeviceSelect.innerHTML = '';
 
     // Add the static "undefined" option first.
     audioDeviceSelect.appendChild(new Option('undefined', 'undefined'));
 
-    const audioDevices = devices.filter(device => device.kind === 'audioinput');
+    const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
 
-    audioDevices.forEach((device, index) => {
+    audioInputDevices.forEach((device, index) => {
       const option = new Option(device.label || `Microphone ${index + 1}`,
           device.deviceId);
       audioDeviceSelect.appendChild(option);
@@ -140,7 +141,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
-    console.log(`populateAudioDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
+    console.log(`populateAudioInputDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
+  }
+
+  async function populateAudioOutputDevices() {
+    console.log('Populating audio output devices...');
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const selectedDeviceId = audioOutputDeviceSelect.value;
+    console.log(`populateAudioOutputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
+    audioOutputDeviceSelect.innerHTML = '';
+
+    // Add the static "undefined" option first.
+    audioOutputDeviceSelect.appendChild(new Option('undefined', 'undefined'));
+
+    const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+    audioOutputDevices.forEach((device, index) => {
+      const option = new Option(device.label || `Speaker ${index + 1}`,
+          device.deviceId);
+      audioOutputDeviceSelect.appendChild(option);
+    });
+
+    if ([...audioOutputDeviceSelect.options].some(option => 
+        option.value === selectedDeviceId)) {
+      audioOutputDeviceSelect.value = selectedDeviceId;
+    }
+    console.log(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
   }
 
   function visualizeAudio(stream) {
@@ -388,7 +414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       streamControlsContainer.style.display = 'flex';
       audioDevicesContainer.style.display = 'flex';
       visualizeAudio(localStream);
-      await populateAudioDevices();
+      await populateAudioInputDevices();
 
       // Display the properties of the audio device that the track is actively using.
       // This is the source of truth, especially when 'undefined' is selected for deviceId,
@@ -615,9 +641,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (localStream) {
       if (playCheckbox.checked) {
         await audioPlayback.play();
+        audioOutputDeviceSelect.disabled = true;
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.style.display = 'none';
+        audioOutputDeviceSelect.disabled = false;
       }
     }
   });
@@ -632,7 +660,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Audio playback paused.');
   });
 
-  navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    populateAudioInputDevices();
+    populateAudioOutputDevices();
+  });
 
   copyBookmarkButton.addEventListener('click', () => {
     // Create a new URLSearchParams object to build the query string.
@@ -683,6 +714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Initialize the application by populating devices and then applying URL parameters.
-  await populateAudioDevices();
+  await populateAudioInputDevices();
+  await populateAudioOutputDevices();
   applyUrlParameters();
 });
