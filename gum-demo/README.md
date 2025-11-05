@@ -1,6 +1,6 @@
 # MediaDevices: getUserMedia() Audio Demo
 
-This is a demonstration of the [`MediaDevices.getUserMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) API, focusing on audio streams. It allows you to experiment with different audio constraints and visualize the resulting audio stream.
+This is a demonstration of the [`MediaDevices.getUserMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) API, focusing on audio streams. It allows you to experiment with different audio constraints, listen to and visualize the resulting audio stream.
 
 ## Live Demo
 
@@ -8,7 +8,7 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 
 ## How to Use
 
-1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio constraints (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
+1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio [constraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints) (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
 2.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
 3.  **Visualize and Control:** Once the stream is active, you can:
     *   See a live visualization of the audio.
