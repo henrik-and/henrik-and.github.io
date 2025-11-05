@@ -11,10 +11,10 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio [constraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints) (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
 2.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
 3.  **Visualize and Control:** Once the stream is active, you can:
-    *   See a live visualization of the audio.
-    *   Mute/unmute the microphone.
+    *   See a live visualization of the audio and its current level.
+    *   Mute/unmute the audio track.
     *   Play the audio through your speakers.
-    *   Record and play back the audio.
+    *   Record and play back the audio while visualizing its frequceny spectrum.
     *   Stop the stream.
 4.  **Copy Bookmark:** The "Copy Bookmark" button creates a URL with the currently selected constraints, allowing you to save and share specific configurations for future use.
 
