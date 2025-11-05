@@ -22,8 +22,8 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 
 *   **Constraint Selection:** Easily test different audio constraints to see their effect.
 *   **Audio Visualization:** Live audio visualizers provides feedback on the audio stream.
-    * Foo
-    * Bar
+    * A simple level meeter is added for the auactive adio track. This allows you to veify that the microphone is working as intended.
+    * A more fancy visualizer is used when playing out recorded audio. The analyser performs a Fast Fourier Transform (FFT) on the audio to calculate the frequency spectrum at that exact moment.
 *   **Recording:** Record a snippet of the audio and play it back while visualizing its frequency spectrum. The recording functionality checks for browser support for MIME types in the following prioritized order: `audio/webm; codecs=pcm`, `audio/webm; codecs=opus`, `audio/webm`, `audio/ogg; codecs=opus`, and `audio/ogg`. The first format in this list that the browser supports is used. If none are supported, the browser's default format is used. Playback of recorded audio is always done on the system's default output device.
 *   **Track Properties and Stats:** View detailed information about the audio track, including its settings, properties, and real-time statistics.
 *   **Active Device Display:** See the properties of the live audio input device. This clarifies exactly which microphone is being used by the stream, which is especially useful when the browser chooses a default device.
