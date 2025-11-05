@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>README</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="readme-content"></main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    'use strict';
+
+    async function displayReadme() {
+      try {
+        const response = await fetch('README.md');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const markdown = await response.text();
+        const readmeContent = document.getElementById('readme-content');
+        if (readmeContent) {
+          readmeContent.innerHTML = marked.parse(markdown);
+        }
+      } catch (error) {
+        console.error('Error fetching or parsing README.md:', error);
+        const readmeContent = document.getElementById('readme-content');
+        if (readmeContent) {
+          readmeContent.textContent = 'Error loading README content.';
+        }
+      }
+    }
+
+    displayReadme();
+  </script>
+</body>
+</html>
