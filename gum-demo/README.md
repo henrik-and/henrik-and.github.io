@@ -24,4 +24,5 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 *   **Audio Visualization:** A live audio visualizer provides feedback on the audio stream.
 *   **Recording:** Record a snippet of the audio and play it back while visualizing its frequency spectrum.
 *   **Track Properties and Stats:** View detailed information about the audio track, including its settings, properties, and real-time statistics.
+*   **Active Device Display:** See the properties of the live audio input device. This clarifies exactly which microphone is being used by the stream, which is especially useful when the browser chooses a default device.
 *   **Bookmarkable URLs:** Share your specific constraint configurations with others.
