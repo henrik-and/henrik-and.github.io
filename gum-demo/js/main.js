@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addParam = (name, selectElement) => {
       const value = selectElement.value;
       if (value !== 'undefined') {
-        params.set(name, value);latenct
+        params.set(name, value);
       }
     };
 
