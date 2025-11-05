@@ -54,7 +54,7 @@ body {
 .setting label {
   display: inline-block;
   width: 130px;
-  font-family: monospace;
+  font-family: inherit;
   margin-right: 5px;
 }
 
