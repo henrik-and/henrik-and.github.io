@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const trackStatsElement = document.querySelector('#track-stats');
   const trackConstraintsElement = document.querySelector('#track-constraints');
   const audioInputDeviceElement = document.querySelector('#audio-input-device');
-  const audioInputDeviceContainer = document.querySelector('#audio-input-device-container');
+  const audioOutputInfoElement = document.querySelector('#audio-output-info');
+  const audioDevicesContainer = document.querySelector('#audio-devices-container');
   const recordedAudio = document.querySelector('#recorded-audio');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
@@ -385,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       stopButton.disabled = false;
       recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
-      audioInputDeviceContainer.style.display = 'flex';
+      audioDevicesContainer.style.display = 'flex';
       visualizeAudio(localStream);
       await populateAudioDevices();
 
@@ -418,6 +419,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  async function updateAudioOutputInfo() {
+    try {
+      if (!('sinkId' in audioPlayback)) {
+        audioOutputInfoElement.textContent = 'Audio output device selection not supported.';
+        return;
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const sinkId = audioPlayback.sinkId;
+      let outputDevice;
+
+      if (sinkId === '') {
+        // An empty sinkId means the default device is being used.
+        // We'll find the first available audio output device and assume it's the default.
+        outputDevice = devices.find(d => d.kind === 'audiooutput');
+      } else {
+        // A non-empty sinkId means a specific device has been set.
+        outputDevice = devices.find(d => d.kind === 'audiooutput' && d.deviceId === sinkId);
+      }
+
+      if (outputDevice) {
+        audioOutputInfoElement.textContent = `Active audio output device:\n` +
+            `  kind: ${outputDevice.kind}\n` +
+            `  label: ${outputDevice.label}\n` +
+            `  deviceId: ${outputDevice.deviceId}\n` +
+            `  groupId: ${outputDevice.groupId}`;
+      } else {
+        audioOutputInfoElement.textContent = 'Audio output device not found.';
+      }
+    } catch (err) {
+      console.error('Error getting output device info:', err);
+      audioOutputInfoElement.textContent = `Error: ${err.name} - ${err.message}`;
+    }
+  }
+
   stopButton.addEventListener('click', () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
@@ -434,7 +469,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
-    audioInputDeviceContainer.style.display = 'none';
+    audioDevicesContainer.style.display = 'none';
+    audioOutputInfoElement.style.display = 'none';
+    audioOutputInfoElement.textContent = '';
     gumButton.disabled = false;
     copyBookmarkButton.disabled = false;
     stopButton.disabled = true;
@@ -580,32 +617,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         await audioPlayback.play();
       } else {
         await audioPlayback.pause();
+        audioOutputInfoElement.style.display = 'none';
       }
     }
   });
 
   audioPlayback.addEventListener('play', async () => {
     console.log('Audio playback started.');
-    try {
-      if (!('sinkId' in audioPlayback)) {
-        console.log('Playing on OS default device (setSinkId API not supported).');
-        return;
-      }
-      const sinkId = audioPlayback.sinkId;
-      if (sinkId === "") {
-        console.log('Playing on default output device.');
-        return;
-      }
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const outputDevice = devices.find(d => d.kind === 'audiooutput' && d.deviceId === sinkId);
-      if (outputDevice) {
-        console.log(`Playing on output device: "${outputDevice.label || 'Label hidden'}"`);
-      } else {
-        console.log(`Playing on unknown output device with ID: ${sinkId}`);
-      }
-    } catch (err) {
-      console.error('Error getting output device info:', err);
-    }
+    await updateAudioOutputInfo();
+    audioOutputInfoElement.style.display = 'block';
   });
 
   audioPlayback.addEventListener('pause', () => {

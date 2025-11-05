@@ -454,6 +454,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   await checkAndRequestPermissions();
   await enumerateDevices();
   await updateDeviceInfo();
+  await updateAudioOutputInfo();
     
   htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
@@ -511,6 +512,7 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   
   // Attach listeners.
   htmlAudio.addEventListener('play', logAudioPlay);
+  htmlAudio.addEventListener('play', updateAudioOutputInfo);
   htmlAudio.addEventListener('pause', logAudioPause);
 
   gumAudios.forEach(audio => {
@@ -751,8 +753,10 @@ function getSelectedDevice(select) {
 
 async function updateDeviceInfo() {
   const devices = await navigator.mediaDevices.enumerateDevices();
+  if (!audioInputSelect || !audioInputInfoDiv) {
+    return;
+  }
   const selectedInputId = audioInputSelect.value;
-  const selectedOutputId = audioOutputSelect.value;
 
   let inputDevice;
   if (selectedInputId === 'default') {
@@ -761,15 +765,6 @@ async function updateDeviceInfo() {
     inputDevice = devices.find(d => d.deviceId === 'communications' && d.kind === 'audioinput');
   } else {
     inputDevice = devices.find(d => d.deviceId === selectedInputId);
-  }
-
-  let outputDevice;
-  if (selectedOutputId === 'default') {
-    outputDevice = devices.find(d => d.kind === 'audiooutput');
-  } else if (selectedOutputId === 'communications') {
-    outputDevice = devices.find(d => d.deviceId === 'communications' && d.kind === 'audiooutput');
-  } else {
-    outputDevice = devices.find(d => d.deviceId === selectedOutputId);
   }
 
   if (inputDevice) {
@@ -781,6 +776,16 @@ async function updateDeviceInfo() {
   } else {
     audioInputInfoDiv.textContent = `Audio input device: Not Found`;
   }
+}
+
+
+async function updateAudioOutputInfo() {
+  if (!htmlAudio || !htmlAudio.sinkId || !audioOutputInfoDiv) {
+    return;
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const sinkId = htmlAudio.sinkId;
+  const outputDevice = devices.find(d => d.deviceId === sinkId && d.kind === 'audiooutput');
 
   if (outputDevice) {
     audioOutputInfoDiv.textContent = `Audio output device:\n` +
@@ -835,6 +840,9 @@ async function enumerateDevices() {
     hasSpeaker = deviceInfosOutput.length > 0;
     logi(deviceInfosInput);
     logi(deviceInfosOutput);
+    if (!audioInputSelect || !audioOutputSelect) {
+      return;
+    }
     // Clear all select elements and add the latest input and output devices.
     updateDevices(audioInputSelect, deviceInfosInput);
     updateDevices(audioOutputSelect, deviceInfosOutput);
@@ -1265,7 +1273,7 @@ audioInputSelect.onchange = async () => {
 audioOutputSelect.onchange = async () => {
   const deviceLabel = getSelectedDevice(audioOutputSelect);
   logi(`Selected output device: ${deviceLabel}`);
-  await updateDeviceInfo();  
+  await updateAudioOutputInfo();  
   await changeAudioOutput();
 };
 
