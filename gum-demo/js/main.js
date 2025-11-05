@@ -445,6 +445,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  /**
+   * Displays information about the active audio output device.
+   * This function reads the `audioPlayback.sinkId` property, which is the browser's
+   * source of truth for the currently active audio output device. It then finds the
+   * full device details from the enumerated device list to display them. This ensures
+   * the displayed information accurately reflects the device in use, not just the
+   * selection in the dropdown.
+   */
   async function updateAudioOutputInfo() {
     try {
       if (!('sinkId' in audioPlayback)) {
@@ -503,6 +511,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopButton.disabled = true;
     recordButton.disabled = true;
     setConstraintsDisabled(false);
+    audioOutputDeviceSelect.disabled = false;
     audioPlayback.pause();
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
@@ -640,8 +649,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   playCheckbox.addEventListener('change', async () => {
     if (localStream) {
       if (playCheckbox.checked) {
-        await audioPlayback.play();
-        audioOutputDeviceSelect.disabled = true;
+        const sinkId = audioOutputDeviceSelect.value;
+        try {
+          // An empty string sets the output to the user-agent default device.
+          const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
+          await audioPlayback.setSinkId(deviceIdToSet);
+          console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+          await audioPlayback.play();
+          audioOutputDeviceSelect.disabled = true;
+        } catch (err) {
+          console.error('Error setting audio output device:', err);
+          errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
+          errorMessageElement.style.display = 'block';
+          // Revert the UI state since we failed.
+          playCheckbox.checked = false;
+          audioOutputDeviceSelect.disabled = false;
+        }
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.style.display = 'none';
