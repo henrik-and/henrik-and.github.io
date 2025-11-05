@@ -41,7 +41,7 @@ body {
 }
 
 .settings-container pre {
-  font-family: inherit;
+  font-family: monospace;
   margin: 0;
 }
 
