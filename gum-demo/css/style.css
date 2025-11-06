@@ -85,7 +85,7 @@ body {
 
 #snapshot-button-container {
   display: none;
-  margin-top: 10px;
+  margin-top: -5px;
 }
 
 
@@ -250,6 +250,10 @@ button:disabled {
 }
 
 #bookmark-url-container {
-  margin-top: 20px;
+  margin-top: 5px;
   word-break: break-all;
+}
+
+.about-link-container {
+  margin-top: 5px;
 }
