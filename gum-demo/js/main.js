@@ -45,14 +45,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousTrackProperties = null;
   let isPeerConnectionEnabled = false;
 
+  // Set the initial tooltip to describe the action of clicking the button in its default state.
+  peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
   peerConnectionButton.addEventListener('click', () => {
     isPeerConnectionEnabled = !isPeerConnectionEnabled;
     peerConnectionButton.classList.toggle('peerconnection-active', isPeerConnectionEnabled);
     if (isPeerConnectionEnabled) {
+      // State is now ENABLED. The button shows '-'. The tooltip should describe the action of clicking it again, which is to DISABLE.
       peerConnectionButton.textContent = '- PeerConnection';
+      peerConnectionButton.title = 'Don\'t send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
       console.log('PeerConnection enabled');
     } else {
+      // State is now DISABLED. The button shows '+'. The tooltip should describe the action of clicking it again, which is to ENABLE.
       peerConnectionButton.textContent = '+ PeerConnection';
+      peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
       console.log('PeerConnection disabled');
     }
   });
