@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
   const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
+  const saveSnapshotButton = document.getElementById('save-snapshot-button');
+  const snapshotButtonContainer = document.getElementById('snapshot-button-container');
 
   let localStream;
   let audioContext;
@@ -413,6 +415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       recordButton.disabled = false;
       streamControlsContainer.style.display = 'flex';
       audioDevicesContainer.style.display = 'flex';
+      snapshotButtonContainer.style.display = 'block';
       visualizeAudio(localStream);
       await populateAudioInputDevices();
 
@@ -504,6 +507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
     audioDevicesContainer.style.display = 'none';
+    snapshotButtonContainer.style.display = 'none';
     audioOutputInfoElement.style.display = 'none';
     audioOutputInfoElement.textContent = '';
     gumButton.disabled = false;
@@ -735,6 +739,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     link.target = '_blank'; // Ensure the link opens in a new tab.
     bookmarkUrlContainer.appendChild(link);
   });
+
+  function handleSaveSnapshot() {
+    const parseJsonContent = (text) => {
+      if (!text) return null;
+      const firstNewlineIndex = text.indexOf('\n');
+      if (firstNewlineIndex === -1) return text;
+      const jsonString = text.substring(firstNewlineIndex + 1);
+      try {
+        return JSON.parse(jsonString);
+      } catch (e) {
+        console.error('Failed to parse JSON content:', { content: jsonString, error: e });
+        return text; // Fallback to original text
+      }
+    };
+
+    const parseDeviceInfo = (text) => {
+      if (!text) return null;
+      const lines = text.split('\n').slice(1);
+      const deviceInfo = {};
+      lines.forEach(line => {
+        const parts = line.trim().split(': ');
+        if (parts.length === 2) {
+          deviceInfo[parts[0]] = parts[1];
+        }
+      });
+      return deviceInfo;
+    };
+
+    const snapshot = {
+      'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
+      'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
+      'constraints': parseJsonContent(trackConstraintsElement.textContent),
+      'MediaStreamTrack settings': parseJsonContent(trackSettingsElement.textContent),
+      'MediaStreamTrack properties': parseJsonContent(trackPropertiesElement.textContent),
+      'MediaStreamTrackAudioStats': parseJsonContent(trackStatsElement.textContent),
+    };
+
+    // Filter out null or empty values
+    for (const key in snapshot) {
+      const value = snapshot[key];
+      if (value === null || (typeof value === 'object' && Object.keys(value).length === 0)) {
+        delete snapshot[key];
+      }
+    }
+
+    const snapshotJson = JSON.stringify(snapshot, null, 2);
+    const blob = new Blob([snapshotJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gUM-snapshot.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  saveSnapshotButton.addEventListener('click', handleSaveSnapshot);
 
   // Initialize the application by populating devices and then applying URL parameters.
   await populateAudioInputDevices();

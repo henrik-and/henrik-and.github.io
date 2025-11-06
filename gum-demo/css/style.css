@@ -60,7 +60,8 @@ body {
 
 #gum-button,
 #copy-bookmark-button,
-#copy-markdown-button {
+#copy-markdown-button,
+#save-snapshot-button {
   background-color: #4CAF50;
   color: white;
   border: none;
@@ -73,12 +74,18 @@ body {
 }
 #gum-button:hover,
 #copy-bookmark-button:hover,
-#copy-markdown-button:hover {
+#copy-markdown-button:hover,
+#save-snapshot-button:hover {
   background-color: #45a049;
 }
 
 #copy-markdown-button {
   margin-top: 1em;
+}
+
+#snapshot-button-container {
+  display: none;
+  margin-top: 10px;
 }
 
 
