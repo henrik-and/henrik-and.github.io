@@ -53,7 +53,8 @@ body {
 
 .setting label {
   display: inline-block;
-  width: 130px;
+  width: 17ch;
+  text-align: right;
   font-family: monospace;
   margin-right: 5px;
 }
