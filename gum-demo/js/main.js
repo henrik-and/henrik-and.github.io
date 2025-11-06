@@ -740,24 +740,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     bookmarkUrlContainer.appendChild(link);
   });
 
+  /**
+   * Handles the click event of the 'Save Snapshot' button. It gathers all the displayed track
+   * and device information, formats it into a structured JSON object, and triggers a download
+   * for the user.
+   */
   function handleSaveSnapshot() {
+    /**
+     * Parses the text content of a <pre> element that is expected to contain a title line
+     * followed by a JSON string.
+     * @param {string} text - The text content from the <pre> element.
+     * @returns {object|string|null} A parsed JavaScript object, the original text on failure, or null.
+     */
     const parseJsonContent = (text) => {
       if (!text) return null;
+      // Find the first newline to separate the title from the JSON content.
       const firstNewlineIndex = text.indexOf('\n');
-      if (firstNewlineIndex === -1) return text;
+      if (firstNewlineIndex === -1) return text; // No newline found, return as is.
+      // Extract the JSON string part.
       const jsonString = text.substring(firstNewlineIndex + 1);
       try {
+        // Attempt to parse the extracted string as JSON.
         return JSON.parse(jsonString);
       } catch (e) {
         console.error('Failed to parse JSON content:', { content: jsonString, error: e });
-        return text; // Fallback to original text
+        return text; // Fallback to original text if parsing fails.
       }
     };
 
+    /**
+     * Parses the text content of a <pre> element that displays device information in a
+     * 'key: value' format.
+     * @param {string} text - The text content from the <pre> element.
+     * @returns {object|null} An object with key-value pairs or null if input is empty.
+     */
     const parseDeviceInfo = (text) => {
       if (!text) return null;
+      // Split the text into lines and skip the first line (the title).
       const lines = text.split('\n').slice(1);
       const deviceInfo = {};
+      // Process each line to extract key-value pairs.
       lines.forEach(line => {
         const parts = line.trim().split(': ');
         if (parts.length === 2) {
@@ -767,6 +789,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       return deviceInfo;
     };
 
+    // Create the main snapshot object. The `textContent` property of each DOM element
+    // provides a string, which is then passed to the appropriate parsing function
+    // to be converted into a structured object. The resulting `snapshot` is an object
+    // where keys are strings (describing the data) and values are the parsed
+    // results, which can be objects, strings, or null.
     const snapshot = {
       'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
@@ -776,7 +803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'MediaStreamTrackAudioStats': parseJsonContent(trackStatsElement.textContent),
     };
 
-    // Filter out null or empty values
+    // Clean up the snapshot by removing any sections that are empty or null.
     for (const key in snapshot) {
       const value = snapshot[key];
       if (value === null || (typeof value === 'object' && Object.keys(value).length === 0)) {
@@ -784,17 +811,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    // Convert the final snapshot object to a nicely formatted JSON string.
     const snapshotJson = JSON.stringify(snapshot, null, 2);
+    console.log('snapshotJson:', snapshotJson);
+    // Create a Blob to hold the JSON data.
     const blob = new Blob([snapshotJson], { type: 'application/json' });
+    // Create a temporary URL for the Blob.
     const url = URL.createObjectURL(blob);
 
+    // Create a temporary anchor element to trigger the file download.
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'gUM-snapshot.json';
+    a.download = 'gUM-snapshot.json'; // Set the desired filename.
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.click(); // Programmatically click the anchor to start the download.
+    document.body.removeChild(a); // Clean up by removing the anchor.
+    URL.revokeObjectURL(url); // Release the created object URL.
   }
 
   saveSnapshotButton.addEventListener('click', handleSaveSnapshot);
