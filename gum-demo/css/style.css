@@ -59,7 +59,8 @@ body {
 }
 
 #gum-button,
-#copy-bookmark-button {
+#copy-bookmark-button,
+#copy-markdown-button {
   background-color: #4CAF50;
   color: white;
   border: none;
@@ -71,9 +72,15 @@ body {
   height: fit-content;
 }
 #gum-button:hover,
-#copy-bookmark-button:hover {
+#copy-bookmark-button:hover,
+#copy-markdown-button:hover {
   background-color: #45a049;
 }
+
+#copy-markdown-button {
+  margin-top: 1em;
+}
+
 
 #gum-button:disabled,
 #copy-bookmark-button:disabled {
