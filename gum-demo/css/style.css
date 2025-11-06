@@ -49,16 +49,13 @@ body {
   display: flex;
   align-items: center;
   margin-left: 2em;
-  justify-content: space-between;
 }
 
 .setting label {
   display: inline-block;
+  width: 130px;
   font-family: monospace;
   margin-right: 5px;
-  padding-right: 10px;
-  text-align: right;
-  flex-shrink: 0;
 }
 
 #gum-button,
