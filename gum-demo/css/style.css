@@ -8,6 +8,12 @@ body {
   align-items: center;
 }
 
+#wip-notice {
+  color: #D8000C; /* Red */
+  margin-top: 5px;
+  font-size: 0.9em;
+}
+
 .api-call-container {
   display: flex;
   align-items: center;
@@ -57,6 +63,15 @@ body {
 
 #peerconnection-button:hover {
   background-color: #A5D6A7; /* Darker green on hover */
+}
+
+#peerconnection-button.peerconnection-active {
+  background-color: #81C784; /* A more saturated green for active state */
+  border-color: #66BB6A;
+}
+
+#peerconnection-button.peerconnection-active:hover {
+  background-color: #66BB6A; /* Darker green for active hover */
 }
 
 .settings-container pre {
@@ -109,7 +124,8 @@ body {
 
 
 #gum-button:disabled,
-#copy-bookmark-button:disabled {
+#copy-bookmark-button:disabled,
+#peerconnection-button:disabled {
   background-color: #cccccc;
 }
 

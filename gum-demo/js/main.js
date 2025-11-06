@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
+  const peerConnectionButton = document.getElementById('peerconnection-button');
 
   let localStream;
   let audioContext;
@@ -42,6 +43,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
+  let isPeerConnectionEnabled = false;
+
+  peerConnectionButton.addEventListener('click', () => {
+    isPeerConnectionEnabled = !isPeerConnectionEnabled;
+    peerConnectionButton.classList.toggle('peerconnection-active', isPeerConnectionEnabled);
+    if (isPeerConnectionEnabled) {
+      peerConnectionButton.textContent = '- PeerConnection';
+      console.log('PeerConnection enabled');
+    } else {
+      peerConnectionButton.textContent = '+ PeerConnection';
+      console.log('PeerConnection disabled');
+    }
+  });
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -324,6 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     copyBookmarkButton.disabled = true;
+    peerConnectionButton.disabled = true;
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
@@ -444,6 +459,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessageElement.style.display = 'block';
       gumButton.disabled = false;
       copyBookmarkButton.disabled = false;
+      peerConnectionButton.disabled = false;
       setConstraintsDisabled(false);
     }
   });
@@ -515,6 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopButton.disabled = true;
     recordButton.disabled = true;
     setConstraintsDisabled(false);
+    peerConnectionButton.disabled = false;
     audioOutputDeviceSelect.disabled = false;
     audioPlayback.pause();
     audioPlayback.srcObject = null;
