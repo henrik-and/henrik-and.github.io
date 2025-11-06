@@ -38,6 +38,25 @@ body {
   padding: 10px;
   background-color: #E8F5E9;
   border-radius: 8px;
+  position: relative;
+}
+
+#peerconnection-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #C8E6C9; /* Light green */
+  color: black;
+  border: 1px solid #A5D6A7;
+  padding: 5px 10px;
+  font-size: 1.2em;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#peerconnection-button:hover {
+  background-color: #A5D6A7; /* Darker green on hover */
 }
 
 .settings-container pre {
