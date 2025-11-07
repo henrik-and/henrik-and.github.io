@@ -29,3 +29,6 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 *   **Active Device Display:** See the properties of the live audio input device. This clarifies exactly which microphone is being used by the stream, which is especially useful when the browser chooses a default device.
 *   **Audio Output Selection:** Choose which speaker or output device to play audio on using the [`HTMLMediaElement.setSinkId()`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId) method. The demo also displays the properties of the active audio output device.
 *   **Bookmarkable URLs:** Share your specific constraint configurations with others.
+*   **PeerConnection Loopback and Stats:**
+    *   Enable the PeerConnection toggle to send the audio stream through a local `RTCPeerConnection` loopback. This allows you to visualize and listen to the audio *after* it has been processed by the WebRTC audio engine (encoding, decoding, etc.).
+    *   When enabled, a new information box appears displaying `RTCOutboundRtpStreamStats`. This provides real-time metrics about the WebRTC stream, including current bitrate (bps), packets per second (pps), packet retransmissions, and the target bitrate of the encoder. This is invaluable for diagnosing audio quality issues and understanding the behavior of the WebRTC stack.

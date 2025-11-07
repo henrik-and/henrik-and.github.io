@@ -1046,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'MediaStreamTrack settings': parseJsonContent(trackSettingsElement.textContent),
       'MediaStreamTrack properties': parseJsonContent(trackPropertiesElement.textContent),
       'MediaStreamTrackAudioStats': parseJsonContent(trackStatsElement.textContent),
+      'RTCOutboundRtpStreamStats': parseJsonContent(outboundRtpStatsElement.textContent),
     };
 
     // Clean up the snapshot by removing any sections that are empty or null.
