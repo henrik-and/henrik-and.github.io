@@ -188,6 +188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSelectValue('autoGainControl', autoGainControlSelect);
     setSelectValue('noiseSuppression', noiseSuppressionSelect);
     setSelectValue('deviceId', audioDeviceSelect);
+
+    if (params.has('peerConnection') && params.get('peerConnection') === 'true') {
+      peerConnectionButton.click(); // Simulate a click to set the initial state.
+    }
+
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
     console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
     console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
@@ -953,6 +958,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     addParam('autoGainControl', autoGainControlSelect);
     addParam('noiseSuppression', noiseSuppressionSelect);
     addParam('deviceId', audioDeviceSelect);
+
+    if (isPeerConnectionEnabled) {
+      params.set('peerConnection', 'true');
+    }
 
     // Construct the full bookmarkable URL, only adding a '?' if there are parameters.
     const queryString = params.toString();
