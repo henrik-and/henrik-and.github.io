@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionButton = document.getElementById('peerconnection-button');
+  const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
 
   let localStream;
   let audioContext;
@@ -444,6 +445,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  /**
+   * Fetches and displays RTCOutboundRtpStreamStats from the active pc1 PeerConnection.
+   * If no active PeerConnection is found, it hides the stats box.
+   */
+  async function updateRtpStats() {
+    if (!pc1 || !isPeerConnectionEnabled) {
+      outboundRtpStatsElement.style.display = 'none';
+      return;
+    }
+
+    try {
+      const report = await pc1.getStats();
+      let outboundStatsFound = false;
+      for (const stats of report.values()) {
+        if (stats.type === 'outbound-rtp') {
+          outboundStatsFound = true;
+          const displayStats = {};
+          displayStats.packetsSent = stats.packetsSent;
+          displayStats.bytesSent = stats.bytesSent;
+
+          if (stats.codecId) {
+            const codec = report.get(stats.codecId);
+            if (codec) {
+              displayStats.codec = codec.mimeType.split('/')[1];
+              displayStats.channels = codec.channels;
+            }
+          }
+          outboundRtpStatsElement.textContent = 'RTCOutboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
+        }
+      }
+      // Show or hide the element based on whether stats were found in this report.
+      outboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
+    } catch (err) {
+      console.error('Error getting RTP stats:', err);
+      outboundRtpStatsElement.style.display = 'none';
+    }
+  }
+
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     copyBookmarkButton.disabled = true;
@@ -524,7 +563,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
-      statsInterval = setInterval(() => updateTrackStats(audioTrack), 1000);
+      statsInterval = setInterval(() => {
+        updateTrackStats(audioTrack);
+        updateRtpStats();
+      }, 1000);
       audioTrack.onmute = (event) => {
         console.log('Audio track muted:', event);
         errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
@@ -668,6 +710,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackStatsElement.textContent = '';
     trackConstraintsElement.textContent = '';
     audioInputDeviceElement.textContent = '';
+    outboundRtpStatsElement.textContent = '';
+    outboundRtpStatsElement.style.display = 'none';
     previousStats = null;
     previousTrackProperties = null;
     recordedAudio.style.display = 'none';
