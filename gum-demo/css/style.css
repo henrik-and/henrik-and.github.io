@@ -8,12 +8,6 @@ body {
   align-items: center;
 }
 
-#wip-notice {
-  color: #D8000C; /* Red */
-  margin-top: 5px;
-  font-size: 0.9em;
-}
-
 .api-call-container {
   display: flex;
   align-items: center;

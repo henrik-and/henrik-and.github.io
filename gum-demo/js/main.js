@@ -44,21 +44,124 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousStats = null;
   let previousTrackProperties = null;
   let isPeerConnectionEnabled = false;
+  let pc1, pc2;
+
+  /**
+   * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
+   * @param {MediaStream} stream The local audio stream to send through the connection.
+   * @returns {Promise<MediaStream>} A promise that resolves with the remote stream.
+   */
+  async function setupPeerConnection(stream) {
+    console.log('Setting up PeerConnection.');
+    pc1 = new RTCPeerConnection();
+    pc2 = new RTCPeerConnection();
+
+    const [localTrack] = stream.getAudioTracks();
+    pc1.addTrack(localTrack, stream);
+
+    const remoteStreamPromise = new Promise((resolve) => {
+      pc2.ontrack = (event) => {
+        console.log('pc2 received remote track.');
+        resolve(event.streams[0]);
+      };
+    });
+
+    exchangeIceCandidates(pc1, pc2);
+
+    pc1.oniceconnectionstatechange = () => console.log(`pc1 ICE state: ${pc1.iceConnectionState}`);
+    pc2.oniceconnectionstatechange = () => console.log(`pc2 ICE state: ${pc2.iceConnectionState}`);
+
+    try {
+      const offer = await pc1.createOffer();
+      console.log('pc1 offer SDP:\n', offer.sdp);
+      await pc1.setLocalDescription(offer);
+      await pc2.setRemoteDescription(offer);
+
+      const answer = await pc2.createAnswer();
+      console.log('pc2 original answer SDP:\n', answer.sdp);
+      answer.sdp = insertStereoSupportForOpus(answer.sdp);
+      console.log('pc2 modified answer SDP:\n', answer.sdp);
+      await pc2.setLocalDescription(answer);
+      await pc1.setRemoteDescription(answer);
+      console.log('PeerConnection offer-answer exchange complete.');
+    } catch (err) {
+      console.error('Error during offer/answer exchange:', err);
+      throw err; // Propagate error to the caller
+    }
+
+    return remoteStreamPromise;
+  }
+
+  /**
+   * Closes the RTCPeerConnection objects and resets the variables.
+   */
+  function closePeerConnection() {
+    if (pc1) {
+      pc1.close();
+      pc1 = null;
+      console.log('pc1 closed.');
+    }
+    if (pc2) {
+      pc2.close();
+      pc2 = null;
+      console.log('pc2 closed.');
+    }
+  }
+
+  /**
+   * Sets up the ICE candidate exchange between two RTCPeerConnection objects.
+   * @param {RTCPeerConnection} localPc
+   * @param {RTCPeerConnection} remotePc
+   */
+  function exchangeIceCandidates(localPc, remotePc) {
+    localPc.addEventListener('icecandidate', event => {
+      if (event.candidate && remotePc.signalingState !== 'closed') {
+        remotePc.addIceCandidate(event.candidate);
+      }
+    });
+  }
+
+  /**
+   * Modifies an SDP string to add stereo support for the Opus codec.
+   * @param {string} sdp The original SDP string.
+   * @returns {string} The modified SDP string with stereo support for Opus.
+   */
+  const insertStereoSupportForOpus = (sdp) => {
+    // Early exit if Opus codec (rtpmap:111) is not present.
+    if (!sdp.includes('a=rtpmap:111 opus/48000')) {
+      console.warn('Opus codec (111) not found in SDP. Stereo support not added.');
+      return sdp;
+    }
+
+    // Find the format parameter line for Opus and add stereo=1 if it's not already there.
+    const lines = sdp.split('\r\n');
+    const newSdpLines = lines.map((line) => {
+      if (line.startsWith('a=fmtp:111') && !line.includes('stereo=1')) {
+        console.log('Adding stereo=1 to Opus fmtp line.');
+        return `${line};stereo=1`;
+      }
+      return line;
+    });
+
+    return newSdpLines.join('\r\n');
+  };
+
+
 
   // Set the initial tooltip to describe the action of clicking the button in its default state.
-  peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
+  peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder';
   peerConnectionButton.addEventListener('click', () => {
     isPeerConnectionEnabled = !isPeerConnectionEnabled;
     peerConnectionButton.classList.toggle('peerconnection-active', isPeerConnectionEnabled);
     if (isPeerConnectionEnabled) {
       // State is now ENABLED. The button shows '-'. The tooltip should describe the action of clicking it again, which is to DISABLE.
       peerConnectionButton.textContent = '- PeerConnection';
-      peerConnectionButton.title = 'Don\'t send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
+      peerConnectionButton.title = 'Don\'t send the recorded local audio track via an RTCPeerConnection in loopback';
       console.log('PeerConnection enabled');
     } else {
       // State is now DISABLED. The button shows '+'. The tooltip should describe the action of clicking it again, which is to ENABLE.
       peerConnectionButton.textContent = '+ PeerConnection';
-      peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using the default encoder';
+      peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder';
       console.log('PeerConnection disabled');
     }
   });
@@ -393,6 +496,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStream = stream;
       console.log('getUserMedia() successful');
+
+      let streamForPlaybackAndVisualizer = localStream;
+      if (isPeerConnectionEnabled) {
+        try {
+          const remoteStream = await setupPeerConnection(localStream);
+          console.log('PeerConnection loopback established successfully.');
+          streamForPlaybackAndVisualizer = remoteStream;
+        } catch (err) {
+          console.error('PeerConnection setup failed:', err);
+          errorMessageElement.textContent = `PC Error: ${err.name} - ${err.message}`;
+          errorMessageElement.style.display = 'block';
+          // Don't proceed with a broken stream setup
+          return;
+        }
+      }
+
       const [audioTrack] = stream.getAudioTracks();
       console.log('audioTrack:', audioTrack);
       const settings = audioTrack.getSettings();
@@ -437,7 +556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       streamControlsContainer.style.display = 'flex';
       audioDevicesContainer.style.display = 'flex';
       snapshotButtonContainer.style.display = 'block';
-      visualizeAudio(localStream);
+      visualizeAudio(streamForPlaybackAndVisualizer);
       await populateAudioInputDevices();
 
       // Display the properties of the audio device that the track is actively using.
@@ -455,7 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  groupId: ${selectedDevice.groupId}`;
       }
 
-      audioPlayback.srcObject = localStream;
+      audioPlayback.srcObject = streamForPlaybackAndVisualizer;
       playCheckbox.checked = false;
       isRecording = false;
       updateRecordButtonUI();
@@ -520,6 +639,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStream.getTracks().forEach(track => track.stop());
       localStream = null;
     }
+    closePeerConnection();
     if (audioContext) {
       audioContext.close();
       audioContext = null;
