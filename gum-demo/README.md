@@ -9,14 +9,15 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 ## How to Use
 
 1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio [constraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints) (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
-2.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
-3.  **Visualize and Control:** Once the stream is active, you can:
+2.  **(Optional) Enable PeerConnection Loopback:** Click the "+ PeerConnection" button to enable the WebRTC loopback. When the stream is started, audio will be sent and received through a local PeerConnection, allowing you to inspect outbound RTP stats and listen to the effect of encoding and decoding the audio stream.
+3.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
+4.  **Visualize and Control:** Once the stream is active, you can:
     *   See a live visualization of the audio and its current level.
     *   Mute/unmute the audio track.
     *   Play the audio through your speakers.
     *   Record and play back the audio while visualizing its frequency spectrum.
     *   Stop the stream.
-4.  **Copy Bookmark:** The "Copy Bookmark" button creates a URL with the currently selected constraints, allowing you to save and share specific configurations for future use.
+5.  **Copy Bookmark:** The "Copy Bookmark" button creates a URL with the currently selected constraints, allowing you to save and share specific configurations for future use.
 
 ## Features
 
