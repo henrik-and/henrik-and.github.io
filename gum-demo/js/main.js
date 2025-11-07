@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousTrackProperties = null;
   let isPeerConnectionEnabled = false;
   let pc1, pc2;
+  let previousRtpStats = null;
 
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
@@ -415,20 +416,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       const currentStats = audioTrack.stats;
       // Manually create a new object and copy properties to have full control
       // over the presented output.
-      const extendedStats = {
-        deliveredFrames: currentStats.deliveredFrames,
-        totalFrames: currentStats.totalFrames,
-        droppedFrames: currentStats.totalFrames - currentStats.deliveredFrames,
-      };
+      const extendedStats = {};
 
       if (previousStats) {
         const deltaStats = {
           deliveredFrames: currentStats.deliveredFrames - previousStats.deliveredFrames,
           totalFrames: currentStats.totalFrames - previousStats.totalFrames,
-          droppedFrames: extendedStats.droppedFrames - previousStats.droppedFrames,
+          droppedFrames: (currentStats.totalFrames - currentStats.deliveredFrames) - previousStats.droppedFrames,
         };
         extendedStats.FPS = deltaStats;
       }
+
+      extendedStats.deliveredFrames = currentStats.deliveredFrames;
+      extendedStats.totalFrames = currentStats.totalFrames;
+      extendedStats.droppedFrames = currentStats.totalFrames - currentStats.deliveredFrames;
       extendedStats.averageLatency = currentStats.averageLatency.toFixed(1);
 
       trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(extendedStats, null, 2);
@@ -447,6 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /**
    * Fetches and displays RTCOutboundRtpStreamStats from the active pc1 PeerConnection.
+   * The displayed stats are based on the specification: https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
    * If no active PeerConnection is found, it hides the stats box.
    */
   async function updateRtpStats() {
@@ -462,8 +464,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (stats.type === 'outbound-rtp') {
           outboundStatsFound = true;
           const displayStats = {};
+
+          // Calculate and add current rates (bitrate, packets per second).
+          if (previousRtpStats) {
+            const timeDiffSeconds = (stats.timestamp - previousRtpStats.timestamp) / 1000.0;
+            if (timeDiffSeconds > 0) {
+              const bitsSent = (stats.bytesSent - previousRtpStats.bytesSent) * 8;
+              const packetsSent = stats.packetsSent - previousRtpStats.packetsSent;
+              displayStats.rate = {
+                bps: Math.round(bitsSent / timeDiffSeconds),
+                pps: parseFloat((packetsSent / timeDiffSeconds).toFixed(2)),
+              };
+            }
+          }
+
+          // Update previousRtpStats for the next interval's calculation.
+          previousRtpStats = {
+            bytesSent: stats.bytesSent,
+            packetsSent: stats.packetsSent,
+            timestamp: stats.timestamp,
+          };
+
           displayStats.packetsSent = stats.packetsSent;
           displayStats.bytesSent = stats.bytesSent;
+          if (stats.powerEfficientEncoder !== undefined) {
+            displayStats.powerEfficientEncoder = stats.powerEfficientEncoder;
+          }
+          if (stats.encoderImplementation) {
+            displayStats.encoderImplementation = stats.encoderImplementation;
+          }
+
+          // Calculate and add average packet send delay if data is available.
+          if (stats.totalPacketSendDelay && stats.packetsSent > 0) {
+            const averageDelayMs = (stats.totalPacketSendDelay / stats.packetsSent) * 1000;
+            displayStats.averagePacketSendDelayMs = parseFloat(averageDelayMs.toFixed(2));
+          }
+
+          // Add additional health and quality metrics.
+          // Retransmission stats are a direct indicator of packet loss.
+          if (stats.retransmittedPacketsSent !== undefined) {
+            displayStats.retransmittedPacketsSent = stats.retransmittedPacketsSent;
+          }
+          if (stats.retransmittedBytesSent !== undefined) {
+            displayStats.retransmittedBytesSent = stats.retransmittedBytesSent;
+          }
+          // The bitrate the encoder is currently aiming for.
+          if (stats.targetBitrate !== undefined) {
+            displayStats.targetBitrate = stats.targetBitrate;
+          }
+          // A cumulative count of samples sent, confirming continuous audio processing.
+          if (stats.totalSamplesSent !== undefined) {
+            displayStats.totalSamplesSent = stats.totalSamplesSent;
+          }
+          // The id of the MediaStreamTrack, for debugging.
+          if (stats.trackIdentifier) {
+            displayStats.trackIdentifier = stats.trackIdentifier;
+          }
 
           if (stats.codecId) {
             const codec = report.get(stats.codecId);
@@ -490,6 +546,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
+    previousRtpStats = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
@@ -714,6 +771,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     outboundRtpStatsElement.style.display = 'none';
     previousStats = null;
     previousTrackProperties = null;
+    previousRtpStats = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
