@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
-  const peerConnectionButton = document.getElementById('peerconnection-button');
+  const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
 
   let localStream;
@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
-  let isPeerConnectionEnabled = false;
   let pc1, pc2;
   let previousRtpStats = null;
 
@@ -150,23 +149,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-  // Set the initial tooltip to describe the action of clicking the button in its default state.
-  peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder';
-  peerConnectionButton.addEventListener('click', () => {
-    isPeerConnectionEnabled = !isPeerConnectionEnabled;
-    peerConnectionButton.classList.toggle('peerconnection-active', isPeerConnectionEnabled);
-    if (isPeerConnectionEnabled) {
-      // State is now ENABLED. The button shows '-'. The tooltip should describe the action of clicking it again, which is to DISABLE.
-      peerConnectionButton.textContent = '- PeerConnection';
-      peerConnectionButton.title = 'Don\'t send the recorded local audio track via an RTCPeerConnection in loopback';
+  const peerConnectionLabel = peerConnectionCheckbox.parentElement.querySelector('label');
+
+  function updatePeerConnectionTooltip() {
+    if (peerConnectionCheckbox.checked) {
+      // State is ENABLED. Tooltip is removed.
+      peerConnectionLabel.title = '';
+    } else {
+      // State is DISABLED. Tooltip describes the action of checking it.
+      peerConnectionLabel.title = 'Send and receive the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder and decoder';
+    }
+  }
+
+  peerConnectionCheckbox.addEventListener('change', () => {
+    updatePeerConnectionTooltip();
+    if (peerConnectionCheckbox.checked) {
       console.log('PeerConnection enabled');
     } else {
-      // State is now DISABLED. The button shows '+'. The tooltip should describe the action of clicking it again, which is to ENABLE.
-      peerConnectionButton.textContent = '+ PeerConnection';
-      peerConnectionButton.title = 'Send the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder';
       console.log('PeerConnection disabled');
     }
   });
+
+  // Set the initial tooltip state on page load.
+  updatePeerConnectionTooltip();
 
   stopButton.disabled = true;
   recordButton.disabled = true;
@@ -190,7 +195,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSelectValue('deviceId', audioDeviceSelect);
 
     if (params.has('peerConnection') && params.get('peerConnection') === 'true') {
-      peerConnectionButton.click(); // Simulate a click to set the initial state.
+      peerConnectionCheckbox.checked = true;
+      // Manually trigger the change event to ensure the rest of the app state is updated.
+      peerConnectionCheckbox.dispatchEvent(new Event('change'));
     }
 
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
@@ -457,7 +464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    * If no active PeerConnection is found, it hides the stats box.
    */
   async function updateRtpStats() {
-    if (!pc1 || !isPeerConnectionEnabled) {
+    if (!pc1 || !peerConnectionCheckbox.checked) {
       outboundRtpStatsElement.style.display = 'none';
       return;
     }
@@ -547,7 +554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
     copyBookmarkButton.disabled = true;
-    peerConnectionButton.disabled = true;
+    peerConnectionCheckbox.disabled = true;
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
@@ -599,7 +606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('getUserMedia() successful');
 
       let streamForPlaybackAndVisualizer = localStream;
-      if (isPeerConnectionEnabled) {
+      if (peerConnectionCheckbox.checked) {
         try {
           const remoteStream = await setupPeerConnection(localStream);
           console.log('PeerConnection loopback established successfully.');
@@ -688,7 +695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessageElement.style.display = 'block';
       gumButton.disabled = false;
       copyBookmarkButton.disabled = false;
-      peerConnectionButton.disabled = false;
+      peerConnectionCheckbox.disabled = false;
       setConstraintsDisabled(false);
     }
   });
@@ -761,7 +768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopButton.disabled = true;
     recordButton.disabled = true;
     setConstraintsDisabled(false);
-    peerConnectionButton.disabled = false;
+    peerConnectionCheckbox.disabled = false;
     audioOutputDeviceSelect.disabled = false;
     audioPlayback.pause();
     audioPlayback.srcObject = null;
@@ -959,7 +966,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addParam('noiseSuppression', noiseSuppressionSelect);
     addParam('deviceId', audioDeviceSelect);
 
-    if (isPeerConnectionEnabled) {
+    if (peerConnectionCheckbox.checked) {
       params.set('peerConnection', 'true');
     }
 
