@@ -44,4 +44,4 @@ For users of Google Chrome and other Chromium-based browsers, the `chrome://webr
 The `webrtc-internals` page will now display lots of detailed information.
 
 *   **`getUserMedia` Requests:** You can inspect the exact constraints that were passed to the API and see the raw, detailed properties of the `MediaStreamTrack` that was returned.
-*   **PeerConnection Stats:** If you have the PeerConnection loopback enabled, you can select the active connection to view a comprehensive list of real-time stats graphs. This includes everything from bitrate and packet loss to detailed audio processing metrics like echo cancellation return loss and audio input level. This is the most powerful way to get a deep understanding of the WebRTC audio pipeline's behavior.
+*   **PeerConnection Stats:** If you have the PeerConnection loopback enabled, you can select the active connection to view a comprehensive list of real-time stats graphs. This includes everything from bitrate and packet loss to detailed audio processing metrics like echo cancellation return loss and audio input level.
