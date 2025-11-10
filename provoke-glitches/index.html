@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Provoking glitches with WebAudio</title>
+</head>
+<body>
+  <h1>Provoking glitches with WebAudio</h1>
+  <p id="label">not started</p>
+  <button onclick="startProgram()">Create glitches</button>
+
+  <script>
+    const label = document.getElementById("label");
+    var i = 0;
+
+    /**
+    * Delay for a number of milliseconds
+    */
+    function sleep(delay) {
+        var start = new Date().getTime();
+        while (new Date().getTime() < start + delay);
+    }
+
+    function createAudioContext() {
+      const audioContext = new window.AudioContext();
+      const oscillator = audioContext.createOscillator();
+      oscillator.frequency.setValueAtTime(400 + (i ++) * 50, audioContext.currentTime);
+      var source = oscillator;
+      for (k = 0; k < 4000; k++) {
+        let filter = audioContext.createBiquadFilter();
+        filter.frequency = 2000;
+        filter.type = "lowpass";
+        source.connect(filter);
+        source = filter;
+      }
+
+      const processor = audioContext.createScriptProcessor();
+      processor.addEventListener("audioprocess", (audioProcessingEvent) => {
+        const inputBuffer = audioProcessingEvent.inputBuffer;
+        const outputBuffer = audioProcessingEvent.outputBuffer;
+
+        for (let channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+          const outputData = outputBuffer.getChannelData(channel);
+
+          for (let sample = 0; sample < inputBuffer.length; sample++) {
+            outputData[sample] = 0;
+          }
+        }
+      });
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+
+      oscillator.start();
+
+      label.textContent = "started " + i + " nodes";
+    }
+
+    function startProgram() {
+      createAudioContext();
+      createAudioContext();
+      createAudioContext();
+    }
+  </script>
+</body>
+</html>
