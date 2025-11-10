@@ -575,9 +575,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
               const interval = {};
-              if (deltaSynthesizedSamplesEvents > 0) {
-                interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
-              }
+              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
+              interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(2));
+              interval.totalSamplesDuration = parseFloat(deltaTotalSamplesDuration.toFixed(2));
+
               if (deltaTotalSamplesDuration > 0) {
                 let synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
                 // Safeguard against potential reporting anomalies where delta synthesized > delta total.
@@ -588,9 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const averagePlayoutDelayMs = (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000;
                 interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
               }
-              if (Object.keys(interval).length > 0) {
-                displayStats.interval = interval;
-              }
+              displayStats.interval = interval;
             }
 
             displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
