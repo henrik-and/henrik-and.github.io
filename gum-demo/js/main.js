@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
+  const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
 
   let localStream;
   let audioContext;
@@ -541,13 +542,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           outboundRtpStatsElement.textContent = 'RTCOutboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
+          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
         }
       }
       // Show or hide the element based on whether stats were found in this report.
       outboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
+      audioPlayoutStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
     } catch (err) {
       console.error('Error getting RTP stats:', err);
       outboundRtpStatsElement.style.display = 'none';
+      audioPlayoutStatsElement.style.display = 'none';
     }
   }
 
@@ -781,6 +785,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioInputDeviceElement.textContent = '';
     outboundRtpStatsElement.textContent = '';
     outboundRtpStatsElement.style.display = 'none';
+    audioPlayoutStatsElement.textContent = '';
+    audioPlayoutStatsElement.style.display = 'none';
     previousStats = null;
     previousTrackProperties = null;
     previousRtpStats = null;
