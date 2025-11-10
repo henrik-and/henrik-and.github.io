@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousStats = null;
   let previousTrackProperties = null;
   let pc1, pc2;
-  let previousRtpStats = null;
+  let previousOutboundRtpStats = null;
 
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
@@ -460,9 +460,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /**
-   * Fetches and displays RTCOutboundRtpStreamStats from the active pc1 PeerConnection.
-   * The displayed stats are based on the specification: https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict*
-   * If no active PeerConnection is found, it hides the stats box.
+   * Fetches and displays RTCOutboundRtpStreamStats from the active pc1 PeerConnection
+   * and RTCAudioPlayoutStats from pc2.
+   * The displayed stats are based on the specifications:
+   * - https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict
+   * - https://w3c.github.io/webrtc-stats/#dom-rtcaudioplayoutstats
+   * If no active PeerConnection is found, it hides the stats boxes.
    */
   async function updateRtpStats() {
     if (!pc1 || !peerConnectionCheckbox.checked) {
@@ -479,11 +482,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           const displayStats = {};
 
           // Calculate and add current rates (bitrate, packets per second).
-          if (previousRtpStats) {
-            const timeDiffSeconds = (stats.timestamp - previousRtpStats.timestamp) / 1000.0;
+          if (previousOutboundRtpStats) {
+            const timeDiffSeconds = (stats.timestamp - previousOutboundRtpStats.timestamp) / 1000.0;
             if (timeDiffSeconds > 0) {
-              const bitsSent = (stats.bytesSent - previousRtpStats.bytesSent) * 8;
-              const packetsSent = stats.packetsSent - previousRtpStats.packetsSent;
+              const bitsSent = (stats.bytesSent - previousOutboundRtpStats.bytesSent) * 8;
+              const packetsSent = stats.packetsSent - previousOutboundRtpStats.packetsSent;
               displayStats.rate = {
                 bps: Math.round(bitsSent / timeDiffSeconds),
                 pps: parseFloat((packetsSent / timeDiffSeconds).toFixed(2)),
@@ -491,8 +494,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
-          // Update previousRtpStats for the next interval's calculation.
-          previousRtpStats = {
+          // Update previousOutboundRtpStats for the next interval's calculation.
+          previousOutboundRtpStats = {
             bytesSent: stats.bytesSent,
             packetsSent: stats.packetsSent,
             timestamp: stats.timestamp,
@@ -542,7 +545,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           outboundRtpStatsElement.textContent = 'RTCOutboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
-          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
         }
       }
       // Show or hide the element based on whether stats were found in this report.
@@ -553,6 +555,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       outboundRtpStatsElement.style.display = 'none';
       audioPlayoutStatsElement.style.display = 'none';
     }
+
+    if (pc2) {
+      try {
+        const report = await pc2.getStats();
+        let playoutStatsFound = false;
+        for (const stats of report.values()) {
+          if (stats.type === 'media-playout') {
+            playoutStatsFound = true;
+            const displayStats = {
+              synthesizedSamplesEvents: stats.synthesizedSamplesEvents,
+              synthesizedSamplesDuration: stats.synthesizedSamplesDuration,
+              totalSamplesDuration: stats.totalSamplesDuration,
+            };
+            if (stats.totalSamplesDuration > 0) {
+              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
+            }
+            if (stats.totalSamplesCount > 0) {
+              const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
+              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
+            }
+            audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
+          }
+        }
+        if (!playoutStatsFound) {
+          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
+        }
+      } catch (err) {
+        console.error('Error getting RTP stats from pc2:', err);
+      }
+    }
   }
 
   gumButton.addEventListener('click', async () => {
@@ -562,7 +595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
-    previousRtpStats = null;
+    previousOutboundRtpStats = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
@@ -789,7 +822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioPlayoutStatsElement.style.display = 'none';
     previousStats = null;
     previousTrackProperties = null;
-    previousRtpStats = null;
+    previousOutboundRtpStats = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
