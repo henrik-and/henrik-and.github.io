@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousTrackProperties = null;
   let pc1, pc2;
   let previousOutboundRtpStats = null;
+  let previousPlayoutStats = null;
 
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
@@ -563,18 +564,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (const stats of report.values()) {
           if (stats.type === 'media-playout') {
             playoutStatsFound = true;
-            const displayStats = {
-              synthesizedSamplesEvents: stats.synthesizedSamplesEvents,
+            const displayStats = {};
+
+            // Calculate and add interval-specific rates.
+            if (previousPlayoutStats) {
+              const deltaSynthesizedSamplesDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
+              const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousPlayoutStats.totalSamplesDuration;
+              const deltaTotalPlayoutDelay = stats.totalPlayoutDelay - previousPlayoutStats.totalPlayoutDelay;
+              const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
+
+              const interval = {};
+              if (deltaTotalSamplesDuration > 0) {
+                const synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
+                interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
+              }
+              if (deltaTotalSamplesCount > 0) {
+                const averagePlayoutDelayMs = (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000;
+                interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
+              }
+              if (Object.keys(interval).length > 0) {
+                displayStats.interval = interval;
+              }
+            }
+
+            displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
+            displayStats.synthesizedSamplesDuration = stats.synthesizedSamplesDuration;
+            displayStats.totalSamplesDuration = stats.totalSamplesDuration;
+
+            // Update previousPlayoutStats for the next interval.
+            previousPlayoutStats = {
               synthesizedSamplesDuration: stats.synthesizedSamplesDuration,
               totalSamplesDuration: stats.totalSamplesDuration,
+              totalPlayoutDelay: stats.totalPlayoutDelay,
+              totalSamplesCount: stats.totalSamplesCount,
             };
-            if (stats.totalSamplesDuration > 0) {
-              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
-            }
+
             if (stats.totalSamplesCount > 0) {
               const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
               displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
+            }
+            if (stats.totalSamplesDuration > 0) {
+              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
             }
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
@@ -596,6 +627,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousStats = null;
     previousTrackProperties = null;
     previousOutboundRtpStats = null;
+    previousPlayoutStats = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
@@ -823,6 +855,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousStats = null;
     previousTrackProperties = null;
     previousOutboundRtpStats = null;
+    previousPlayoutStats = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
