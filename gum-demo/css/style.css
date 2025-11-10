@@ -93,7 +93,6 @@ body {
 
 #snapshot-button-container {
   display: none;
-  margin-top: -5px;
 }
 
 
@@ -235,6 +234,13 @@ button:disabled {
   gap: 10px;
 }
 
+#rtp-stats-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
 #track-constraints,
 #track-settings,
 #track-properties,
@@ -250,6 +256,7 @@ button:disabled {
   font-family: "Lucida Console", "Courier New", monospace;
   white-space: pre-wrap;
   text-align: left;
+  margin: 0;
 }
 
 #outbound-rtp-stats {
