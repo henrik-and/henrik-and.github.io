@@ -572,10 +572,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousPlayoutStats.totalSamplesDuration;
               const deltaTotalPlayoutDelay = stats.totalPlayoutDelay - previousPlayoutStats.totalPlayoutDelay;
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
+              const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
               const interval = {};
+              if (deltaSynthesizedSamplesEvents > 0) {
+                interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
+              }
               if (deltaTotalSamplesDuration > 0) {
-                const synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
+                let synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
+                // Safeguard against potential reporting anomalies where delta synthesized > delta total.
+                synthesizedPercentage = Math.min(synthesizedPercentage, 100);
                 interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
               }
               if (deltaTotalSamplesCount > 0) {
@@ -588,11 +594,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
-            displayStats.synthesizedSamplesDuration = stats.synthesizedSamplesDuration;
-            displayStats.totalSamplesDuration = stats.totalSamplesDuration;
+            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(2));
+            displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(2));
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
+              synthesizedSamplesEvents: stats.synthesizedSamplesEvents,
               synthesizedSamplesDuration: stats.synthesizedSamplesDuration,
               totalSamplesDuration: stats.totalSamplesDuration,
               totalPlayoutDelay: stats.totalPlayoutDelay,
