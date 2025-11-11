@@ -656,14 +656,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               const interval = {};
               interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
-              interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(1));
-              interval.totalSamplesDuration = parseFloat(deltaTotalSamplesDuration.toFixed(1));
-
               let synthesizedPercentage = (deltaTotalSamplesDuration > 0) ? (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100 : 0;
-              // Safeguard against potential reporting anomalies where delta synthesized > delta total.
-              synthesizedPercentage = Math.min(synthesizedPercentage, 100);
               interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
-
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
               interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
               displayStats.interval = interval;
