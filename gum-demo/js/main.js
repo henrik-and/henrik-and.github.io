@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
+  const inboundRtpStatsElement = document.getElementById('inbound-rtp-stats');
   const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
 
   let localStream;
@@ -47,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousTrackProperties = null;
   let pc1, pc2;
   let previousOutboundRtpStats = null;
+  let previousInboundRtpStats = null;
   let previousPlayoutStats = null;
 
   /**
@@ -461,10 +463,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /**
-   * Fetches and displays RTCOutboundRtpStreamStats from the active pc1 PeerConnection
+   * Fetches and displays RTCOutboundRtpStreamStats from pc1, and RTCInboundRtpStreamStats
    * and RTCAudioPlayoutStats from pc2.
    * The displayed stats are based on the specifications:
    * - https://w3c.github.io/webrtc-stats/#outboundrtpstats-dict
+   * - https://w3c.github.io/webrtc-stats/#dom-rtcinboundrtpstreamstats
    * - https://w3c.github.io/webrtc-stats/#dom-rtcaudioplayoutstats
    * If no active PeerConnection is found, it hides the stats boxes.
    */
@@ -546,14 +549,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
           outboundRtpStatsElement.textContent = 'RTCOutboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
+          inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n';
+          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
         }
       }
       // Show or hide the element based on whether stats were found in this report.
       outboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
+      inboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
       audioPlayoutStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
     } catch (err) {
       console.error('Error getting RTP stats:', err);
       outboundRtpStatsElement.style.display = 'none';
+      inboundRtpStatsElement.style.display = 'none';
       audioPlayoutStatsElement.style.display = 'none';
     }
 
@@ -561,7 +568,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         const report = await pc2.getStats();
         let playoutStatsFound = false;
+        let inboundRtpStatsFound = false;
         for (const stats of report.values()) {
+          if (stats.type === 'inbound-rtp') {
+            inboundRtpStatsFound = true;
+            const displayStats = {};
+            if (previousInboundRtpStats) {
+              const timeDiffSeconds = (stats.timestamp - previousInboundRtpStats.timestamp) / 1000.0;
+              const deltaPacketsDiscarded = stats.packetsDiscarded - previousInboundRtpStats.packetsDiscarded;
+              const deltaBytesReceived = stats.bytesReceived - previousInboundRtpStats.bytesReceived;
+              const bps = (timeDiffSeconds > 0) ? Math.round((deltaBytesReceived * 8) / timeDiffSeconds) : 0;
+              displayStats.rate = {
+                bps: bps,
+                packetsDiscarded: deltaPacketsDiscarded,
+              };
+            }
+
+            if (stats.totalProcessingDelay !== undefined && stats.totalSamplesReceived !== undefined && stats.concealedSamples !== undefined) {
+              const totalSamplesDecoded = stats.totalSamplesReceived - stats.concealedSamples;
+              if (totalSamplesDecoded > 0) {
+                const averageProcessingDelayMs = (stats.totalProcessingDelay / totalSamplesDecoded) * 1000;
+                displayStats.averageProcessingDelayMs = parseFloat(averageProcessingDelayMs.toFixed(1));
+              }
+            }
+
+            previousInboundRtpStats = {
+              packetsDiscarded: stats.packetsDiscarded,
+              bytesReceived: stats.bytesReceived,
+              timestamp: stats.timestamp,
+              totalProcessingDelay: stats.totalProcessingDelay,
+              totalSamplesReceived: stats.totalSamplesReceived,
+              concealedSamples: stats.concealedSamples,
+            };
+            inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
+          }
           if (stats.type === 'media-playout') {
             playoutStatsFound = true;
             const displayStats = {};
@@ -574,21 +614,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
               const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
-              const rate = {};
-              rate.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
-              if (deltaTotalSamplesDuration > 0) {
-                let synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
-                rate.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
-              }
-              if (deltaTotalSamplesCount > 0) {
-                const averagePlayoutDelayMs = (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000;
-                rate.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
-              }
-              displayStats.rate = rate;
+              const interval = {};
+              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
+              interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(1));
+              interval.totalSamplesDuration = parseFloat(deltaTotalSamplesDuration.toFixed(1));
+
+              let synthesizedPercentage = (deltaTotalSamplesDuration > 0) ? (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100 : 0;
+              // Safeguard against potential reporting anomalies where delta synthesized > delta total.
+              synthesizedPercentage = Math.min(synthesizedPercentage, 100);
+              interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
+
+              const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
+              interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
+              displayStats.interval = interval;
             }
 
             displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
-            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(2));
+            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
             displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
 
             // Update previousPlayoutStats for the next interval.
@@ -605,14 +647,17 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
             }
             if (stats.totalSamplesDuration > 0) {
-              const averageSynthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
+              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
             }
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
         }
         if (!playoutStatsFound) {
           audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
+        }
+        if (!inboundRtpStatsFound) {
+          inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n';
         }
       } catch (err) {
         console.error('Error getting RTP stats from pc2:', err);
@@ -628,6 +673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousStats = null;
     previousTrackProperties = null;
     previousOutboundRtpStats = null;
+    previousInboundRtpStats = null;
     previousPlayoutStats = null;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
@@ -851,11 +897,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioInputDeviceElement.textContent = '';
     outboundRtpStatsElement.textContent = '';
     outboundRtpStatsElement.style.display = 'none';
+    inboundRtpStatsElement.textContent = '';
+    inboundRtpStatsElement.style.display = 'none';
     audioPlayoutStatsElement.textContent = '';
     audioPlayoutStatsElement.style.display = 'none';
     previousStats = null;
     previousTrackProperties = null;
     previousOutboundRtpStats = null;
+    previousInboundRtpStats = null;
     previousPlayoutStats = null;
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
