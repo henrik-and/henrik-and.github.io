@@ -615,6 +615,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.concealedSamples = stats.concealedSamples;
             }
 
+            // audioLevel is only reported when the track is actively being played out.
+            // The value is linear from 0.0 (silence) to 1.0 (0 dBov).
+            // A value of 0.5 represents approximately a 6 dBSPL change.
+            if (stats.audioLevel !== undefined && stats.audioLevel > 0) {
+              displayStats.audioLevel = parseFloat(stats.audioLevel.toFixed(2));
+            }
+
             if (stats.totalProcessingDelay !== undefined && stats.totalSamplesReceived !== undefined && stats.concealedSamples !== undefined) {
               const totalSamplesDecoded = stats.totalSamplesReceived - stats.concealedSamples;
               if (totalSamplesDecoded > 0) {
