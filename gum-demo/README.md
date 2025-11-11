@@ -33,6 +33,7 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 *   **PeerConnection Loopback and Stats:**
     *   Enable the PeerConnection toggle to send the audio stream through a local `RTCPeerConnection` loopback. This allows you to visualize and listen to the audio *after* it has been processed by the WebRTC audio engine (encoding, decoding, etc.).
     *   When enabled, a new information box appears displaying `RTCOutboundRtpStreamStats`. This provides real-time metrics about the WebRTC stream, including current bitrate (bps), packets per second (pps), packet retransmissions, and the target bitrate of the encoder. This is invaluable for diagnosing audio quality issues and understanding the behavior of the WebRTC stack.
+    *   Two additional panels, `RTCInboundRtpStreamStats` and `RTCAudioPlayoutStats`, also appear. These provide detailed real-time metrics about the receiving side of the WebRTC connection. You can monitor the incoming bitrate, packet loss, audio concealment events, jitter buffer delay, and the average audio level (both as a linear RMS value and in dBov). These stats are crucial for diagnosing issues related to network reception and audio playout quality.
 
 ## Advanced Debugging with `chrome://webrtc-internals`
 
