@@ -577,11 +577,42 @@ document.addEventListener('DOMContentLoaded', async () => {
               const timeDiffSeconds = (stats.timestamp - previousInboundRtpStats.timestamp) / 1000.0;
               const deltaPacketsDiscarded = stats.packetsDiscarded - previousInboundRtpStats.packetsDiscarded;
               const deltaBytesReceived = stats.bytesReceived - previousInboundRtpStats.bytesReceived;
+              const deltaConcealedSamples = stats.concealedSamples - previousInboundRtpStats.concealedSamples;
               const bps = (timeDiffSeconds > 0) ? Math.round((deltaBytesReceived * 8) / timeDiffSeconds) : 0;
-              displayStats.rate = {
+              const rate = {
                 bps: bps,
                 packetsDiscarded: deltaPacketsDiscarded,
+                concealedSamples: deltaConcealedSamples,
               };
+
+              // Calculate and add interval-specific processing and jitter delays.
+              if (previousInboundRtpStats.totalProcessingDelay !== undefined) {
+                const deltaTotalProcessingDelay = stats.totalProcessingDelay - previousInboundRtpStats.totalProcessingDelay;
+                const previousTotalSamplesDecoded = previousInboundRtpStats.totalSamplesReceived - previousInboundRtpStats.concealedSamples;
+                const currentTotalSamplesDecoded = stats.totalSamplesReceived - stats.concealedSamples;
+                const deltaTotalSamplesDecoded = currentTotalSamplesDecoded - previousTotalSamplesDecoded;
+                if (deltaTotalSamplesDecoded > 0) {
+                  const processingDelayMs = (deltaTotalProcessingDelay / deltaTotalSamplesDecoded) * 1000;
+                  rate.processingDelayMs = parseFloat(processingDelayMs.toFixed(1));
+                }
+              }
+
+              if (previousInboundRtpStats.jitterBufferTargetDelay !== undefined) {
+                const deltaJitterBufferTargetDelay = stats.jitterBufferTargetDelay - previousInboundRtpStats.jitterBufferTargetDelay;
+                const deltaJitterBufferEmittedCount = stats.jitterBufferEmittedCount - previousInboundRtpStats.jitterBufferEmittedCount;
+                if (deltaJitterBufferEmittedCount > 0) {
+                  const jitterBufferTargetDelayMs = (deltaJitterBufferTargetDelay / deltaJitterBufferEmittedCount) * 1000;
+                  rate.jitterBufferTargetDelayMs = parseFloat(jitterBufferTargetDelayMs.toFixed(1));
+                }
+              }
+              displayStats.rate = rate;
+            }
+
+            if (stats.packetsDiscarded !== undefined) {
+              displayStats.packetsDiscarded = stats.packetsDiscarded;
+            }
+            if (stats.concealedSamples !== undefined) {
+              displayStats.concealedSamples = stats.concealedSamples;
             }
 
             if (stats.totalProcessingDelay !== undefined && stats.totalSamplesReceived !== undefined && stats.concealedSamples !== undefined) {
@@ -592,6 +623,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             }
 
+            if (stats.jitterBufferTargetDelay !== undefined && stats.jitterBufferEmittedCount !== undefined) {
+              if (stats.jitterBufferEmittedCount > 0) {
+                const averageJitterBufferTargetDelayMs = (stats.jitterBufferTargetDelay / stats.jitterBufferEmittedCount) * 1000;
+                displayStats.averageJitterBufferTargetDelayMs = parseFloat(averageJitterBufferTargetDelayMs.toFixed(1));
+              }
+            }
+
             previousInboundRtpStats = {
               packetsDiscarded: stats.packetsDiscarded,
               bytesReceived: stats.bytesReceived,
@@ -599,6 +637,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalProcessingDelay: stats.totalProcessingDelay,
               totalSamplesReceived: stats.totalSamplesReceived,
               concealedSamples: stats.concealedSamples,
+              jitterBufferTargetDelay: stats.jitterBufferTargetDelay,
+              jitterBufferEmittedCount: stats.jitterBufferEmittedCount,
             };
             inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
           }
