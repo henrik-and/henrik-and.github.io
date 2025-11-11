@@ -585,6 +585,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 concealedSamples: deltaConcealedSamples,
               };
 
+              // Calculate and add interval-specific RMS audio level.
+              if (previousInboundRtpStats.totalAudioEnergy !== undefined && previousInboundRtpStats.totalSamplesDuration !== undefined) {
+                const deltaTotalAudioEnergy = stats.totalAudioEnergy - previousInboundRtpStats.totalAudioEnergy;
+                const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousInboundRtpStats.totalSamplesDuration;
+                if (deltaTotalSamplesDuration > 0) {
+                  const rms = Math.sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration);
+                  rate.rmsAudioLevel = parseFloat(rms.toFixed(2));
+                  if (rms > 0) {
+                    // dBov stands for decibels relative to full scale.
+                    const rmsDBov = 20 * Math.log10(rms);
+                    rate.rmsDBov = parseFloat(rmsDBov.toFixed(1));
+                  }
+                }
+              }
+
               // Calculate and add interval-specific processing and jitter delays.
               if (previousInboundRtpStats.totalProcessingDelay !== undefined) {
                 const deltaTotalProcessingDelay = stats.totalProcessingDelay - previousInboundRtpStats.totalProcessingDelay;
@@ -646,6 +661,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               concealedSamples: stats.concealedSamples,
               jitterBufferTargetDelay: stats.jitterBufferTargetDelay,
               jitterBufferEmittedCount: stats.jitterBufferEmittedCount,
+              totalAudioEnergy: stats.totalAudioEnergy,
+              totalSamplesDuration: stats.totalSamplesDuration,
             };
             inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
           }
