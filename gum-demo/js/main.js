@@ -490,7 +490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               const packetsSent = stats.packetsSent - previousOutboundRtpStats.packetsSent;
               displayStats.rate = {
                 bps: Math.round(bitsSent / timeDiffSeconds),
-                pps: parseFloat((packetsSent / timeDiffSeconds).toFixed(2)),
+                pps: parseFloat((packetsSent / timeDiffSeconds).toFixed(1)),
               };
             }
           }
@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Calculate and add average packet send delay if data is available.
           if (stats.totalPacketSendDelay && stats.packetsSent > 0) {
             const averageDelayMs = (stats.totalPacketSendDelay / stats.packetsSent) * 1000;
-            displayStats.averagePacketSendDelayMs = parseFloat(averageDelayMs.toFixed(2));
+            displayStats.averagePacketSendDelayMs = parseFloat(averageDelayMs.toFixed(1));
           }
 
           // Add additional health and quality metrics.
@@ -574,27 +574,22 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
               const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
-              const interval = {};
-              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
-              interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(2));
-              interval.totalSamplesDuration = parseFloat(deltaTotalSamplesDuration.toFixed(2));
-
+              const rate = {};
+              rate.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
               if (deltaTotalSamplesDuration > 0) {
                 let synthesizedPercentage = (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100;
-                // Safeguard against potential reporting anomalies where delta synthesized > delta total.
-                synthesizedPercentage = Math.min(synthesizedPercentage, 100);
-                interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
+                rate.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
               }
               if (deltaTotalSamplesCount > 0) {
                 const averagePlayoutDelayMs = (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000;
-                interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
+                rate.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
               }
-              displayStats.interval = interval;
+              displayStats.rate = rate;
             }
 
             displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
             displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(2));
-            displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(2));
+            displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
@@ -607,11 +602,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (stats.totalSamplesCount > 0) {
               const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
-              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(2));
+              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
             }
             if (stats.totalSamplesDuration > 0) {
-              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(2));
+              const averageSynthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
             }
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
