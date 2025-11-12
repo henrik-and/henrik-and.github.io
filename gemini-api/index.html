@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API Browser Demo</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        input, button { padding: 0.5rem; font-size: 1rem; margin-bottom: 1rem; width: 100%; box-sizing: border-box; }
+        #output { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px; min-height: 50px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Gemini API Quickstart</h1>
+
+    <!-- API Key Input Section -->
+    <div id="auth-section">
+        <label for="apiKey">Enter your Gemini API Key:</label>
+        <input type="password" id="apiKey" placeholder="AIzaSy..." autocomplete="off">
+        <button onclick="saveKey()">Start</button>
+        <p style="font-size: 0.8rem; color: #666;">Key is only stored in your browser memory, not saved anywhere.</p>
+    </div>
+
+    <!-- Main App Section (Hidden until key is entered) -->
+    <div id="app-section" class="hidden">
+        <label for="prompt">Ask Gemini something:</label>
+        <input type="text" id="prompt" value="Why is the sky blue?">
+        <button onclick="runGemini()" id="generateBtn">Generate Answer</button>
+        
+        <h3>Response:</h3>
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        // Import the Google GenAI SDK directly from a CDN
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        let genAI = null;
+
+        // Make functions available globally so buttons can call them
+        window.saveKey = () => {
+            const keyInput = document.getElementById('apiKey').value;
+            if (!keyInput) return alert("Please enter an API key");
+            
+            // Initialize the SDK
+            genAI = new GoogleGenerativeAI(keyInput);
+            
+            // Switch UI
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+        };
+
+        window.runGemini = async () => {
+            const prompt = document.getElementById('prompt').value;
+            const outputDiv = document.getElementById('output');
+            const btn = document.getElementById('generateBtn');
+
+            if (!genAI) return alert("API Key missing");
+
+            // UI Feedback
+            outputDiv.textContent = "Generating...";
+            btn.disabled = true;
+
+            try {
+                // 1. Get the model
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+                // 2. Generate Content
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const text = response.text();
+
+                // 3. Display Result
+                outputDiv.textContent = text;
+            } catch (error) {
+                outputDiv.textContent = "Error: " + error.message;
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
