@@ -288,6 +288,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateAudioOutputDevices() {
+    if (!('setSinkId' in HTMLMediaElement.prototype)) {
+      audioOutputDeviceSelect.disabled = true;
+      audioOutputDeviceSelect.title = 'Audio output device selection is not supported by this browser.';
+      return;
+    }
     console.log('Populating audio output devices...');
     const devices = await navigator.mediaDevices.enumerateDevices();
     const selectedDeviceId = audioOutputDeviceSelect.value;
@@ -1092,10 +1097,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (playCheckbox.checked) {
         const sinkId = audioOutputDeviceSelect.value;
         try {
-          // An empty string sets the output to the user-agent default device.
-          const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
-          await audioPlayback.setSinkId(deviceIdToSet);
-          console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+          if ('setSinkId' in audioPlayback) {
+            // An empty string sets the output to the user-agent default device.
+            const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
+            await audioPlayback.setSinkId(deviceIdToSet);
+            console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+          }
           await audioPlayback.play();
           audioOutputDeviceSelect.disabled = true;
         } catch (err) {
