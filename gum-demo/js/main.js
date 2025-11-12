@@ -635,6 +635,11 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.concealedSamples = stats.concealedSamples;
             }
 
+            console.log('stats.totalAudioEnergy:', stats.totalAudioEnergy);
+            if (stats.totalAudioEnergy !== undefined) {
+              displayStats.totalAudioEnergy = parseFloat(stats.totalAudioEnergy.toFixed(1));
+            }
+
             // audioLevel is only reported when the track is actively being played out.
             // The value is linear from 0.0 (silence) to 1.0 (0 dBov).
             // A value of 0.5 represents approximately a 6 dBSPL change.
