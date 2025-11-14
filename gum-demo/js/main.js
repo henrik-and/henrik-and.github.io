@@ -683,23 +683,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Calculate and add interval-specific rates.
             if (previousPlayoutStats) {
-              const deltaSynthesizedSamplesDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
+              const deltaGlitchDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
               const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousPlayoutStats.totalSamplesDuration;
               const deltaTotalPlayoutDelay = stats.totalPlayoutDelay - previousPlayoutStats.totalPlayoutDelay;
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
-              const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
+              const deltaGlitchEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
               const interval = {};
-              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
-              let synthesizedPercentage = (deltaTotalSamplesDuration > 0) ? (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100 : 0;
-              interval.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
+              interval.glitchEvents = deltaGlitchEvents;
+              let glitchPercentage = (deltaTotalSamplesDuration > 0) ? (deltaGlitchDuration / deltaTotalSamplesDuration) * 100 : 0;
+              interval.glitchPercentage = parseFloat(glitchPercentage.toFixed(1));
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
               interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
               displayStats.interval = interval;
             }
 
-            displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
-            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
+            displayStats.glitchEvents = stats.synthesizedSamplesEvents;
+            displayStats.glitchDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
             displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
 
             // Update previousPlayoutStats for the next interval.
@@ -716,8 +716,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
             }
             if (stats.totalSamplesDuration > 0) {
-              const synthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.synthesizedPercentage = parseFloat(synthesizedPercentage.toFixed(1));
+              const averageGlitchPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.averageGlitchPercentage = parseFloat(averageGlitchPercentage.toFixed(1));
             }
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
