@@ -698,11 +698,32 @@ document.addEventListener('DOMContentLoaded', async () => {
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
               interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
               displayStats.interval = interval;
+
+              if (stats.synthesizedSamplesDuration > previousPlayoutStats.synthesizedSamplesDuration) {
+                glitchy_intervals++;
+              }
             }
 
             displayStats.glitchEvents = stats.synthesizedSamplesEvents;
             displayStats.glitchDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
             displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
+
+            if (stats.totalSamplesCount > 0) {
+              const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
+              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
+            }
+            if (stats.totalSamplesDuration > 0) {
+              const averageGlitchPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              displayStats.averageGlitchPercentage = parseFloat(averageGlitchPercentage.toFixed(1));
+            }
+            total_intervals++;
+            displayStats.glitchy_intervals = glitchy_intervals;
+            displayStats.total_intervals = total_intervals;
+            let glitchy_intervals_ratio = 0;
+            if (total_intervals > 0) {
+              glitchy_intervals_ratio = glitchy_intervals / total_intervals;
+            }
+            displayStats.glitchy_intervals_ratio = glitchy_intervals_ratio === 0 ? 0 : parseFloat(glitchy_intervals_ratio.toFixed(5));
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
@@ -713,25 +734,6 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalSamplesCount: stats.totalSamplesCount,
             };
 
-            if (stats.totalSamplesCount > 0) {
-              const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
-              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
-            }
-            if (stats.totalSamplesDuration > 0) {
-              const averageGlitchPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.averageGlitchPercentage = parseFloat(averageGlitchPercentage.toFixed(1));
-            }
-            if (stats.synthesizedSamplesDuration > previousPlayoutStats.synthesizedSamplesDuration) {
-              glitchy_intervals++;
-            }
-            displayStats.glitchy_intervals = glitchy_intervals;
-            total_intervals++;
-            displayStats.total_intervals = total_intervals;
-            let glitchy_intervals_ratio = 0;
-            if (total_intervals > 0) {
-              glitchy_intervals_ratio = glitchy_intervals / total_intervals;
-            }
-            displayStats.glitchy_intervals_ratio = glitchy_intervals_ratio === 0 ? 0 : parseFloat(glitchy_intervals_ratio.toFixed(5));
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
         }
