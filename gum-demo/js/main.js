@@ -704,6 +704,17 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             }
 
+            const glitch_ratio = {};
+            total_intervals++;
+            glitch_ratio.glitchy_intervals = glitchy_intervals;
+            glitch_ratio.total_intervals = total_intervals;
+            let ratio = 0;
+            if (total_intervals > 0) {
+              ratio = glitchy_intervals / total_intervals;
+            }
+            glitch_ratio.glitchy_intervals_ratio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
+            displayStats.glitch_ratio = glitch_ratio;
+
             displayStats.glitchEvents = stats.synthesizedSamplesEvents;
             displayStats.glitchDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
             displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
@@ -716,14 +727,6 @@ document.addEventListener('DOMContentLoaded', async () => {
               const averageGlitchPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
               displayStats.averageGlitchPercentage = parseFloat(averageGlitchPercentage.toFixed(1));
             }
-            total_intervals++;
-            displayStats.glitchy_intervals = glitchy_intervals;
-            displayStats.total_intervals = total_intervals;
-            let glitchy_intervals_ratio = 0;
-            if (total_intervals > 0) {
-              glitchy_intervals_ratio = glitchy_intervals / total_intervals;
-            }
-            displayStats.glitchy_intervals_ratio = glitchy_intervals_ratio === 0 ? 0 : parseFloat(glitchy_intervals_ratio.toFixed(5));
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
