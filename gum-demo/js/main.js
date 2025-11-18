@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousOutboundRtpStats = null;
   let previousInboundRtpStats = null;
   let previousPlayoutStats = null;
+  let total_intervals = 0;
+  let glitchy_intervals = 0;
 
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
@@ -719,6 +721,17 @@ document.addEventListener('DOMContentLoaded', async () => {
               const averageGlitchPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
               displayStats.averageGlitchPercentage = parseFloat(averageGlitchPercentage.toFixed(1));
             }
+            if (stats.synthesizedSamplesDuration > previousPlayoutStats.synthesizedSamplesDuration) {
+              glitchy_intervals++;
+            }
+            displayStats.glitchy_intervals = glitchy_intervals;
+            total_intervals++;
+            displayStats.total_intervals = total_intervals;
+            let glitchy_intervals_ratio = 0;
+            if (total_intervals > 0) {
+              glitchy_intervals_ratio = glitchy_intervals / total_intervals;
+            }
+            displayStats.glitchy_intervals_ratio = glitchy_intervals_ratio === 0 ? 0 : parseFloat(glitchy_intervals_ratio.toFixed(5));
             audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
           }
         }
@@ -744,6 +757,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousOutboundRtpStats = null;
     previousInboundRtpStats = null;
     previousPlayoutStats = null;
+    total_intervals = 0;
+    glitchy_intervals = 0;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
