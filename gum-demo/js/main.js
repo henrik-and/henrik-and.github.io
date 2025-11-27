@@ -704,16 +704,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             }
 
-            const glitch_ratio = {};
+            const glitch_metrics = {};
             total_intervals++;
-            glitch_ratio.glitchy_intervals = glitchy_intervals;
-            glitch_ratio.total_intervals = total_intervals;
+            glitch_metrics.glitchy_intervals = glitchy_intervals;
+            glitch_metrics.total_intervals = total_intervals;
             let ratio = 0;
             if (total_intervals > 0) {
               ratio = glitchy_intervals / total_intervals;
             }
-            glitch_ratio.glitchy_intervals_ratio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
-            displayStats.glitch_ratio = glitch_ratio;
+            glitch_metrics.glitchy_intervals_ratio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
+            displayStats.glitch_metrics = glitch_metrics;
 
             displayStats.glitchEvents = stats.synthesizedSamplesEvents;
             displayStats.glitchDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(1));
