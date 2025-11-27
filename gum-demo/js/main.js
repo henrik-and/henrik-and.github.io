@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const echoCancellationSelect = document.getElementById('echoCancellation');
   const autoGainControlSelect = document.getElementById('autoGainControl');
   const noiseSuppressionSelect = document.getElementById('noiseSuppression');
+  const channelCountSelect = document.getElementById('channelCount');
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
@@ -198,6 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSelectValue('echoCancellation', echoCancellationSelect);
     setSelectValue('autoGainControl', autoGainControlSelect);
     setSelectValue('noiseSuppression', noiseSuppressionSelect);
+    setSelectValue('channelCount', channelCountSelect);
     setSelectValue('deviceId', audioDeviceSelect);
 
     if (params.has('peerConnection') && params.get('peerConnection') === 'true') {
@@ -209,6 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
     console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
     console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
+    console.log(`applyUrlParameters: channelCount from URL is "${params.get('channelCount')}"`);
     console.log(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
   }
 
@@ -216,6 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     echoCancellationSelect.disabled = disabled;
     autoGainControlSelect.disabled = disabled;
     noiseSuppressionSelect.disabled = disabled;
+    channelCountSelect.disabled = disabled;
     audioDeviceSelect.disabled = disabled;
   }
 
@@ -785,6 +789,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (noiseSuppression !== 'undefined') {
       audioConstraints.noiseSuppression = noiseSuppression === 'true';
     }
+    const channelCount = channelCountSelect.value;
+    if (channelCount !== 'undefined') {
+      audioConstraints.channelCount = parseInt(channelCount, 10);
+    }
     const deviceId = audioDeviceSelect.value;
     if (deviceId !== 'undefined') {
       audioConstraints.deviceId = { exact: deviceId };
@@ -1177,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addParam('echoCancellation', echoCancellationSelect);
     addParam('autoGainControl', autoGainControlSelect);
     addParam('noiseSuppression', noiseSuppressionSelect);
+    addParam('channelCount', channelCountSelect);
     addParam('deviceId', audioDeviceSelect);
 
     if (peerConnectionCheckbox.checked) {
