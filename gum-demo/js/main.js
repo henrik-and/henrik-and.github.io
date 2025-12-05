@@ -353,18 +353,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
   }
 
-  function visualizeRecordedAudio() {
-    if (!recordedAudioContext) {
-      recordedAudioContext = new AudioContext();
-      const source = recordedAudioContext.createMediaElementSource(recordedAudio);
-      recordedAnalyser = recordedAudioContext.createAnalyser();
-      recordedAnalyser.fftSize = 16384;
-      source.connect(recordedAnalyser);
-      recordedAnalyser.connect(recordedAudioContext.destination);
-    }
-    drawRecordedVisualizer();
-  }
-
   function drawRecordedVisualizer() {
     recordedVisualizationFrameRequest = requestAnimationFrame(drawRecordedVisualizer);
     const bufferLength = recordedAnalyser.frequencyBinCount;
@@ -1090,6 +1078,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Always create a new analyser and connect the nodes.
       // Disconnect the source from any *old* analyser first.
       recordedSourceNode.disconnect();
+
+      // Disconnect the old analyser from the destination to avoid memory leaks.
+      if (recordedAnalyser) {
+        recordedAnalyser.disconnect();
+      }
       
       recordedAnalyser = recordedAudioContext.createAnalyser();
       recordedAnalyser.fftSize = 2048;
