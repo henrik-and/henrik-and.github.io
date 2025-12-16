@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recordButton = document.querySelector('#record-button');
   const streamControlsContainer = document.querySelector('#stream-controls-container');
   const muteCheckbox = document.querySelector('#mute-checkbox');
-  const playCheckbox = document.querySelector('#play-checkbox');
+  const htmlPlayCheckbox = document.querySelector('#html-play-checkbox');
+  const webaudioPlayCheckbox = document.querySelector('#webaudio-play-checkbox');
   const audioPlayback = document.querySelector('#audio-playback');
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let recordedAnalyser;
   let recordedSourceNode;
   let recordedVisualizationFrameRequest;
+  let webAudioContext;
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
@@ -887,7 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
-      playCheckbox.checked = false;
+      htmlPlayCheckbox.checked = false;
       isRecording = false;
       updateRecordButtonUI();
     } catch (err) {
@@ -956,6 +958,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       audioContext.close();
       audioContext = null;
     }
+    if (webAudioContext) {
+      webAudioContext.close();
+      webAudioContext = null;
+    }
     clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
@@ -974,7 +980,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioPlayback.pause();
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
-    playCheckbox.checked = false;
+    htmlPlayCheckbox.checked = false;
+    webaudioPlayCheckbox.checked = false;
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
@@ -1119,9 +1126,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  playCheckbox.addEventListener('change', async () => {
+  htmlPlayCheckbox.addEventListener('change', async () => {
     if (localStream) {
-      if (playCheckbox.checked) {
+      if (htmlPlayCheckbox.checked) {
         const sinkId = audioOutputDeviceSelect.value;
         try {
           if ('setSinkId' in audioPlayback) {
@@ -1137,11 +1144,45 @@ document.addEventListener('DOMContentLoaded', async () => {
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
           errorMessageElement.style.display = 'block';
           // Revert the UI state since we failed.
-          playCheckbox.checked = false;
+          htmlPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
         }
       } else {
         await audioPlayback.pause();
+        audioOutputInfoElement.style.display = 'none';
+        audioOutputDeviceSelect.disabled = false;
+      }
+    }
+  });
+
+  webaudioPlayCheckbox.addEventListener('change', async () => {
+    if (localStream) {
+      if (webaudioPlayCheckbox.checked) {
+        if (!webAudioContext) {
+          webAudioContext = new AudioContext();
+        }
+        const sinkId = audioOutputDeviceSelect.value;
+        try {
+          if ('setSinkId' in webAudioContext) {
+            const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
+            await webAudioContext.setSinkId(deviceIdToSet);
+            console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+          }
+          const source = webAudioContext.createMediaStreamSource(localStream);
+          source.connect(webAudioContext.destination);
+          await webAudioContext.resume();
+          audioOutputDeviceSelect.disabled = true;
+        } catch (err) {
+          console.error('Error setting audio output device:', err);
+          errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
+          errorMessageElement.style.display = 'block';
+          webaudioPlayCheckbox.checked = false;
+          audioOutputDeviceSelect.disabled = false;
+        }
+      } else {
+        if (webAudioContext) {
+          await webAudioContext.suspend();
+        }
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
       }
