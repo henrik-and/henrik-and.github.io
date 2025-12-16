@@ -641,7 +641,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // The value is linear from 0.0 (silence) to 1.0 (0 dBov).
             // A value of 0.5 represents approximately a 6 dBSPL change.
             // The audioLevel is averaged over some small interval.
-            if (stats.audioLevel !== undefined && stats.audioLevel > 0) {
+            if (stats.audioLevel !== undefined) {
               displayStats.audioLevel = parseFloat(stats.audioLevel.toFixed(2));
             }
 
