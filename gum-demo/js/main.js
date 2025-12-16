@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let recordedSourceNode;
   let recordedVisualizationFrameRequest;
   let webAudioContext;
+  let webAudioSource;
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
@@ -905,20 +906,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /**
    * Displays information about the active audio output device.
-   * This function reads the `audioPlayback.sinkId` property, which is the browser's
-   * source of truth for the currently active audio output device. It then finds the
-   * full device details from the enumerated device list to display them. This ensures
-   * the displayed information accurately reflects the device in use, not just the
-   * selection in the dropdown.
+   * This function finds the full device details from the enumerated device list
+   * using the provided sinkId. This ensures the displayed information accurately
+   * reflects the device in use.
+   * @param {string} sinkId The sinkId of the audio output device.
    */
-  async function updateAudioOutputInfo() {
+  async function updateAudioOutputInfo(sinkId) {
     try {
-      if (!('sinkId' in audioPlayback)) {
+      if (!('setSinkId' in HTMLMediaElement.prototype)) {
         audioOutputInfoElement.textContent = 'Audio output device selection not supported.';
         return;
       }
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const sinkId = audioPlayback.sinkId;
       let outputDevice;
 
       if (sinkId === '') {
@@ -961,6 +960,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (webAudioContext) {
       webAudioContext.close();
       webAudioContext = null;
+      webAudioSource = null;
     }
     clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
@@ -1158,30 +1158,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   webaudioPlayCheckbox.addEventListener('change', async () => {
     if (localStream) {
       if (webaudioPlayCheckbox.checked) {
-        if (!webAudioContext) {
-          webAudioContext = new AudioContext();
-        }
-        const sinkId = audioOutputDeviceSelect.value;
         try {
+          if (!webAudioContext || webAudioContext.state === 'closed') {
+            webAudioContext = new AudioContext({ latencyHint: 'interactive' });
+          }
+
+          const sinkId = audioOutputDeviceSelect.value;
           if ('setSinkId' in webAudioContext) {
             const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
             await webAudioContext.setSinkId(deviceIdToSet);
             console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
           }
-          const source = webAudioContext.createMediaStreamSource(localStream);
-          source.connect(webAudioContext.destination);
-          await webAudioContext.resume();
+
+          webAudioSource = webAudioContext.createMediaStreamSource(localStream);
+          webAudioSource.connect(webAudioContext.destination);
+
+          if (webAudioContext.state === 'suspended') {
+            await webAudioContext.resume();
+          }
+          await updateAudioOutputInfo(webAudioContext.sinkId);
+          audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
         } catch (err) {
-          console.error('Error setting audio output device:', err);
-          errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
+          console.error('WebAudio Playback setup failed:', err);
+          errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
           errorMessageElement.style.display = 'block';
           webaudioPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
+          if (webAudioContext) {
+            webAudioContext.close();
+            webAudioContext = null;
+          }
         }
       } else {
         if (webAudioContext) {
-          await webAudioContext.suspend();
+          await webAudioContext.close();
+          webAudioContext = null;
+          webAudioSource = null;
         }
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
@@ -1191,7 +1204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   audioPlayback.addEventListener('play', async () => {
     console.log('Audio playback started.');
-    await updateAudioOutputInfo();
+    await updateAudioOutputInfo(audioPlayback.sinkId);
     audioOutputInfoElement.style.display = 'block';
   });
 
