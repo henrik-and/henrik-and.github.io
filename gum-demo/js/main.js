@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
 
   let localStream;
+  let streamForPlaybackAndVisualizer;
   let audioContext;
   let analyser;
   let isRecording = false;
@@ -810,7 +811,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStream = stream;
       console.log('getUserMedia() successful');
 
-      let streamForPlaybackAndVisualizer = localStream;
+      streamForPlaybackAndVisualizer = localStream;
       if (peerConnectionCheckbox.checked) {
         try {
           const remoteStream = await setupPeerConnection(localStream);
@@ -952,6 +953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       localStream = null;
+      streamForPlaybackAndVisualizer = null;
     }
     closePeerConnection();
     if (audioContext) {
@@ -1129,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   htmlPlayCheckbox.addEventListener('change', async () => {
-    if (localStream) {
+    if (streamForPlaybackAndVisualizer) {
       if (htmlPlayCheckbox.checked) {
         const sinkId = audioOutputDeviceSelect.value;
         try {
@@ -1161,7 +1163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   webaudioPlayCheckbox.addEventListener('change', async () => {
-    if (localStream) {
+    if (streamForPlaybackAndVisualizer) {
       if (webaudioPlayCheckbox.checked) {
         try {
           if (!webAudioContext || webAudioContext.state === 'closed') {
@@ -1182,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
           }
 
-          webAudioSource = webAudioContext.createMediaStreamSource(localStream);
+          webAudioSource = webAudioContext.createMediaStreamSource(streamForPlaybackAndVisualizer);
           webAudioSource.connect(webAudioContext.destination);
 
           if (webAudioContext.state === 'suspended') {
