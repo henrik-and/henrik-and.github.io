@@ -633,8 +633,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (stats.concealedSamples !== undefined) {
               displayStats.concealedSamples = stats.concealedSamples;
             }
-
-            console.log('stats.totalAudioEnergy:', stats.totalAudioEnergy);
             if (stats.totalAudioEnergy !== undefined) {
               displayStats.totalAudioEnergy = parseFloat(stats.totalAudioEnergy.toFixed(1));
             }
@@ -1342,6 +1340,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // where keys are strings (describing the data) and values are the parsed
     // results, which can be objects, strings, or null.
     const snapshot = {
+      'WebAudio latencyHint': latencyHintSelect.value,
+      'Audio output sinkId': audioOutputDeviceSelect.value,
       'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'constraints': parseJsonContent(trackConstraintsElement.textContent),
