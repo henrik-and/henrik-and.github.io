@@ -1161,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           if (!webAudioContext || webAudioContext.state === 'closed') {
             webAudioContext = new AudioContext({ latencyHint: 'interactive' });
+            console.log('AudioContext base latency:', webAudioContext.baseLatency);
           }
 
           const sinkId = audioOutputDeviceSelect.value;
