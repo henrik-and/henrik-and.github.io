@@ -1140,8 +1140,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
           }
           await audioPlayback.play();
+          await updateAudioOutputInfo(audioPlayback.sinkId);
+          audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
-          latencyHintSelect.disabled = true;
         } catch (err) {
           console.error('Error setting audio output device:', err);
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
@@ -1149,13 +1150,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Revert the UI state since we failed.
           htmlPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
-          latencyHintSelect.disabled = false;
         }
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
-        latencyHintSelect.disabled = false;
       }
     }
   });
