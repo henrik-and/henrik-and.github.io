@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
+  const latencyHintSelect = document.querySelector('#latencyHint');
   
   const visualizerCanvas = document.querySelector('#audio-visualizer');
   const canvasCtx = visualizerCanvas.getContext('2d');
@@ -977,6 +978,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setConstraintsDisabled(false);
     peerConnectionCheckbox.disabled = false;
     audioOutputDeviceSelect.disabled = false;
+    latencyHintSelect.disabled = false;
     audioPlayback.pause();
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
@@ -1139,6 +1141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           await audioPlayback.play();
           audioOutputDeviceSelect.disabled = true;
+          latencyHintSelect.disabled = true;
         } catch (err) {
           console.error('Error setting audio output device:', err);
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
@@ -1146,11 +1149,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Revert the UI state since we failed.
           htmlPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
+          latencyHintSelect.disabled = false;
         }
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
+        latencyHintSelect.disabled = false;
       }
     }
   });
@@ -1160,7 +1165,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (webaudioPlayCheckbox.checked) {
         try {
           if (!webAudioContext || webAudioContext.state === 'closed') {
-            webAudioContext = new AudioContext({ latencyHint: 'interactive' });
+            const latencyHint = latencyHintSelect.value;
+            const contextOptions = {};
+            if (latencyHint !== 'undefined') {
+              contextOptions.latencyHint = latencyHint;
+            }
+            console.log('AudioContext contextOptions:', contextOptions);
+            webAudioContext = new AudioContext(contextOptions);
             console.log('AudioContext base latency:', webAudioContext.baseLatency);
           }
 
@@ -1180,12 +1191,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           await updateAudioOutputInfo(webAudioContext.sinkId);
           audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
+          latencyHintSelect.disabled = true;
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
           errorMessageElement.style.display = 'block';
           webaudioPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
+          latencyHintSelect.disabled = false;
           if (webAudioContext) {
             webAudioContext.close();
             webAudioContext = null;
@@ -1199,6 +1212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
+        latencyHintSelect.disabled = false;
       }
     }
   });

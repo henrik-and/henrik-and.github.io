@@ -141,6 +141,10 @@ button:disabled {
   margin-right: 5px;
 }
 
+.latency-hint-select {
+  margin-right: 10px;
+}
+
 #visualizer-and-stop-container {
   display: flex;
   align-items: center;
