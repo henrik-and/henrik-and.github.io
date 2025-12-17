@@ -142,7 +142,17 @@ button:disabled {
 }
 
 .latency-hint-select {
-  margin-right: 10px;
+  margin-right: 20px;
+}
+
+.webaudio-settings-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  border-radius: 8px;
+  margin: 0 15px;
+  background-color: #f7f7f7;
 }
 
 #visualizer-and-stop-container {

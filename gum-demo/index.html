@@ -85,15 +85,17 @@
       <label for="mute-checkbox">Mute</label>
       <input type="checkbox" id="html-play-checkbox" />
       <label for="html-play-checkbox">HTML:Play</label>
-      <input type="checkbox" id="webaudio-play-checkbox" />
-      <label for="webaudio-play-checkbox">WebAudio:Play</label>
-      <label for="latencyHint">latencyHint:</label>
-      <select id="latencyHint" class="latency-hint-select">
-        <option value="undefined" selected>undefined</option>
-        <option value="interactive">interactive</option>
-        <option value="balanced">balanced</option>
-        <option value="playback">playback</option>
-      </select>
+      <div class="webaudio-settings-group">
+        <input type="checkbox" id="webaudio-play-checkbox" />
+        <label for="webaudio-play-checkbox">WebAudio:Play</label>
+        <label for="latencyHint">latencyHint:</label>
+        <select id="latencyHint" class="latency-hint-select">
+          <option value="undefined" selected>undefined</option>
+          <option value="interactive">interactive</option>
+          <option value="balanced">balanced</option>
+          <option value="playback">playback</option>
+        </select>
+      </div>
       <label for="audioOutputDevice">sinkId:</label>
       <select id="audioOutputDevice">
         <option value="undefined" selected>undefined</option>
