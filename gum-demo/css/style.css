@@ -145,6 +145,10 @@ button:disabled {
   margin-right: 20px;
 }
 
+.sample-rate-select {
+  margin-right: 10px;
+}
+
 .webaudio-settings-group {
   display: flex;
   align-items: center;

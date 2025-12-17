@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioDeviceSelect = document.querySelector('#audioDevice');
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
   const latencyHintSelect = document.querySelector('#latencyHint');
+  const sampleRateSelect = document.querySelector('#sampleRate');
   
   const visualizerCanvas = document.querySelector('#audio-visualizer');
   const canvasCtx = visualizerCanvas.getContext('2d');
@@ -979,6 +980,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     peerConnectionCheckbox.disabled = false;
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
+    sampleRateSelect.disabled = false;
     audioPlayback.pause();
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
@@ -1165,9 +1167,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           if (!webAudioContext || webAudioContext.state === 'closed') {
             const latencyHint = latencyHintSelect.value;
+            const sampleRate = sampleRateSelect.value;
             const contextOptions = {};
             if (latencyHint !== 'undefined') {
               contextOptions.latencyHint = latencyHint;
+            }
+            if (sampleRate !== 'undefined') {
+              contextOptions.sampleRate = parseInt(sampleRate, 10);
             }
             console.log('AudioContext contextOptions:', contextOptions);
             webAudioContext = new AudioContext(contextOptions);
@@ -1191,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
           latencyHintSelect.disabled = true;
+          sampleRateSelect.disabled = true;
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
@@ -1198,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           webaudioPlayCheckbox.checked = false;
           audioOutputDeviceSelect.disabled = false;
           latencyHintSelect.disabled = false;
+          sampleRateSelect.disabled = false;
           if (webAudioContext) {
             webAudioContext.close();
             webAudioContext = null;
@@ -1212,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
         latencyHintSelect.disabled = false;
+        sampleRateSelect.disabled = false;
       }
     }
   });
@@ -1340,6 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // results, which can be objects, strings, or null.
     const snapshot = {
       'WebAudio latencyHint': latencyHintSelect.value,
+      'WebAudio sampleRate': sampleRateSelect.value,
       'Audio output sinkId': audioOutputDeviceSelect.value,
       'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
