@@ -1365,7 +1365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Clean up the snapshot by removing any sections that are empty or null.
     for (const key in snapshot) {
       const value = snapshot[key];
-      if (value === null || (typeof value === 'object' && Object.keys(value).length === 0)) {
+      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
         delete snapshot[key];
       }
     }
