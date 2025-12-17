@@ -155,8 +155,8 @@ button:disabled {
   border: 1px solid #ccc;
   padding: 5px 10px;
   border-radius: 8px;
-  margin: 0 15px;
-  background-color: #f7f7f7;
+  margin: 0 8px 0 3px;
+  background-color: #f7f7ff;
 }
 
 #visualizer-and-stop-container {
