@@ -1348,12 +1348,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // where keys are strings (describing the data) and values are the parsed
     // results, which can be objects, strings, or null.
     const snapshot = {
+      'constraints': parseJsonContent(trackConstraintsElement.textContent),
+      'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
+      'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
       'Audio output sinkId': audioOutputDeviceSelect.value,
-      'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
-      'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
-      'constraints': parseJsonContent(trackConstraintsElement.textContent),
       'MediaStreamTrack settings': parseJsonContent(trackSettingsElement.textContent),
       'MediaStreamTrack properties': parseJsonContent(trackPropertiesElement.textContent),
       'MediaStreamTrackAudioStats': parseJsonContent(trackStatsElement.textContent),
