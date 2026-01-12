@@ -634,6 +634,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (stats.concealedSamples !== undefined) {
               displayStats.concealedSamples = stats.concealedSamples;
             }
+            if (stats.playoutId) {
+              displayStats.playoutId = stats.playoutId;
+            }
             if (stats.totalAudioEnergy !== undefined) {
               displayStats.totalAudioEnergy = parseFloat(stats.totalAudioEnergy.toFixed(1));
             }
