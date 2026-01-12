@@ -628,6 +628,9 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.rate = rate;
             }
 
+            if (stats.ssrc !== undefined) {
+              displayStats.ssrc = stats.ssrc;
+            }
             if (stats.packetsDiscarded !== undefined) {
               displayStats.packetsDiscarded = stats.packetsDiscarded;
             }
