@@ -775,9 +775,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     errorMessageElement.style.borderColor = '';
     const audioConstraints = {};
     const echoCancellation = echoCancellationSelect.value;
+    console.log('Selected echoCancellation value:', echoCancellation);
     if (echoCancellation !== 'undefined') {
-      audioConstraints.echoCancellation = echoCancellation === 'true' ? true :
-          (echoCancellation === 'false' ? false : { exact: echoCancellation });
+      if (echoCancellation.startsWith('ideal:')) {
+        audioConstraints.echoCancellation = { ideal: echoCancellation.substring(6) };
+      } else if (echoCancellation === 'true') {
+        audioConstraints.echoCancellation = true;
+      } else if (echoCancellation === 'false') {
+        audioConstraints.echoCancellation = false;
+      } else {
+        audioConstraints.echoCancellation = { exact: echoCancellation };
+      }
     }
     const autoGainControl = autoGainControlSelect.value;
     if (autoGainControl !== 'undefined') {
@@ -902,7 +910,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateRecordButtonUI();
     } catch (err) {
       console.error(err);
-      errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
+      if (err.name === 'OverconstrainedError' && err.constraint) {
+        errorMessageElement.textContent = `OverconstrainedError: constraint "${err.constraint}"`;
+      } else if (err.message) {
+        errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
+      } else {
+        errorMessageElement.textContent = `Error: ${err.name}`;
+      }
       errorMessageElement.style.display = 'block';
       gumButton.disabled = false;
       copyBookmarkButton.disabled = false;
