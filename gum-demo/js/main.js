@@ -1,3 +1,5 @@
+'use strict';
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Supported constraints:', navigator.mediaDevices.getSupportedConstraints());
   const gumButton = document.getElementById('gum-button');
