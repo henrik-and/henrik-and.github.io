@@ -273,7 +273,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoGainControlSelect.disabled = disabled;
     noiseSuppressionSelect.disabled = disabled;
     channelCountSelect.disabled = disabled;
-    audioDeviceSelect.disabled = disabled;
+    micSourceRadio.disabled = disabled;
+    fileSourceRadio.disabled = disabled;
+    audioFileSelect.disabled = disabled;
+
+    if (disabled) {
+      audioDeviceSelect.disabled = true;
+    } else {
+      updateInputSourceUI();
+    }
   }
 
   function updateRecordButtonUI() {
