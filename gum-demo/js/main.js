@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
+  const micSourceRadio = document.getElementById('mic-source');
+  const fileSourceRadio = document.getElementById('file-source');
+  const sourceInfoDisplay = document.getElementById('source-info-display');
+  const settingsContainer = document.querySelector('.settings-container');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
   const inboundRtpStatsElement = document.getElementById('inbound-rtp-stats');
   const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
@@ -188,6 +192,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Set the initial tooltip state on page load.
   updatePeerConnectionTooltip();
+
+  function updateInputSourceUI() {
+    const isMic = micSourceRadio.checked;
+    audioDeviceSelect.disabled = !isMic;
+    if (!isMic) {
+      audioDeviceSelect.value = 'undefined';
+      audioDeviceSelect.parentElement.classList.add('disabled-setting');
+      sourceInfoDisplay.innerHTML = '<span class="note-warning">Note:</span> Uses audioElement.captureStream() to mock a MediaStream.';
+    } else {
+      audioDeviceSelect.parentElement.classList.remove('disabled-setting');
+      sourceInfoDisplay.textContent = 'Standard behavior: requests getUserMedia from selected device.';
+    }
+  }
+
+  micSourceRadio.addEventListener('change', updateInputSourceUI);
+  fileSourceRadio.addEventListener('change', updateInputSourceUI);
+  updateInputSourceUI();
 
   stopButton.disabled = true;
   recordButton.disabled = true;
