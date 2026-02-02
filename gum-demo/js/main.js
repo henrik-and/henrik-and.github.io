@@ -967,12 +967,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       // actually in use.
       const devices = await navigator.mediaDevices.enumerateDevices();
       const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
-      if (selectedDevice) {
+      if (selectedDevice && micSourceRadio.checked) {
         audioInputDeviceElement.textContent = `Active audio input device:\n` +
             `  kind: ${selectedDevice.kind}\n` +
             `  label: ${selectedDevice.label}\n` +
             `  deviceId: ${selectedDevice.deviceId}\n` +
             `  groupId: ${selectedDevice.groupId}`;
+        audioInputDeviceElement.style.display = 'block';
+      } else {
+        audioInputDeviceElement.style.display = 'none';
       }
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
@@ -1084,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackStatsElement.textContent = '';
     trackConstraintsElement.textContent = '';
     audioInputDeviceElement.textContent = '';
+    audioInputDeviceElement.style.display = 'none';
     outboundRtpStatsElement.textContent = '';
     outboundRtpStatsElement.style.display = 'none';
     inboundRtpStatsElement.textContent = '';
