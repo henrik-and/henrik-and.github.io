@@ -968,11 +968,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
       if (selectedDevice && micSourceRadio.checked) {
-        audioInputDeviceElement.textContent = `Active audio input device:\n` +
+        audioInputDeviceElement.textContent = `Active audio source:\n` +
+            `  type: Microphone\n` +
             `  kind: ${selectedDevice.kind}\n` +
             `  label: ${selectedDevice.label}\n` +
             `  deviceId: ${selectedDevice.deviceId}\n` +
             `  groupId: ${selectedDevice.groupId}`;
+        audioInputDeviceElement.style.display = 'block';
+      } else if (!micSourceRadio.checked) {
+        const filename = audioFileSelect.value;
+        const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
+        audioInputDeviceElement.textContent = `Active audio source:\n` +
+            `  type: Audio File\n` +
+            `  label: ${filename}\n` +
+            `  duration: ${duration}`;
         audioInputDeviceElement.style.display = 'block';
       } else {
         audioInputDeviceElement.style.display = 'none';
