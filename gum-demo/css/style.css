@@ -65,6 +65,32 @@ body {
   color: #333;
 }
 
+.file-settings-container {
+  border: 1px solid darkgrey;
+  padding: 10px;
+  background-color: #F5F5F5; /* Light Gray */
+  border-radius: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Match the visual width style of the settings-container if possible, 
+     though explicit width isn't set on either. */
+  width: fit-content; 
+}
+
+.file-settings-container label {
+  font-family: monospace;
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.file-settings-container select {
+  font-family: monospace;
+  padding: 5px;
+  border-radius: 4px;
+}
+
 .note-warning {
   color: #FF8C00; /* Dark Orange */
   font-weight: bold;

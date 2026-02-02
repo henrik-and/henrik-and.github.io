@@ -39,8 +39,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   const micSourceRadio = document.getElementById('mic-source');
   const fileSourceRadio = document.getElementById('file-source');
   const sourceInfoDisplay = document.getElementById('source-info-display');
+  const fileSelectionContainer = document.getElementById('file-selection-container');
+  const audioFileSelect = document.getElementById('audioFile');
   const settingsContainer = document.querySelector('.settings-container');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
+
+  const audioFiles = [
+    'concatenate_female.wav',
+    'cyndi_lauper_48k.wav',
+    'female_lead_voice_music.wav',
+    'harvard.wav',
+    'left_right_stereo_test.wav',
+    'music_beat.wav',
+    'soft.mp3',
+    'stereo_knocking.wav'
+  ];
+
+  audioFiles.forEach(file => {
+    const option = new Option(file, file);
+    audioFileSelect.appendChild(option);
+  });
   const inboundRtpStatsElement = document.getElementById('inbound-rtp-stats');
   const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
 
@@ -196,6 +214,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateInputSourceUI() {
     const isMic = micSourceRadio.checked;
     audioDeviceSelect.disabled = !isMic;
+    
+    // Toggle visibility of the file selection container
+    fileSelectionContainer.style.display = isMic ? 'none' : 'flex';
+
     if (!isMic) {
       audioDeviceSelect.value = 'undefined';
       audioDeviceSelect.parentElement.classList.add('disabled-setting');
