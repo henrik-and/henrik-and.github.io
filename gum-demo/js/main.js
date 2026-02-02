@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const htmlPlayCheckbox = document.querySelector('#html-play-checkbox');
   const webaudioPlayCheckbox = document.querySelector('#webaudio-play-checkbox');
   const audioPlayback = document.querySelector('#audio-playback');
+  const fileSourceAudio = document.querySelector('#file-source-audio');
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
   const trackStatsElement = document.querySelector('#track-stats');
@@ -866,9 +867,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackConstraintsElement.textContent = 'constraints:\n' + JSON.stringify(displayConstraints, null, 2);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream;
+      if (micSourceRadio.checked) {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('getUserMedia() successful');
+      } else {
+        const selectedFile = audioFileSelect.value;
+        fileSourceAudio.src = `audio/${selectedFile}`;
+        // Ensure the audio is loaded before capturing the stream
+        await new Promise((resolve) => {
+          fileSourceAudio.oncanplaythrough = resolve;
+          fileSourceAudio.load();
+        });
+        await fileSourceAudio.play();
+        // captureStream() might take an optional frameRate, but for audio it's usually just captureStream()
+        stream = fileSourceAudio.captureStream ? fileSourceAudio.captureStream() : fileSourceAudio.mozCaptureStream();
+        console.log('audioElement.captureStream() successful');
+      }
+      
       localStream = stream;
-      console.log('getUserMedia() successful');
 
       streamForPlaybackAndVisualizer = localStream;
       if (peerConnectionCheckbox.checked) {
@@ -1020,6 +1037,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStream = null;
       streamForPlaybackAndVisualizer = null;
     }
+    fileSourceAudio.pause();
+    fileSourceAudio.src = '';
     closePeerConnection();
     if (audioContext) {
       audioContext.close();
