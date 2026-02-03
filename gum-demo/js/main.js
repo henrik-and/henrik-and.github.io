@@ -997,9 +997,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  loop: ${loop}\n` +
             `  playbackRate: ${playbackRate}\n` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
-            `<progress id="audio-file-progress" value="0" max="100"></progress>`;
+            `<progress id="audio-file-progress" value="0" max="100"></progress>` +
+            `<div style="margin-top: 5px; display: flex; align-items: center;">` +
+            `  <input type="checkbox" id="mute-file-source">` +
+            `  <label for="mute-file-source" style="margin-left: 5px; cursor: pointer;">Mute Source (Local)</label>` +
+            `</div>`;
         audioInputDeviceElement.style.display = 'block';
         updateAudioFileProgress();
+
+        // Attach listener for the new mute checkbox
+        const muteFileSourceCheckbox = document.getElementById('mute-file-source');
+        if (muteFileSourceCheckbox) {
+          // Sync initial state
+          muteFileSourceCheckbox.checked = fileSourceAudio.muted;
+          muteFileSourceCheckbox.addEventListener('change', () => {
+            fileSourceAudio.muted = muteFileSourceCheckbox.checked;
+            console.log(`File source muted: ${fileSourceAudio.muted}`);
+          });
+        }
+
       } else {
         audioInputDeviceElement.style.display = 'none';
       }
