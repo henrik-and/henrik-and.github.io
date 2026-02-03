@@ -47,13 +47,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const audioFiles = [
     'concatenate_female.wav',
-    'cyndi_lauper_48k.wav',
-    'female_lead_voice_music.wav',
-    'harvard.wav',
-    'left_right_stereo_test.wav',
-    'music_beat.wav',
-    'soft.mp3',
-    'stereo_knocking.wav'
+    //'cyndi_lauper_48k.wav',
+    //'female_lead_voice_music.wav',
+    //'harvard.wav',
+    //'left_right_stereo_test.wav',
+    //'music_beat.wav',
+    //'soft.mp3',
+    //'stereo_knocking.wav'
   ];
 
   audioFiles.forEach(file => {
