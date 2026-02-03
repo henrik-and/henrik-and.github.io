@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     'concatenate_female.wav',
     'harvard.wav',
     'stereo_knocking.wav',
+    'music_beat.wav',
   ];
 
   audioFiles.forEach(file => {
