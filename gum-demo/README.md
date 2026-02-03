@@ -8,10 +8,15 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 
 ## How to Use
 
-1.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio [constraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints) (`echoCancellation`, `autoGainControl`, `noiseSuppression`, and `deviceId`).
-2.  **(Optional) Enable PeerConnection Loopback:** Click the "+ PeerConnection" button to enable the WebRTC loopback. When the stream is started, audio will be sent and received through a local PeerConnection, allowing you to inspect outbound RTP stats and listen to the effect of encoding and decoding the audio stream.
-3.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream recording using the selected microphone as source.
-4.  **Visualize and Control:** Once the stream is active, you can:
+1.  **Select Input Source:** Choose between "Microphone" and "Audio File".
+    *   **Microphone:** Standard behavior using `getUserMedia()` with physical devices.
+    *   **Audio File:** Mocks a `MediaStream` by capturing the output of a selected audio file using `audioElement.captureStream()`.
+2.  **Select Audio Constraints:** Use the dropdown menus to select the desired audio [constraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints) (`echoCancellation`, `autoGainControl`, and `noiseSuppression`). These can be adjusted for both input sources.
+    *   **Microphone only:** The `deviceId` constraint is used to select a specific physical input device.
+    *   **Audio File only:** Select the desired track from the "Audio File" dropdown.
+3.  **(Optional) Enable PeerConnection Loopback:** Click the "+ PeerConnection" button to enable the WebRTC loopback. When the stream is started, audio will be sent and received through a local PeerConnection, allowing you to inspect outbound RTP stats and listen to the effect of encoding and decoding the audio stream.
+4.  **Start the Stream:** Click the "getUserMedia" button to start the audio stream.
+5.  **Visualize and Control:** Once the stream is active, you can:
     *   See a live visualization of the audio and its current level.
     *   Mute/unmute the audio track.
     *   Play the audio through your speakers.
@@ -21,13 +26,15 @@ A live version of this demo is available at: [https://henrik-and.github.io/gum-d
 
 ## Features
 
-*   **Constraint Selection:** Easily test different audio constraints to see their effect.
+*   **Input Source Selection:** Toggle between a live microphone and an audio file.
+    *   The "Audio File" mode uses the `audioElement.captureStream()` API to provide a `MediaStream` from a pre-recorded file. This is useful for testing audio processing and WebRTC behavior with consistent, repeatable input.
+*   **Constraint Selection:** Easily test different audio constraints to see their effect when using a microphone.
 *   **Audio Visualization:** Live audio visualizers provide feedback on the audio stream.
-    * A simple level meter is added for the active audio track. This allows you to verify that the microphone is working as intended.
+    * A simple level meter is added for the active audio track. This allows you to verify that the source is working as intended.
     * A more fancy visualizer is used when playing out recorded audio. The analyser performs a Fast Fourier Transform (FFT) on the audio to calculate the frequency spectrum of the rendered signal.
 *   **Recording:** Record a snippet of the audio and play it back while visualizing its frequency spectrum. The recording functionality checks for browser support for MIME types in the following prioritized order: `audio/webm; codecs=pcm`, `audio/webm; codecs=opus`, `audio/webm`, `audio/ogg; codecs=opus`, and `audio/ogg`. The first format in this list that the browser supports is used. If none are supported, the browser's default format is used. Playback of recorded audio is always done on the system's default output device.
 *   **Track Properties and Stats:** View detailed information about the audio track, including its settings, properties, and real-time statistics such as delivered frames per second.
-*   **Active Device Display:** See the properties of the live audio input device. This clarifies exactly which microphone is being used by the stream, which is especially useful when the browser chooses a default device.
+*   **Active Source Display:** See the properties of the live audio source. For microphones, it shows the device's label, ID, and group ID. For audio files, it displays the filename and duration. This clarifies exactly what is providing the audio for the stream.
 *   **Audio Output Selection:** Choose which speaker or output device to play audio on using the [`HTMLMediaElement.setSinkId()`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId) method. The demo also displays the properties of the active audio output device.
 *   **Bookmarkable URLs:** Share your specific constraint configurations with others.
 *   **PeerConnection Loopback and Stats:**

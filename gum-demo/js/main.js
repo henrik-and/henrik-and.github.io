@@ -48,11 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioFiles = [
     'concatenate_female.wav',
     'harvard.wav',
-    //'female_lead_voice_music.wav',
-    //'left_right_stereo_test.wav',
-    //'music_beat.wav',
-    //'soft.mp3',
-    //'stereo_knocking.wav'
   ];
 
   audioFiles.forEach(file => {
@@ -977,10 +972,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else if (!micSourceRadio.checked) {
         const filename = audioFileSelect.value;
         const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
+        const loop = fileSourceAudio.loop;
+        const playbackRate = fileSourceAudio.playbackRate;
         audioInputDeviceElement.textContent = `Active audio source:\n` +
             `  type: Audio File\n` +
             `  label: ${filename}\n` +
-            `  duration: ${duration}`;
+            `  duration: ${duration}\n` +
+            `  loop: ${loop}\n` +
+            `  playbackRate: ${playbackRate}`;
         audioInputDeviceElement.style.display = 'block';
       } else {
         audioInputDeviceElement.style.display = 'none';
