@@ -85,10 +85,19 @@ body {
   font-weight: bold;
 }
 
-.file-settings-container select {
-  font-family: monospace;
+.file-settings-container select,
+.file-settings-container input {
+  font-family: "Lucida Console", "Courier New", monospace;
+  font-size: 13px;
   padding: 5px;
   border-radius: 4px;
+}
+
+.file-settings-container input::file-selector-button {
+  font-family: inherit;
+  font-size: inherit;
+  padding: 2px 8px;
+  cursor: pointer;
 }
 
 .note-warning {

@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sourceInfoDisplay = document.getElementById('source-info-display');
   const fileSelectionContainer = document.getElementById('file-selection-container');
   const audioFileSelect = document.getElementById('audioFile');
+  const localFileInput = document.getElementById('localFileInput');
   const settingsContainer = document.querySelector('.settings-container');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
 
@@ -56,6 +57,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const option = new Option(file, file);
     audioFileSelect.appendChild(option);
   });
+
+  audioFileSelect.addEventListener('change', () => {
+    currentFileSourceType = 'predefined';
+    // Optional: Clear local file input value to visually indicate it's not active
+    localFileInput.value = '';
+  });
+
+  localFileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      currentFileSourceType = 'local';
+      if (localFileBlobUrl) {
+        URL.revokeObjectURL(localFileBlobUrl);
+      }
+      localFileBlobUrl = URL.createObjectURL(file);
+      localFileName = file.name;
+    }
+  });
+
   const inboundRtpStatsElement = document.getElementById('inbound-rtp-stats');
   const audioPlayoutStatsElement = document.getElementById('audio-playout-stats');
 
@@ -82,6 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousPlayoutStats = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
+  let currentFileSourceType = 'predefined'; // 'predefined' or 'local'
+  let localFileBlobUrl = null;
+  let localFileName = '';
 
   function updateAudioFileProgress() {
     const progressBar = document.getElementById('audio-file-progress');
@@ -286,6 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     micSourceRadio.disabled = disabled;
     fileSourceRadio.disabled = disabled;
     audioFileSelect.disabled = disabled;
+    localFileInput.disabled = disabled;
 
     if (disabled) {
       audioDeviceSelect.disabled = true;
@@ -890,8 +914,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         console.log('getUserMedia() successful');
       } else {
-        const selectedFile = audioFileSelect.value;
-        fileSourceAudio.src = `audio/${selectedFile}`;
+        if (currentFileSourceType === 'predefined') {
+          const selectedFile = audioFileSelect.value;
+          fileSourceAudio.src = `audio/${selectedFile}`;
+        } else {
+           if (!localFileBlobUrl) {
+              // Fallback checks
+              const file = localFileInput.files[0];
+              if (file) {
+                 localFileBlobUrl = URL.createObjectURL(file);
+                 localFileName = file.name;
+              }
+           }
+           
+           if (localFileBlobUrl) {
+             fileSourceAudio.src = localFileBlobUrl;
+           } else {
+             // Fallback to predefined if no local file selected
+             console.warn('No local file selected, using predefined.');
+             const selectedFile = audioFileSelect.value;
+             fileSourceAudio.src = `audio/${selectedFile}`;
+           }
+        }
+
         // Ensure the audio is loaded before capturing the stream
         await new Promise((resolve) => {
           fileSourceAudio.oncanplaythrough = resolve;
@@ -986,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  groupId: ${selectedDevice.groupId}`;
         audioInputDeviceElement.style.display = 'block';
       } else if (!micSourceRadio.checked) {
-        const filename = audioFileSelect.value;
+        const filename = (currentFileSourceType === 'predefined') ? audioFileSelect.value : (localFileName || 'Local File');
         const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
         const loop = fileSourceAudio.loop;
         const playbackRate = fileSourceAudio.playbackRate;
