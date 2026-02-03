@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioFiles = [
     'concatenate_female.wav',
     'harvard.wav',
+    'stereo_knocking.wav',
   ];
 
   audioFiles.forEach(file => {
@@ -68,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let recordedAnalyser;
   let recordedSourceNode;
   let recordedVisualizationFrameRequest;
+  let fileProgressFrameRequest;
   let webAudioContext;
   let webAudioSource;
   let statsInterval;
@@ -79,6 +81,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousPlayoutStats = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
+
+  function updateAudioFileProgress() {
+    const progressBar = document.getElementById('audio-file-progress');
+    const timeDisplay = document.getElementById('audio-file-time');
+    
+    if (progressBar && fileSourceAudio.duration) {
+      progressBar.value = (fileSourceAudio.currentTime / fileSourceAudio.duration) * 100;
+      if (timeDisplay) {
+        timeDisplay.textContent = `time: ${fileSourceAudio.currentTime.toFixed(2)}s / ${fileSourceAudio.duration.toFixed(2)}s`;
+      }
+      fileProgressFrameRequest = requestAnimationFrame(updateAudioFileProgress);
+    }
+  }
 
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
@@ -974,13 +989,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
         const loop = fileSourceAudio.loop;
         const playbackRate = fileSourceAudio.playbackRate;
-        audioInputDeviceElement.textContent = `Active audio source:\n` +
+        audioInputDeviceElement.innerHTML = `Active audio source:\n` +
             `  type: Audio File\n` +
             `  label: ${filename}\n` +
             `  duration: ${duration}\n` +
             `  loop: ${loop}\n` +
-            `  playbackRate: ${playbackRate}`;
+            `  playbackRate: ${playbackRate}\n` +
+            `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
+            `<progress id="audio-file-progress" value="0" max="100"></progress>`;
         audioInputDeviceElement.style.display = 'block';
+        updateAudioFileProgress();
       } else {
         audioInputDeviceElement.style.display = 'none';
       }
@@ -1069,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
+    cancelAnimationFrame(fileProgressFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.style.display = 'none';
     audioDevicesContainer.style.display = 'none';
