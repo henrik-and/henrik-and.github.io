@@ -1602,8 +1602,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // where keys are strings (describing the data) and values are the parsed
     // results, which can be objects, strings, or null.
     const snapshot = {
+      'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
       'constraints': parseJsonContent(trackConstraintsElement.textContent),
-      'Active audio input device': parseDeviceInfo(audioInputDeviceElement.textContent),
+      'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
