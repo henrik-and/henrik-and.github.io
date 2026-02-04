@@ -1121,10 +1121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  playbackRate: ${playbackRate}\n` +
             `  sampleRate: <span id="info-samplerate">Loading...</span>\n` +
             `  channels: <span id="info-channels">Loading...</span>\n` +
-            `  sampleSize: <span id="info-samplesize">Loading...</span>\n` +
-            `  format: <span id="info-format">Loading...</span>\n` +
-            `  byteRate: <span id="info-byterate">Loading...</span>\n` +
-            `  blockAlign: <span id="info-blockalign">Loading...</span>\n` +
+            `<span id="info-extra-wav"></span>` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
             `<progress id="audio-file-progress" value="0" max="100"></progress>` +
             `<div style="margin-top: 5px; display: flex; align-items: center;">` +
@@ -1148,25 +1145,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         getAudioFileMetadata(fileSourceAudio.src).then(metadata => {
             const sampleRateEl = document.getElementById('info-samplerate');
             const channelsEl = document.getElementById('info-channels');
-            const sampleSizeEl = document.getElementById('info-samplesize');
-            const formatEl = document.getElementById('info-format');
-            const byteRateEl = document.getElementById('info-byterate');
-            const blockAlignEl = document.getElementById('info-blockalign');
+            const extraEl = document.getElementById('info-extra-wav');
             
             if (metadata) {
                 if (sampleRateEl) sampleRateEl.textContent = metadata.sampleRate;
                 if (channelsEl) channelsEl.textContent = metadata.numberOfChannels;
-                if (sampleSizeEl) sampleSizeEl.textContent = metadata.bitsPerSample;
-                if (formatEl) formatEl.textContent = metadata.audioFormat || 'N/A';
-                if (byteRateEl) byteRateEl.textContent = metadata.byteRate || 'N/A';
-                if (blockAlignEl) blockAlignEl.textContent = metadata.blockAlign || 'N/A';
+                
+                // Only show extra details if they were parsed (typically from WAV header)
+                if (metadata.audioFormat && extraEl) {
+                    extraEl.innerHTML = `  sampleSize: ${metadata.bitsPerSample}\n` +
+                                        `  format: ${metadata.audioFormat}\n` +
+                                        `  byteRate: ${metadata.byteRate}\n` +
+                                        `  blockAlign: ${metadata.blockAlign}\n`;
+                }
             } else {
                 if (sampleRateEl) sampleRateEl.textContent = 'Unknown';
                 if (channelsEl) channelsEl.textContent = 'Unknown';
-                if (sampleSizeEl) sampleSizeEl.textContent = 'Unknown';
-                if (formatEl) formatEl.textContent = 'Unknown';
-                if (byteRateEl) byteRateEl.textContent = 'Unknown';
-                if (blockAlignEl) blockAlignEl.textContent = 'Unknown';
             }
         });
 
