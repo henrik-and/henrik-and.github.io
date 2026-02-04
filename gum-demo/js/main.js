@@ -134,9 +134,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const chunkSize = view.getUint32(offset + 4, true);
         
         if (chunkId === 0x666d7420) { // "fmt "
+          const audioFormat = view.getUint16(offset + 8, true);
           const numChannels = view.getUint16(offset + 10, true);
           const sampleRate = view.getUint32(offset + 12, true);
-          return { sampleRate, numberOfChannels: numChannels };
+          const byteRate = view.getUint32(offset + 16, true);
+          const blockAlign = view.getUint16(offset + 20, true);
+          const bitsPerSample = view.getUint16(offset + 22, true);
+          
+          let formatString = 'Unknown';
+          switch (audioFormat) {
+            case 1: formatString = 'PCM'; break;
+            case 3: formatString = 'IEEE Float'; break;
+            case 6: formatString = 'A-Law'; break;
+            case 7: formatString = 'Mu-Law'; break;
+            case 0xFFFE: formatString = 'Extensible'; break;
+            default: formatString = `Format ${audioFormat}`;
+          }
+
+          return { 
+            audioFormat: formatString,
+            sampleRate, 
+            numberOfChannels: numChannels, 
+            byteRate,
+            blockAlign,
+            bitsPerSample 
+          };
         }
         
         offset += 8 + chunkSize;
@@ -165,7 +187,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
       return {
         sampleRate: audioBuffer.sampleRate + ' (resampled)',
-        numberOfChannels: audioBuffer.numberOfChannels
+        numberOfChannels: audioBuffer.numberOfChannels,
+        bitsPerSample: 'Unknown (float32)'
       };
     } catch (e) {
       console.error('Error getting file metadata:', e);
@@ -1098,6 +1121,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  playbackRate: ${playbackRate}\n` +
             `  sampleRate: <span id="info-samplerate">Loading...</span>\n` +
             `  channels: <span id="info-channels">Loading...</span>\n` +
+            `  sampleSize: <span id="info-samplesize">Loading...</span>\n` +
+            `  format: <span id="info-format">Loading...</span>\n` +
+            `  byteRate: <span id="info-byterate">Loading...</span>\n` +
+            `  blockAlign: <span id="info-blockalign">Loading...</span>\n` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
             `<progress id="audio-file-progress" value="0" max="100"></progress>` +
             `<div style="margin-top: 5px; display: flex; align-items: center;">` +
@@ -1121,12 +1148,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         getAudioFileMetadata(fileSourceAudio.src).then(metadata => {
             const sampleRateEl = document.getElementById('info-samplerate');
             const channelsEl = document.getElementById('info-channels');
+            const sampleSizeEl = document.getElementById('info-samplesize');
+            const formatEl = document.getElementById('info-format');
+            const byteRateEl = document.getElementById('info-byterate');
+            const blockAlignEl = document.getElementById('info-blockalign');
+            
             if (metadata) {
                 if (sampleRateEl) sampleRateEl.textContent = metadata.sampleRate;
                 if (channelsEl) channelsEl.textContent = metadata.numberOfChannels;
+                if (sampleSizeEl) sampleSizeEl.textContent = metadata.bitsPerSample;
+                if (formatEl) formatEl.textContent = metadata.audioFormat || 'N/A';
+                if (byteRateEl) byteRateEl.textContent = metadata.byteRate || 'N/A';
+                if (blockAlignEl) blockAlignEl.textContent = metadata.blockAlign || 'N/A';
             } else {
                 if (sampleRateEl) sampleRateEl.textContent = 'Unknown';
                 if (channelsEl) channelsEl.textContent = 'Unknown';
+                if (sampleSizeEl) sampleSizeEl.textContent = 'Unknown';
+                if (formatEl) formatEl.textContent = 'Unknown';
+                if (byteRateEl) byteRateEl.textContent = 'Unknown';
+                if (blockAlignEl) blockAlignEl.textContent = 'Unknown';
             }
         });
 
