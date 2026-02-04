@@ -119,6 +119,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function parseWavHeader(arrayBuffer) {
+    try {
+      const view = new DataView(arrayBuffer);
+      // Check for "RIFF"
+      if (view.getUint32(0, false) !== 0x52494646) return null; 
+      // Check for "WAVE"
+      if (view.getUint32(8, false) !== 0x57415645) return null; 
+      
+      // Search for "fmt " chunk
+      let offset = 12;
+      while (offset < view.byteLength) {
+        const chunkId = view.getUint32(offset, false);
+        const chunkSize = view.getUint32(offset + 4, true);
+        
+        if (chunkId === 0x666d7420) { // "fmt "
+          const numChannels = view.getUint16(offset + 10, true);
+          const sampleRate = view.getUint32(offset + 12, true);
+          return { sampleRate, numberOfChannels: numChannels };
+        }
+        
+        offset += 8 + chunkSize;
+      }
+    } catch (e) {
+      console.error('Error parsing WAV header:', e);
+    }
+    return null;
+  }
+
+  async function getAudioFileMetadata(source) {
+    try {
+      const response = await fetch(source);
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Try to parse WAV header first for accurate sample rate
+      const wavData = parseWavHeader(arrayBuffer);
+      if (wavData) {
+        console.log('Got metadata from WAV header:', wavData);
+        return wavData;
+      }
+
+      // Fallback to decodeAudioData (might be resampled)
+      // Use OfflineAudioContext to decode without affecting main audio context
+      const tempCtx = new OfflineAudioContext(1, 1, 44100);
+      const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+      return {
+        sampleRate: audioBuffer.sampleRate + ' (resampled)',
+        numberOfChannels: audioBuffer.numberOfChannels
+      };
+    } catch (e) {
+      console.error('Error getting file metadata:', e);
+      return null;
+    }
+  }
+
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
    * @param {MediaStream} stream The local audio stream to send through the connection.
@@ -1035,12 +1089,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
         const loop = fileSourceAudio.loop;
         const playbackRate = fileSourceAudio.playbackRate;
+        
         audioInputDeviceElement.innerHTML = `Active audio source:\n` +
             `  type: Audio File\n` +
             `  label: ${filename}\n` +
             `  duration: ${duration}\n` +
             `  loop: ${loop}\n` +
             `  playbackRate: ${playbackRate}\n` +
+            `  sampleRate: <span id="info-samplerate">Loading...</span>\n` +
+            `  channels: <span id="info-channels">Loading...</span>\n` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
             `<progress id="audio-file-progress" value="0" max="100"></progress>` +
             `<div style="margin-top: 5px; display: flex; align-items: center;">` +
@@ -1053,13 +1110,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Attach listener for the new mute checkbox
         const muteFileSourceCheckbox = document.getElementById('mute-file-source');
         if (muteFileSourceCheckbox) {
-          // Sync initial state
           muteFileSourceCheckbox.checked = fileSourceAudio.muted;
           muteFileSourceCheckbox.addEventListener('change', () => {
             fileSourceAudio.muted = muteFileSourceCheckbox.checked;
             console.log(`File source muted: ${fileSourceAudio.muted}`);
           });
         }
+
+        // Fetch and update metadata
+        getAudioFileMetadata(fileSourceAudio.src).then(metadata => {
+            const sampleRateEl = document.getElementById('info-samplerate');
+            const channelsEl = document.getElementById('info-channels');
+            if (metadata) {
+                if (sampleRateEl) sampleRateEl.textContent = metadata.sampleRate;
+                if (channelsEl) channelsEl.textContent = metadata.numberOfChannels;
+            } else {
+                if (sampleRateEl) sampleRateEl.textContent = 'Unknown';
+                if (channelsEl) channelsEl.textContent = 'Unknown';
+            }
+        });
 
       } else {
         audioInputDeviceElement.style.display = 'none';
