@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousOutboundRtpStats = null;
   let previousInboundRtpStats = null;
   let previousPlayoutStats = null;
+  let rmsAudioLevels = [];
   let total_intervals = 0;
   let glitchy_intervals = 0;
   let currentFileSourceType = 'predefined'; // 'predefined' or 'local'
@@ -762,7 +763,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousInboundRtpStats.totalSamplesDuration;
                 if (deltaTotalSamplesDuration > 0) {
                   const rms = Math.sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration);
-                  rate.rmsAudioLevel = parseFloat(rms.toFixed(2));
+                  rate.rmsAudioLevel = parseFloat(rms.toFixed(3));
+                  rmsAudioLevels.push(rate.rmsAudioLevel);
                   if (rms > 0) {
                     // dBov stands for decibels relative to full scale.
                     const rmsDBov = 20 * Math.log10(rms);
@@ -1054,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
+      rmsAudioLevels = [];
       statsInterval = setInterval(() => {
         updateTrackStats(audioTrack);
         updateRtpStats();
@@ -1082,6 +1085,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessageElement.textContent = `Warning: Audio track ended - ${event.type}`;
         errorMessageElement.style.display = 'block';
         updateTrackProperties(audioTrack);
+        if (rmsAudioLevels.length > 0) {
+          console.log('rmsAudioLevels = ' + JSON.stringify(rmsAudioLevels));
+        }
         clearInterval(statsInterval);
       };
       stopButton.disabled = false;
@@ -1249,6 +1255,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       webAudioContext.close();
       webAudioContext = null;
       webAudioSource = null;
+    }
+    if (rmsAudioLevels.length > 0) {
+      console.log('rmsAudioLevels = ' + JSON.stringify(rmsAudioLevels));
     }
     clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
