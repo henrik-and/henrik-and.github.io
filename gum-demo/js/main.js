@@ -763,7 +763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousInboundRtpStats.totalSamplesDuration;
                 if (deltaTotalSamplesDuration > 0) {
                   const rms = Math.sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration);
-                  rate.rmsAudioLevel = parseFloat(rms.toFixed(3));
+                  rate.rmsAudioLevel = parseFloat(rms.toFixed(5));
                   rmsAudioLevels.push(rate.rmsAudioLevel);
                   if (rms > 0) {
                     // dBov stands for decibels relative to full scale.
