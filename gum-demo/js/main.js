@@ -366,6 +366,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSelectValue('channelCount', channelCountSelect);
     setSelectValue('deviceId', audioDeviceSelect);
 
+    if (params.has('inputSource')) {
+      const source = params.get('inputSource');
+      if (source === 'file') {
+        fileSourceRadio.checked = true;
+        if (params.has('audioFile')) {
+          audioFileSelect.value = params.get('audioFile');
+        }
+      } else {
+        micSourceRadio.checked = true;
+      }
+      updateInputSourceUI();
+    }
+
     if (params.has('peerConnection') && params.get('peerConnection') === 'true') {
       peerConnectionCheckbox.checked = true;
       // Manually trigger the change event to ensure the rest of the app state is updated.
@@ -1575,6 +1588,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     addParam('noiseSuppression', noiseSuppressionSelect);
     addParam('channelCount', channelCountSelect);
     addParam('deviceId', audioDeviceSelect);
+
+    if (fileSourceRadio.checked) {
+      params.set('inputSource', 'file');
+      params.set('audioFile', audioFileSelect.value);
+    } else {
+      params.set('inputSource', 'microphone');
+    }
 
     if (peerConnectionCheckbox.checked) {
       params.set('peerConnection', 'true');
