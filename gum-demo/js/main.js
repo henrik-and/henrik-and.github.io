@@ -847,7 +847,14 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalAudioEnergy: stats.totalAudioEnergy,
               totalSamplesDuration: stats.totalSamplesDuration,
             };
-            inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
+            let statsString = JSON.stringify(displayStats, null, 2);
+            if (displayStats.rate && displayStats.rate.rmsAudioLevel !== undefined) {
+              statsString = statsString.replace(
+                  /"rmsAudioLevel": ([\d.]+)/,
+                  '"rmsAudioLevel": <b>$1</b>'
+              );
+            }
+            inboundRtpStatsElement.innerHTML = 'RTCInboundRtpStreamStats:\n' + statsString;
           }
           if (stats.type === 'media-playout') {
             playoutStatsFound = true;
@@ -1086,7 +1093,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessageElement.style.display = 'block';
         updateTrackProperties(audioTrack);
         if (rmsAudioLevels.length > 0) {
-          console.log('rmsAudioLevels = ' + JSON.stringify(rmsAudioLevels));
+          // Trim leading zeros.
+          const firstNonZeroIndex = rmsAudioLevels.findIndex((level) => level > 0);
+          const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
+          if (trimmedLevels.length > 0) {
+            console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
+            const average = trimmedLevels.reduce((a, b) => a + b, 0) / trimmedLevels.length;
+            console.log('Average rmsAudioLevel (trimmed) = ' + average.toFixed(5));
+          }
         }
         clearInterval(statsInterval);
       };
@@ -1257,7 +1271,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       webAudioSource = null;
     }
     if (rmsAudioLevels.length > 0) {
-      console.log('rmsAudioLevels = ' + JSON.stringify(rmsAudioLevels));
+      // Trim leading zeros.
+      const firstNonZeroIndex = rmsAudioLevels.findIndex((level) => level > 0);
+      const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
+      if (trimmedLevels.length > 0) {
+        console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
+        const average = trimmedLevels.reduce((a, b) => a + b, 0) / trimmedLevels.length;
+        console.log('Average rmsAudioLevel (trimmed) = ' + average.toFixed(5));
+      }
     }
     clearInterval(statsInterval);
     cancelAnimationFrame(recordedVisualizationFrameRequest);
