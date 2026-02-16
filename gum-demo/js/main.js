@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousInboundRtpStats = null;
   let previousPlayoutStats = null;
   let rmsAudioLevels = [];
+  let latestRmsAudioLevel = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
   let currentFileSourceType = 'predefined'; // 'predefined' or 'local'
@@ -537,6 +538,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const barWidth = (average / 255) * visualizerCanvas.width;
     canvasCtx.fillStyle = '#00FF00';
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
+
+    // Draw the latest rmsAudioLevel if PeerConnection is enabled and level > 0.
+    if (peerConnectionCheckbox.checked && latestRmsAudioLevel !== null && latestRmsAudioLevel > 0) {
+      canvasCtx.font = 'bold 18px "Lucida Console", "Courier New", monospace';
+      canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      canvasCtx.textAlign = 'center';
+      canvasCtx.textBaseline = 'middle';
+      canvasCtx.fillText(latestRmsAudioLevel.toFixed(5), visualizerCanvas.width / 2, visualizerCanvas.height / 2);
+    }
   }
 
   function drawRecordedVisualizer() {
@@ -777,6 +787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (deltaTotalSamplesDuration > 0) {
                   const rms = Math.sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration);
                   rate.rmsAudioLevel = parseFloat(rms.toFixed(5));
+                  latestRmsAudioLevel = rate.rmsAudioLevel;
                   rmsAudioLevels.push(rate.rmsAudioLevel);
                   if (rms > 0) {
                     // dBov stands for decibels relative to full scale.
@@ -1077,6 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
       rmsAudioLevels = [];
+      latestRmsAudioLevel = null;
       statsInterval = setInterval(() => {
         updateTrackStats(audioTrack);
         updateRtpStats();
@@ -1274,6 +1286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileSourceAudio.pause();
     fileSourceAudio.src = '';
     closePeerConnection();
+    latestRmsAudioLevel = null;
     if (audioContext) {
       audioContext.close();
       audioContext = null;
