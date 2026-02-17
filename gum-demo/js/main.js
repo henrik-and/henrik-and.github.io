@@ -51,6 +51,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     'harvard.wav',
     'stereo_knocking.wav',
     'music_beat.wav',
+    'concatenate_female_plus_3dB.wav',
+    'concatenate_female_plus_2dB.wav',
+    'concatenate_female_plus_1dB.wav',
+    'concatenate_female_minus_5dB.wav',
+    'concatenate_female_minus_10dB.wav',
+    'concatenate_female_minus_20dB.wav',
+    'concatenate_female_minus_30dB.wav',
+    'concatenate_female_minus_40dB.wav',
+    'concatenate_female_minus_50dB.wav',
   ];
 
   audioFiles.forEach(file => {
