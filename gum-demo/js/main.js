@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     'harvard.wav',
     'stereo_knocking.wav',
     'music_beat.wav',
+    'female_singer_48k.wav',
     'concatenate_female_plus_3dB.wav',
     'concatenate_female_plus_2dB.wav',
     'concatenate_female_plus_1dB.wav',
