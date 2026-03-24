@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const answer = await pc2.createAnswer();
       console.log('pc2 original answer SDP:\n', answer.sdp);
       answer.sdp = insertStereoSupportForOpus(answer.sdp);
+      answer.sdp = insertDtxSupportForOpus(answer.sdp);
       console.log('pc2 modified answer SDP:\n', answer.sdp);
       await pc2.setLocalDescription(answer);
       await pc1.setRemoteDescription(answer);
@@ -308,7 +309,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     return newSdpLines.join('\r\n');
   };
 
+  /**
+   * Modifies an SDP string to enable Discontinuous Transmission (DTX) for the Opus codec.
+   * @param {string} sdp The original SDP string.
+   * @returns {string} The modified SDP string with DTX enabled for Opus.
+   */
+  const insertDtxSupportForOpus = (sdp) => {
+    // Early exit if Opus codec (rtpmap:111) is not present.
+    if (!sdp.includes('a=rtpmap:111 opus/48000')) {
+      console.warn('Opus codec (111) not found in SDP. DTX support not added.');
+      return sdp;
+    }
 
+    // Find the format parameter line for Opus and add usedtx=1 if it's not already there.
+    const lines = sdp.split('\r\n');
+    const newSdpLines = lines.map((line) => {
+      if (line.startsWith('a=fmtp:111') && !line.includes('usedtx=1')) {
+        console.log('Adding usedtx=1 to Opus fmtp line.');
+        return `${line};usedtx=1`;
+      }
+      return line;
+    });
+
+    return newSdpLines.join('\r\n');
+  };
 
   const peerConnectionLabel = peerConnectionCheckbox.parentElement.querySelector('label');
 
@@ -694,11 +718,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (previousOutboundRtpStats) {
             const timeDiffSeconds = (stats.timestamp - previousOutboundRtpStats.timestamp) / 1000.0;
             if (timeDiffSeconds > 0) {
-              const bitsSent = (stats.bytesSent - previousOutboundRtpStats.bytesSent) * 8;
+              const bytesSent = stats.bytesSent - previousOutboundRtpStats.bytesSent;
+              const bitsSent = bytesSent * 8;
               const packetsSent = stats.packetsSent - previousOutboundRtpStats.packetsSent;
+    
               displayStats.rate = {
                 bps: Math.round(bitsSent / timeDiffSeconds),
                 pps: parseFloat((packetsSent / timeDiffSeconds).toFixed(1)),
+                bpp: packetsSent > 0 ? parseFloat((bytesSent / packetsSent).toFixed(1)) : 0,
               };
             }
           }
@@ -783,9 +810,15 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaPacketsDiscarded = stats.packetsDiscarded - previousInboundRtpStats.packetsDiscarded;
               const deltaBytesReceived = stats.bytesReceived - previousInboundRtpStats.bytesReceived;
               const deltaConcealedSamples = stats.concealedSamples - previousInboundRtpStats.concealedSamples;
+              const deltaPacketsReceived = stats.packetsReceived - previousInboundRtpStats.packetsReceived;
               const bps = (timeDiffSeconds > 0) ? Math.round((deltaBytesReceived * 8) / timeDiffSeconds) : 0;
+              const pps = (timeDiffSeconds > 0) ? parseFloat((deltaPacketsReceived / timeDiffSeconds).toFixed(1)) : 0;
+              const bpp = (deltaPacketsReceived > 0) ? parseFloat((deltaBytesReceived / deltaPacketsReceived).toFixed(1)) : 0;
+
               const rate = {
                 bps: bps,
+                pps: pps,
+                bpp: bpp,
                 packetsDiscarded: deltaPacketsDiscarded,
                 concealedSamples: deltaConcealedSamples,
               };
@@ -880,6 +913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               jitterBufferEmittedCount: stats.jitterBufferEmittedCount,
               totalAudioEnergy: stats.totalAudioEnergy,
               totalSamplesDuration: stats.totalSamplesDuration,
+              packetsReceived: stats.packetsReceived,
             };
             let statsString = JSON.stringify(displayStats, null, 2);
             if (displayStats.rate && displayStats.rate.rmsAudioLevel !== undefined) {
