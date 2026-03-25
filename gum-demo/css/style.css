@@ -119,15 +119,24 @@ body {
   position: relative;
 }
 
-.peerconnection-container {
+.peerconnection-container,
+.dtx-container {
   position: absolute;
-  top: 10px;
   right: 10px;
   display: flex;
   align-items: center;
 }
 
-#peerconnection-checkbox:checked + label {
+.peerconnection-container {
+  top: 10px;
+}
+
+.dtx-container {
+  top: 40px; /* Position it below the PeerConnection container */
+}
+
+#peerconnection-checkbox:checked + label,
+#dtx-checkbox:checked + label {
   background-color: #E3F2FD; /* Light blue */
   padding: 2px 6px;
   border-radius: 4px;

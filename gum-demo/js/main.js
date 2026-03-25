@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
+  const dtxCheckbox = document.getElementById('dtx-checkbox');
   const micSourceRadio = document.getElementById('mic-source');
   const fileSourceRadio = document.getElementById('file-source');
   const sourceInfoDisplay = document.getElementById('source-info-display');
@@ -242,7 +243,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const answer = await pc2.createAnswer();
       console.log('pc2 original answer SDP:\n', answer.sdp);
       answer.sdp = insertStereoSupportForOpus(answer.sdp);
-      answer.sdp = insertDtxSupportForOpus(answer.sdp);
+      if (dtxCheckbox.checked) {
+        answer.sdp = insertDtxSupportForOpus(answer.sdp);
+      }
       console.log('pc2 modified answer SDP:\n', answer.sdp);
       await pc2.setLocalDescription(answer);
       await pc1.setRemoteDescription(answer);
@@ -335,6 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const peerConnectionLabel = peerConnectionCheckbox.parentElement.querySelector('label');
+  const dtxLabel = dtxCheckbox.parentElement.querySelector('label');
 
   function updatePeerConnectionTooltip() {
     if (peerConnectionCheckbox.checked) {
@@ -343,6 +347,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       // State is DISABLED. Tooltip describes the action of checking it.
       peerConnectionLabel.title = 'Send and receive the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder and decoder';
+    }
+  }
+
+  function updateDtxTooltip() {
+    if (dtxCheckbox.checked) {
+      // State is ENABLED. Tooltip is removed.
+      dtxLabel.title = '';
+    } else {
+      // State is DISABLED. Tooltip describes the action of checking it.
+      dtxLabel.title = 'Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for the Opus codec in PeerConnection';
     }
   }
 
@@ -355,8 +369,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  dtxCheckbox.addEventListener('change', () => {
+    updateDtxTooltip();
+    if (dtxCheckbox.checked) {
+      console.log('VAD/DTX/CNG enabled');
+    } else {
+      console.log('VAD/DTX/CNG disabled');
+    }
+  });
+
   // Set the initial tooltip state on page load.
   updatePeerConnectionTooltip();
+  updateDtxTooltip();
 
   function updateInputSourceUI() {
     const isMic = micSourceRadio.checked;
@@ -418,6 +442,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       peerConnectionCheckbox.checked = true;
       // Manually trigger the change event to ensure the rest of the app state is updated.
       peerConnectionCheckbox.dispatchEvent(new Event('change'));
+    }
+
+    if (params.has('dtx') && params.get('dtx') === 'true') {
+      dtxCheckbox.checked = true;
+      // Manually trigger the change event to ensure the rest of the app state is updated.
+      dtxCheckbox.dispatchEvent(new Event('change'));
     }
 
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
@@ -1001,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     gumButton.disabled = true;
     copyBookmarkButton.disabled = true;
     peerConnectionCheckbox.disabled = true;
+    dtxCheckbox.disabled = true;
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
@@ -1274,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       gumButton.disabled = false;
       copyBookmarkButton.disabled = false;
       peerConnectionCheckbox.disabled = false;
+      dtxCheckbox.disabled = false;
       setConstraintsDisabled(false);
     }
   });
@@ -1365,6 +1397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     recordButton.disabled = true;
     setConstraintsDisabled(false);
     peerConnectionCheckbox.disabled = false;
+    dtxCheckbox.disabled = false;
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
     sampleRateSelect.disabled = false;
@@ -1655,6 +1688,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (peerConnectionCheckbox.checked) {
       params.set('peerConnection', 'true');
+    }
+
+    if (dtxCheckbox.checked) {
+      params.set('dtx', 'true');
     }
 
     // Construct the full bookmarkable URL, only adding a '?' if there are parameters.
