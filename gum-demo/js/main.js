@@ -603,13 +603,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     canvasCtx.fillStyle = '#00FF00';
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
 
-    // Draw the latest rmsAudioLevel if PeerConnection is enabled and level > 0.
-    if (peerConnectionCheckbox.checked && latestRmsAudioLevel !== null && latestRmsAudioLevel > 0) {
-      canvasCtx.font = 'bold 18px "Lucida Console", "Courier New", monospace';
+    // Draw the latest rmsAudioLevel and the rolling 10-second RMS if PeerConnection is enabled
+    if (peerConnectionCheckbox.checked && rmsAudioLevels.length > 0) {
+      // 1. Calculate the rolling 10-second RMS from the recent history
+      const last10 = rmsAudioLevels.slice(-10);
+      const sumOfSquares = last10.reduce((sum, val) => sum + val * val, 0);
+      const trueRms10s = Math.sqrt(sumOfSquares / last10.length);
+
+      canvasCtx.font = 'bold 12px "Lucida Console", "Courier New", monospace';
       canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      canvasCtx.textAlign = 'center';
+      canvasCtx.textAlign = 'left'; 
       canvasCtx.textBaseline = 'middle';
-      canvasCtx.fillText(latestRmsAudioLevel.toFixed(5), visualizerCanvas.width / 2, visualizerCanvas.height / 2);
+
+      // 2. Draw the 1-second snapshot (Increased Y-offset to 10 to avoid overlap)
+      if (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0) {
+        const text1s = `1s:  ${Number(latestRmsAudioLevel).toFixed(5)}`;
+        canvasCtx.fillText(text1s, 2, visualizerCanvas.height / 2 - 10);
+      }
+
+      // 3. Draw the rolling 10-second RMS (Increased Y-offset to 10)
+      if (trueRms10s > 0) {
+        const text10s = `10s: ${Number(trueRms10s).toFixed(5)}`;
+        canvasCtx.fillText(text10s, 2, visualizerCanvas.height / 2 + 10);
+      }
     }
   }
 
