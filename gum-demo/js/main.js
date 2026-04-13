@@ -1196,10 +1196,25 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Trim leading zeros.
           const firstNonZeroIndex = rmsAudioLevels.findIndex((level) => level > 0);
           const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
+          
           if (trimmedLevels.length > 0) {
             console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
-            const average = trimmedLevels.reduce((a, b) => a + b, 0) / trimmedLevels.length;
-            console.log('Average rmsAudioLevel (trimmed) = ' + average.toFixed(5));
+            
+            // 1. Calculate True RMS for the complete duration
+            const totalSumOfSquares = trimmedLevels.reduce((sum, level) => sum + level * level, 0);
+            const totalTrueRms = Math.sqrt(totalSumOfSquares / trimmedLevels.length);
+            console.log('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
+
+            // 2. Calculate True RMS per 10-second interval
+            console.log('10-second Interval True RMS values:');
+            for (let i = 0; i < trimmedLevels.length; i += 10) {
+              const chunk = trimmedLevels.slice(i, i + 10);
+              const chunkSumOfSquares = chunk.reduce((sum, level) => sum + level * level, 0);
+              const chunkRms = Math.sqrt(chunkSumOfSquares / chunk.length);
+              
+              // This is the exact value the DataPointAggregator will output for this interval
+              console.log(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
+            }
           }
         }
         clearInterval(statsInterval);
@@ -1376,10 +1391,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Trim leading zeros.
       const firstNonZeroIndex = rmsAudioLevels.findIndex((level) => level > 0);
       const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
+      
       if (trimmedLevels.length > 0) {
         console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
-        const average = trimmedLevels.reduce((a, b) => a + b, 0) / trimmedLevels.length;
-        console.log('Average rmsAudioLevel (trimmed) = ' + average.toFixed(5));
+        
+        // 1. Calculate True RMS for the complete duration
+        const totalSumOfSquares = trimmedLevels.reduce((sum, level) => sum + level * level, 0);
+        const totalTrueRms = Math.sqrt(totalSumOfSquares / trimmedLevels.length);
+        console.log('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
+
+        // 2. Calculate True RMS per 10-second interval
+        console.log('10-second Interval True RMS values:');
+        for (let i = 0; i < trimmedLevels.length; i += 10) {
+          const chunk = trimmedLevels.slice(i, i + 10);
+          const chunkSumOfSquares = chunk.reduce((sum, level) => sum + level * level, 0);
+          const chunkRms = Math.sqrt(chunkSumOfSquares / chunk.length);
+          
+          // This is the exact value the DataPointAggregator will output for this interval
+          console.log(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
+        }
       }
     }
     clearInterval(statsInterval);
