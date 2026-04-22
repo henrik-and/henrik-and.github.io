@@ -454,11 +454,12 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   await checkAndRequestPermissions();
   await enumerateDevices();
   await updateDeviceInfo();
-  await updateAudioOutputInfo();
     
   htmlAudio = document.getElementById('html-audio');
   htmlAudio.volume = 0.3;
   htmlAudio.tag = 'HTML';
+  
+  await updateAudioOutputInfo();
   
   // Event listener to update audio source when the selection changes
   document.getElementById('audio-file-select').addEventListener('change', async (event) => {
@@ -778,26 +779,35 @@ async function updateDeviceInfo() {
   }
 }
 
-
 async function updateAudioOutputInfo() {
-  if (!htmlAudio || !htmlAudio.sinkId || !audioOutputInfoDiv) {
+  logi('updateAudioOutputInfo()');
+  if (!htmlAudio || !('sinkId' in htmlAudio) || !audioOutputInfoDiv) {
+    logw('updateAudioOutputInfo() => early return');
     return;
   }
+  
   const devices = await navigator.mediaDevices.enumerateDevices();
   const sinkId = htmlAudio.sinkId;
-  const outputDevice = devices.find(d => d.deviceId === sinkId && d.kind === 'audiooutput');
+  let outputDevice;
+
+  if (sinkId === '') {
+    // An empty sinkId means the default device is being used.
+    outputDevice = devices.find(d => d.kind === 'audiooutput');
+  } else {
+    // A non-empty sinkId means a specific device has been set.
+    outputDevice = devices.find(d => d.deviceId === sinkId && d.kind === 'audiooutput');
+  }
 
   if (outputDevice) {
     audioOutputInfoDiv.textContent = `Audio output device:\n` +
-                                 `  kind: ${outputDevice.kind}\n` +
-                                 `  label: ${outputDevice.label}\n` +
-                                 `  deviceId: ${outputDevice.deviceId}\n` +
-                                 `  groupId: ${outputDevice.groupId}`;
+      `  kind: ${outputDevice.kind}\n` +
+      `  label: ${outputDevice.label}\n` +
+      `  deviceId: ${outputDevice.deviceId}\n` +
+      `  groupId: ${outputDevice.groupId}`;
   } else {
     audioOutputInfoDiv.textContent = `Audio output device: Not Found`;
   }
 }
-
 
 /**
  * Enumerate all devices and  deliver results (internally) as `MediaDeviceInfo` objects.
