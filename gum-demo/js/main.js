@@ -1205,8 +1205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
       audioTrack.onended = (event) => {
         console.error('Audio track ended:', event);
-        errorMessageElement.textContent = `Warning: Audio track ended - ${event.type}`;
-        errorMessageElement.style.display = 'block';
+        
         updateTrackProperties(audioTrack);
         if (rmsAudioLevels.length > 0) {
           // Trim leading zeros.
@@ -1233,7 +1232,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
         }
+        
         clearInterval(statsInterval);
+        
+        // Trigger the stop logic to reset the UI to its clean state
+        if (typeof stopButton !== 'undefined') {
+          stopButton.click();
+        }
+        
+        // Set and show the warning message AFTER the UI cleanup
+        const warningMessage = `Warning: Audio track ended - ${event.type}`;
+        errorMessageElement.textContent = warningMessage;
+        errorMessageElement.style.display = 'block';
       };
       stopButton.disabled = false;
       recordButton.disabled = false;
