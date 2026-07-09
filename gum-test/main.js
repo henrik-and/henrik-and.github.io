@@ -63,6 +63,71 @@ const tests = [
                 return { pass: false, details: `Error: ${err.name} - ${err.message}` };
             }
         }
+    },
+    {
+        name: "getUserMedia({audio: false, video: true}) - Audio Explicitly False",
+        run: async (logger) => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return { pass: false, details: "navigator.mediaDevices.getUserMedia is not available." };
+            }
+
+            logger.log("Requesting getUserMedia with audio:false, video:true...");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                logger.log("GUM resolved successfully.");
+                
+                if (!stream) {
+                    return { pass: false, details: "Stream is null or undefined" };
+                }
+                
+                const audioTracks = stream.getAudioTracks();
+                const videoTracks = stream.getVideoTracks();
+                logger.log(`Found ${audioTracks.length} audio tracks.`);
+                logger.log(`Found ${videoTracks.length} video tracks.`);
+                
+                // Stop tracks immediately
+                stream.getTracks().forEach(t => t.stop());
+                
+                if (audioTracks.length === 0) {
+                    return { pass: true, details: `Verified: No audio tracks were produced. Received ${videoTracks.length} video tracks.` };
+                } else {
+                    return { pass: false, details: `Failed: ${audioTracks.length} audio tracks were produced when audio:false was requested.` };
+                }
+                
+            } catch (err) {
+                logger.log(`GUM failed with error: ${err.name} - ${err.message}`);
+                if (err.name === 'NotFoundError') {
+                    return { pass: true, details: "GUM failed with NotFoundError. This is expected if the device has no camera, meaning indeed no audio could be produced." };
+                }
+                if (err.name === 'NotAllowedError') {
+                    return { pass: true, details: "GUM failed with NotAllowedError (Permission denied for camera). No audio was produced." };
+                }
+                return { pass: false, details: `Error: ${err.name} - ${err.message}` };
+            }
+        }
+    },
+    {
+        name: "getUserMedia({audio: false, video: false}) - Both False (Should Reject)",
+        run: async (logger) => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return { pass: false, details: "navigator.mediaDevices.getUserMedia is not available." };
+            }
+
+            logger.log("Requesting getUserMedia with audio:false, video:false...");
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: false });
+                logger.log("GUM resolved successfully (Unexpected!).");
+                stream.getTracks().forEach(t => t.stop());
+                return { pass: false, details: "Expected GUM to reject when both audio and video are false, but it resolved." };
+            } catch (err) {
+                logger.log(`GUM rejected with error: ${err.name} - ${err.message}`);
+                if (err.name === 'TypeError') {
+                    return { pass: true, details: "Correctly rejected with TypeError (as per spec)." };
+                } else {
+                    return { pass: false, details: `Rejected, but expected TypeError, got: ${err.name}` };
+                }
+            }
+        }
     }
 ];
 
