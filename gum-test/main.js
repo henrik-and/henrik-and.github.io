@@ -15,7 +15,7 @@ function formatError(error) {
 function truncateId(id) {
     if (!id) return id;
     if (id.length <= 8) return id;
-    return `...${id.slice(-4)}`;
+    return `${id.slice(0, 4)}...${id.slice(-4)}`;
 }
 
 function stringifyConstraints(constraints) {
@@ -34,6 +34,9 @@ function stringifySettings(settings) {
     const copy = { ...settings };
     if (copy.deviceId) {
         copy.deviceId = truncateId(copy.deviceId);
+    }
+    if (copy.groupId) {
+        copy.groupId = truncateId(copy.groupId);
     }
     return JSON.stringify(copy);
 }
