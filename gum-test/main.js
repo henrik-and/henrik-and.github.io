@@ -66,7 +66,7 @@ const tests = [
     {
         name: "getUserMedia({audio: true}) - Default Microphone",
         run: async (logger, deviceId) => {
-            const constraints = mergeDeviceConstraint({ audio: true, video: false }, deviceId);
+            const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
             return executeTest(
                 constraints,
                 async (stream, error, logger) => {
