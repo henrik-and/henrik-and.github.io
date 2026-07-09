@@ -387,34 +387,40 @@ async function runAllTests() {
                     <span class="test-name">${test.name}</span>
                     <span class="test-status status-pending">PENDING</span>
                 </div>
-                <pre class="test-details">Initializing...</pre>
+                <pre class="test-logs">Initializing...</pre>
+                <div class="test-result-summary" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                    <strong>Result:</strong> <span class="summary-text"></span><br>
+                    <strong>Details:</strong> <span class="summary-details"></span>
+                </div>
             `;
             deviceResultsContainer.appendChild(testEl);
             
             const statusEl = testEl.querySelector('.test-status');
-            const detailsEl = testEl.querySelector('.test-details');
+            const logsEl = testEl.querySelector('.test-logs');
             
             statusEl.className = 'test-status status-running';
             statusEl.textContent = 'RUNNING';
             
-            const logger = new TestLogger(detailsEl);
+            const logger = new TestLogger(logsEl);
             
             const startTime = performance.now();
             const result = await test.run(logger, device.id);
             const duration = Math.round(performance.now() - startTime);
             
-            if (result.pass) {
-                statusEl.className = 'test-status status-pass';
-                statusEl.textContent = `PASS (${duration}ms)`;
-            } else {
-                statusEl.className = 'test-status status-fail';
-                statusEl.textContent = `FAIL (${duration}ms)`;
-            }
+            statusEl.className = result.pass ? 'test-status status-pass' : 'test-status status-fail';
+            statusEl.textContent = `${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`;
             
-            logger.log(`\nResult: ${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`);
-            if (result.details) {
-                logger.log(`Details: ${result.details}`);
-            }
+            // Show summary
+            const summaryEl = testEl.querySelector('.test-result-summary');
+            const summaryTextEl = testEl.querySelector('.summary-text');
+            const summaryDetailsEl = testEl.querySelector('.summary-details');
+            
+            summaryTextEl.textContent = `${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`;
+            summaryTextEl.style.color = result.pass ? '#155724' : '#721c24';
+            summaryTextEl.style.fontWeight = 'bold';
+            
+            summaryDetailsEl.textContent = result.details || 'None';
+            summaryEl.style.display = 'block';
         }
     }
     

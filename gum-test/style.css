@@ -29,12 +29,35 @@ body {
 .status-pass { background-color: #d4edda; color: #155724; }
 .status-fail { background-color: #f8d7da; color: #721c24; }
 
-.test-details {
+.test-logs {
     margin-top: 10px;
     white-space: pre-wrap;
     background-color: #fafafa;
-    padding: 5px;
+    padding: 8px;
     border: 1px dashed #ddd;
+    font-size: 0.9em;
+    color: #555;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.test-result-summary {
+    background-color: #f8f9fa;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+    font-size: 0.95em;
+    border-left: 4px solid #6c757d;
+}
+
+.test-item:has(.status-pass) .test-result-summary {
+    border-left-color: #28a745;
+    background-color: #f4fbf5;
+}
+
+.test-item:has(.status-fail) .test-result-summary {
+    border-left-color: #dc3545;
+    background-color: #fdf5f6;
 }
 
 #device-selection-container {
