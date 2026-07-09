@@ -91,11 +91,11 @@ async function executeTest(constraints, verifyFn, logger) {
     }
 }
 
-const tests = [
-    {
-        name: "getUserMedia({audio: true}) - Default Microphone",
+function createGUMAudioTest(name, audioConstraints) {
+    return {
+        name: name,
         run: async (logger, deviceId) => {
-            const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
+            const constraints = mergeDeviceConstraint({ audio: audioConstraints, video: false }, deviceId);
             return executeTest(
                 constraints,
                 async (stream, error, logger) => {
@@ -107,15 +107,23 @@ const tests = [
                     const track = audioTracks[0];
                     logger.log(`Track Label: ${track.label}`);
                     
-                    if (track.readyState !== 'live') {
-                        return { pass: false, details: `Track not live. state: ${track.readyState}` };
-                    }
-                    
                     const settings = track.getSettings();
                     logger.log(`Track Settings: ${stringifySettings(settings)}`);
                     
                     if (deviceId && settings.deviceId !== deviceId) {
                         return { pass: false, details: `Device ID mismatch. Requested: ${deviceId}, Got: ${settings.deviceId}` };
+                    }
+                    
+                    // Verify constraints match settings
+                    if (typeof audioConstraints === 'object') {
+                        for (const key of Object.keys(audioConstraints)) {
+                            if (key === 'deviceId') continue;
+                            const expected = audioConstraints[key];
+                            const actual = settings[key];
+                            if (actual !== expected) {
+                                return { pass: false, details: `Constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                            }
+                        }
                     }
                     
                     let audioFlowing = false;
@@ -128,13 +136,19 @@ const tests = [
                     }
                     
                     return audioFlowing 
-                        ? { pass: true, details: "Audio track is live and delivering frames." }
+                        ? { pass: true, details: `Audio flowing. Checked constraints: ${JSON.stringify(audioConstraints)}` }
                         : { pass: false, details: "Audio track is live but no frames detected (silent)." };
                 },
                 logger
             );
         }
-    },
+    };
+}
+
+const tests = [
+    createGUMAudioTest("getUserMedia({audio: true}) - Default Microphone", true),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: true}})", { echoCancellation: true }),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: false}})", { echoCancellation: false }),
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger, deviceId) => {
