@@ -59,9 +59,9 @@ const tests = [
                         audioFlowing = await verifyAudioFlow(stream, logger);
                     }
                     
-                    return audioFlowing 
-                        ? { pass: true, details: "Audio track is live and delivering frames." }
-                        : { pass: false, details: "Audio track is live but no frames detected (silent)." };
+                    // Emulating failure
+                    logger.log("Emulating failure for testing UI...");
+                    return { pass: false, details: "Forced failure: Emulated error for visual verification." };
                 },
                 logger
             );
