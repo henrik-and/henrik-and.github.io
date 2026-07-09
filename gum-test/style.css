@@ -36,3 +36,73 @@ body {
     padding: 5px;
     border: 1px dashed #ddd;
 }
+
+#device-selection-container {
+    background: white;
+    padding: 15px;
+    border: 1px solid #ccc;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    position: relative;
+}
+
+#device-selection-container h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+}
+
+#refresh-devices-btn {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 4px 8px;
+    font-size: 0.85em;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #555;
+    transition: background-color 0.2s;
+}
+
+#refresh-devices-btn:hover {
+    background-color: #e2e6ea;
+}
+
+#run-tests-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);
+    transition: all 0.2s ease;
+}
+
+#run-tests-btn:hover {
+    background-color: #218838;
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
+    transform: translateY(-1px);
+}
+
+#run-tests-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+#run-tests-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.device-group-section h2 {
+    font-size: 1.3em;
+    color: #333;
+}
+
