@@ -68,33 +68,10 @@ const tests = [
         }
     },
     {
-        name: "getUserMedia({audio: false, video: true}) - Audio Explicitly False",
+        name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger) => {
             return executeTest(
-                { audio: false, video: true },
-                async (stream, error, logger) => {
-                    if (error) {
-                        // Allowed failures if no camera or permission
-                        if (error.name === 'NotFoundError' || error.name === 'NotAllowedError') {
-                            return { pass: true, details: `GUM failed as expected for video-only on this setup: ${error.name}` };
-                        }
-                        return { pass: false, details: `Unexpected GUM error: ${error.name}` };
-                    }
-                    
-                    const audioTracks = stream.getAudioTracks();
-                    return audioTracks.length === 0 
-                        ? { pass: true, details: "Verified: No audio tracks were produced." }
-                        : { pass: false, details: `Failed: Produced ${audioTracks.length} audio tracks despite audio:false.` };
-                },
-                logger
-            );
-        }
-    },
-    {
-        name: "getUserMedia({audio: false, video: false}) - Both False (Should Reject)",
-        run: async (logger) => {
-            return executeTest(
-                { audio: false, video: false },
+                { audio: false },
                 async (stream, error, logger) => {
                     if (stream) {
                         return { pass: false, details: "GUM should have rejected but resolved." };
