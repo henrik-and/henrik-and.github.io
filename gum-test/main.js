@@ -228,17 +228,19 @@ async function runAllTests() {
         
         const logger = new TestLogger(detailsEl);
         
+        const startTime = performance.now();
         const result = await test.run(logger);
+        const duration = Math.round(performance.now() - startTime);
         
         if (result.pass) {
             statusEl.className = 'test-status status-pass';
-            statusEl.textContent = 'PASS';
+            statusEl.textContent = `PASS (${duration}ms)`;
         } else {
             statusEl.className = 'test-status status-fail';
-            statusEl.textContent = 'FAIL';
+            statusEl.textContent = `FAIL (${duration}ms)`;
         }
         
-        logger.log(`\nResult: ${result.pass ? 'PASS' : 'FAIL'}`);
+        logger.log(`\nResult: ${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`);
         if (result.details) {
             logger.log(`Details: ${result.details}`);
         }
