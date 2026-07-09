@@ -82,6 +82,13 @@ const tests = [
                         return { pass: false, details: `Track not live. state: ${track.readyState}` };
                     }
                     
+                    const settings = track.getSettings();
+                    logger.log(`Track Settings: ${JSON.stringify(settings)}`);
+                    
+                    if (deviceId && settings.deviceId !== deviceId) {
+                        return { pass: false, details: `Device ID mismatch. Requested: ${deviceId}, Got: ${settings.deviceId}` };
+                    }
+                    
                     let audioFlowing = false;
                     if (track.stats) {
                         logger.log("Verifying audio flow via stats...");
