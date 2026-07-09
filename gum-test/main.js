@@ -12,6 +12,32 @@ function formatError(error) {
     return details;
 }
 
+function truncateId(id) {
+    if (!id) return id;
+    if (id.length <= 8) return id;
+    return `...${id.slice(-4)}`;
+}
+
+function stringifyConstraints(constraints) {
+    const copy = JSON.parse(JSON.stringify(constraints));
+    if (copy.audio && copy.audio.deviceId) {
+        if (copy.audio.deviceId.exact) {
+            copy.audio.deviceId.exact = truncateId(copy.audio.deviceId.exact);
+        } else if (typeof copy.audio.deviceId === 'string') {
+            copy.audio.deviceId = truncateId(copy.audio.deviceId);
+        }
+    }
+    return JSON.stringify(copy);
+}
+
+function stringifySettings(settings) {
+    const copy = { ...settings };
+    if (copy.deviceId) {
+        copy.deviceId = truncateId(copy.deviceId);
+    }
+    return JSON.stringify(copy);
+}
+
 /**
  * Helper to merge deviceId into constraints.
  */
@@ -40,7 +66,7 @@ async function executeTest(constraints, verifyFn, logger) {
         return { pass: false, details: "getUserMedia is not available. Ensure secure context." };
     }
 
-    logger.log(`Requesting GUM with constraints: ${JSON.stringify(constraints)}`);
+    logger.log(`Requesting GUM with constraints: ${stringifyConstraints(constraints)}`);
     try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         logger.log("GUM resolved successfully.");
@@ -83,7 +109,7 @@ const tests = [
                     }
                     
                     const settings = track.getSettings();
-                    logger.log(`Track Settings: ${JSON.stringify(settings)}`);
+                    logger.log(`Track Settings: ${stringifySettings(settings)}`);
                     
                     if (deviceId && settings.deviceId !== deviceId) {
                         return { pass: false, details: `Device ID mismatch. Requested: ${deviceId}, Got: ${settings.deviceId}` };
@@ -271,7 +297,7 @@ async function enumerateAudioDevices() {
         audioInputs.forEach(device => {
             if (device.deviceId === 'default') return; // Skip duplicate default
             
-            const label = device.label || `Device (${device.deviceId.slice(0, 8)}...)`;
+            const label = device.label || `Device (${truncateId(device.deviceId)})`;
             const checked = checkedIds.has(device.deviceId);
             addDeviceCheckbox(label, device.deviceId, checked);
         });
