@@ -1,0 +1,38 @@
+body {
+    font-family: monospace;
+    background-color: #f0f0f0;
+    margin: 20px;
+}
+.test-suite {
+    margin-top: 20px;
+}
+.test-item {
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+.test-name {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.test-status {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+.status-pending { background-color: #ffeeba; color: #856404; }
+.status-running { background-color: #bee5eb; color: #0c5460; }
+.status-pass { background-color: #d4edda; color: #155724; }
+.status-fail { background-color: #f8d7da; color: #721c24; }
+
+.test-details {
+    margin-top: 10px;
+    white-space: pre-wrap;
+    background-color: #fafafa;
+    padding: 5px;
+    border: 1px dashed #ddd;
+}
