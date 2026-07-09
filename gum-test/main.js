@@ -1,132 +1,110 @@
 const resultsContainer = document.getElementById('test-results');
 const runBtn = document.getElementById('run-tests-btn');
 
+/**
+ * Helper to execute a GUM test and manage its lifecycle.
+ */
+async function executeTest(constraints, verifyFn, logger) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return { pass: false, details: "getUserMedia is not available. Ensure secure context." };
+    }
+
+    logger.log(`Requesting GUM with constraints: ${JSON.stringify(constraints)}`);
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        logger.log("GUM resolved successfully.");
+        
+        // Run the test-specific verification
+        const result = await verifyFn(stream, null, logger);
+        
+        // Ensure all tracks are stopped after verification
+        stream.getTracks().forEach(track => {
+            logger.log(`Stopping track: ${track.label}`);
+            track.stop();
+        });
+        
+        return result;
+    } catch (err) {
+        logger.log(`GUM rejected with error: ${err.name} - ${err.message}`);
+        // Run verification on the error
+        return await verifyFn(null, err, logger);
+    }
+}
+
 const tests = [
     {
         name: "getUserMedia({audio: true}) - Default Microphone",
         run: async (logger) => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                return { pass: false, details: "navigator.mediaDevices.getUserMedia is not available. Ensure you are in a secure context (HTTPS or localhost)." };
-            }
-
-            logger.log("Requesting getUserMedia...");
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                logger.log("GUM resolved successfully.");
-                
-                if (!stream) {
-                    return { pass: false, details: "Stream is null or undefined" };
-                }
-                
-                const audioTracks = stream.getAudioTracks();
-                logger.log(`Found ${audioTracks.length} audio tracks.`);
-                
-                if (audioTracks.length === 0) {
-                    return { pass: false, details: "No audio tracks in stream" };
-                }
-                
-                const track = audioTracks[0];
-                logger.log(`Track Label: ${track.label}`);
-                logger.log(`Track ReadyState: ${track.readyState}`);
-                logger.log(`Track Enabled: ${track.enabled}`);
-                
-                if (track.readyState !== 'live') {
-                    track.stop();
-                    return { pass: false, details: `Track readyState is ${track.readyState}, expected 'live'` };
-                }
-                
-                let audioFlowing = false;
-                let methodUsed = "";
-                
-                // Try MediaStreamTrack.stats first
-                if (track.stats) {
-                    logger.log("MediaStreamTrack.stats is available. Verifying audio flow via stats...");
-                    methodUsed = "Stats API";
-                    audioFlowing = await verifyAudioFlowStats(track, logger);
-                } else {
-                    logger.log("MediaStreamTrack.stats is NOT available. Falling back to Web Audio Analyser...");
-                    methodUsed = "Web Audio Analyser";
-                    audioFlowing = await verifyAudioFlow(stream, logger);
-                }
-                
-                // Stop the stream tracks after test
-                track.stop();
-                
-                if (audioFlowing) {
-                    return { pass: true, details: `Stream active and audio flow detected via ${methodUsed}.` };
-                } else {
-                    return { pass: false, details: `Stream active but no audio flow detected via ${methodUsed} (silent/no data).` };
-                }
-                
-            } catch (err) {
-                logger.log(`GUM failed with error: ${err.name} - ${err.message}`);
-                return { pass: false, details: `Error: ${err.name} - ${err.message}` };
-            }
+            return executeTest(
+                { audio: true, video: false },
+                async (stream, error, logger) => {
+                    if (error) return { pass: false, details: `GUM failed: ${error.name}` };
+                    
+                    const audioTracks = stream.getAudioTracks();
+                    if (audioTracks.length === 0) return { pass: false, details: "No audio tracks returned." };
+                    
+                    const track = audioTracks[0];
+                    logger.log(`Track Label: ${track.label}`);
+                    
+                    if (track.readyState !== 'live') {
+                        return { pass: false, details: `Track not live. state: ${track.readyState}` };
+                    }
+                    
+                    let audioFlowing = false;
+                    if (track.stats) {
+                        logger.log("Verifying audio flow via stats...");
+                        audioFlowing = await verifyAudioFlowStats(track, logger);
+                    } else {
+                        logger.log("Verifying audio flow via Web Audio Analyser...");
+                        audioFlowing = await verifyAudioFlow(stream, logger);
+                    }
+                    
+                    return audioFlowing 
+                        ? { pass: true, details: "Audio track is live and delivering frames." }
+                        : { pass: false, details: "Audio track is live but no frames detected (silent)." };
+                },
+                logger
+            );
         }
     },
     {
         name: "getUserMedia({audio: false, video: true}) - Audio Explicitly False",
         run: async (logger) => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                return { pass: false, details: "navigator.mediaDevices.getUserMedia is not available." };
-            }
-
-            logger.log("Requesting getUserMedia with audio:false, video:true...");
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-                logger.log("GUM resolved successfully.");
-                
-                if (!stream) {
-                    return { pass: false, details: "Stream is null or undefined" };
-                }
-                
-                const audioTracks = stream.getAudioTracks();
-                const videoTracks = stream.getVideoTracks();
-                logger.log(`Found ${audioTracks.length} audio tracks.`);
-                logger.log(`Found ${videoTracks.length} video tracks.`);
-                
-                // Stop tracks immediately
-                stream.getTracks().forEach(t => t.stop());
-                
-                if (audioTracks.length === 0) {
-                    return { pass: true, details: `Verified: No audio tracks were produced. Received ${videoTracks.length} video tracks.` };
-                } else {
-                    return { pass: false, details: `Failed: ${audioTracks.length} audio tracks were produced when audio:false was requested.` };
-                }
-                
-            } catch (err) {
-                logger.log(`GUM failed with error: ${err.name} - ${err.message}`);
-                if (err.name === 'NotFoundError') {
-                    return { pass: true, details: "GUM failed with NotFoundError. This is expected if the device has no camera, meaning indeed no audio could be produced." };
-                }
-                if (err.name === 'NotAllowedError') {
-                    return { pass: true, details: "GUM failed with NotAllowedError (Permission denied for camera). No audio was produced." };
-                }
-                return { pass: false, details: `Error: ${err.name} - ${err.message}` };
-            }
+            return executeTest(
+                { audio: false, video: true },
+                async (stream, error, logger) => {
+                    if (error) {
+                        // Allowed failures if no camera or permission
+                        if (error.name === 'NotFoundError' || error.name === 'NotAllowedError') {
+                            return { pass: true, details: `GUM failed as expected for video-only on this setup: ${error.name}` };
+                        }
+                        return { pass: false, details: `Unexpected GUM error: ${error.name}` };
+                    }
+                    
+                    const audioTracks = stream.getAudioTracks();
+                    return audioTracks.length === 0 
+                        ? { pass: true, details: "Verified: No audio tracks were produced." }
+                        : { pass: false, details: `Failed: Produced ${audioTracks.length} audio tracks despite audio:false.` };
+                },
+                logger
+            );
         }
     },
     {
         name: "getUserMedia({audio: false, video: false}) - Both False (Should Reject)",
         run: async (logger) => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                return { pass: false, details: "navigator.mediaDevices.getUserMedia is not available." };
-            }
-
-            logger.log("Requesting getUserMedia with audio:false, video:false...");
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: false });
-                logger.log("GUM resolved successfully (Unexpected!).");
-                stream.getTracks().forEach(t => t.stop());
-                return { pass: false, details: "Expected GUM to reject when both audio and video are false, but it resolved." };
-            } catch (err) {
-                logger.log(`GUM rejected with error: ${err.name} - ${err.message}`);
-                if (err.name === 'TypeError') {
-                    return { pass: true, details: "Correctly rejected with TypeError (as per spec)." };
-                } else {
-                    return { pass: false, details: `Rejected, but expected TypeError, got: ${err.name}` };
-                }
-            }
+            return executeTest(
+                { audio: false, video: false },
+                async (stream, error, logger) => {
+                    if (stream) {
+                        return { pass: false, details: "GUM should have rejected but resolved." };
+                    }
+                    return error.name === 'TypeError'
+                        ? { pass: true, details: "Correctly rejected with TypeError." }
+                        : { pass: false, details: `Expected TypeError, got: ${error.name}` };
+                },
+                logger
+            );
         }
     }
 ];
