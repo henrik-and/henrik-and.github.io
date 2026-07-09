@@ -1,5 +1,7 @@
 const resultsContainer = document.getElementById('test-results');
 const runBtn = document.getElementById('run-tests-btn');
+const deviceCheckboxesContainer = document.getElementById('device-checkboxes');
+const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
 
 function formatError(error) {
     if (!error) return "Unknown error";
@@ -8,6 +10,26 @@ function formatError(error) {
         details += ` (Constraint: ${error.constraint})`;
     }
     return details;
+}
+
+/**
+ * Helper to merge deviceId into constraints.
+ */
+function mergeDeviceConstraint(constraints, deviceId) {
+    if (!deviceId) return constraints;
+    
+    const newConstraints = { ...constraints };
+    if (newConstraints.audio) {
+        if (newConstraints.audio === true) {
+            newConstraints.audio = { deviceId: { exact: deviceId } };
+        } else if (typeof newConstraints.audio === 'object') {
+            newConstraints.audio = {
+                ...newConstraints.audio,
+                deviceId: { exact: deviceId }
+            };
+        }
+    }
+    return newConstraints;
 }
 
 /**
@@ -43,9 +65,10 @@ async function executeTest(constraints, verifyFn, logger) {
 const tests = [
     {
         name: "getUserMedia({audio: true}) - Default Microphone",
-        run: async (logger) => {
+        run: async (logger, deviceId) => {
+            const constraints = mergeDeviceConstraint({ audio: true, video: false }, deviceId);
             return executeTest(
-                { audio: true, video: false },
+                constraints,
                 async (stream, error, logger) => {
                     if (error) return { pass: false, details: `GUM failed: ${formatError(error)}` };
                     
@@ -78,9 +101,10 @@ const tests = [
     },
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
-        run: async (logger) => {
+        run: async (logger, deviceId) => {
+            const constraints = mergeDeviceConstraint({ audio: false }, deviceId);
             return executeTest(
-                { audio: false },
+                constraints,
                 async (stream, error, logger) => {
                     if (stream) {
                         return { pass: false, details: "GUM should have rejected but resolved." };
@@ -213,49 +237,144 @@ class TestLogger {
     }
 }
 
+async function enumerateAudioDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        deviceCheckboxesContainer.innerHTML = '<p class="error">enumerateDevices not supported</p>';
+        return;
+    }
+    
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(device => device.kind === 'audioinput');
+        
+        // Store currently checked devices to restore them
+        const checkedIds = new Set(
+            Array.from(deviceCheckboxesContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(cb => cb.value)
+        );
+        
+        const isFirstLoad = deviceCheckboxesContainer.querySelector('input[type="checkbox"]') === null;
+        
+        deviceCheckboxesContainer.innerHTML = '';
+        
+        // Always add a "System Default" option
+        const defaultChecked = isFirstLoad ? true : checkedIds.has('');
+        addDeviceCheckbox('System Default', null, defaultChecked);
+        
+        audioInputs.forEach(device => {
+            if (device.deviceId === 'default') return; // Skip duplicate default
+            
+            const label = device.label || `Device (${device.deviceId.slice(0, 8)}...)`;
+            const checked = checkedIds.has(device.deviceId);
+            addDeviceCheckbox(label, device.deviceId, checked);
+        });
+        
+    } catch (err) {
+        deviceCheckboxesContainer.innerHTML = `<p class="error">Error enumerating devices: ${err.message}</p>`;
+    }
+}
+
+function addDeviceCheckbox(label, deviceId, checked) {
+    const div = document.createElement('div');
+    div.style.margin = '5px 0';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `dev-${deviceId || 'default'}`;
+    checkbox.value = deviceId || '';
+    checkbox.checked = checked;
+    
+    const labelEl = document.createElement('label');
+    labelEl.htmlFor = checkbox.id;
+    labelEl.style.marginLeft = '5px';
+    labelEl.textContent = label;
+    
+    div.appendChild(checkbox);
+    div.appendChild(labelEl);
+    deviceCheckboxesContainer.appendChild(div);
+}
+
+function getSelectedDevices() {
+    const checkboxes = deviceCheckboxesContainer.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => ({
+        id: cb.value || null, // null for default
+        label: cb.nextSibling.textContent
+    }));
+}
+
 async function runAllTests() {
     resultsContainer.innerHTML = '';
     runBtn.disabled = true;
     
-    for (const test of tests) {
-        const testEl = document.createElement('div');
-        testEl.className = 'test-item';
-        testEl.innerHTML = `
-            <div class="test-header">
-                <span class="test-name">${test.name}</span>
-                <span class="test-status status-pending">PENDING</span>
-            </div>
-            <pre class="test-details">Initializing...</pre>
-        `;
-        resultsContainer.appendChild(testEl);
+    const selectedDevices = getSelectedDevices();
+    if (selectedDevices.length === 0) {
+        resultsContainer.innerHTML = '<p class="error" style="color: red; font-weight: bold;">Please select at least one device to test.</p>';
+        runBtn.disabled = false;
+        return;
+    }
+    
+    for (const device of selectedDevices) {
+        const deviceSection = document.createElement('div');
+        deviceSection.className = 'device-group-section';
+        deviceSection.style.marginTop = '20px';
+        deviceSection.style.borderTop = '2px solid #333';
+        deviceSection.style.paddingTop = '10px';
         
-        const statusEl = testEl.querySelector('.test-status');
-        const detailsEl = testEl.querySelector('.test-details');
+        const deviceHeader = document.createElement('h2');
+        deviceHeader.textContent = `Testing Device: ${device.label}`;
+        deviceHeader.style.margin = '0 0 10px 0';
+        deviceSection.appendChild(deviceHeader);
         
-        statusEl.className = 'test-status status-running';
-        statusEl.textContent = 'RUNNING';
+        const deviceResultsContainer = document.createElement('div');
+        deviceSection.appendChild(deviceResultsContainer);
+        resultsContainer.appendChild(deviceSection);
         
-        const logger = new TestLogger(detailsEl);
-        
-        const startTime = performance.now();
-        const result = await test.run(logger);
-        const duration = Math.round(performance.now() - startTime);
-        
-        if (result.pass) {
-            statusEl.className = 'test-status status-pass';
-            statusEl.textContent = `PASS (${duration}ms)`;
-        } else {
-            statusEl.className = 'test-status status-fail';
-            statusEl.textContent = `FAIL (${duration}ms)`;
-        }
-        
-        logger.log(`\nResult: ${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`);
-        if (result.details) {
-            logger.log(`Details: ${result.details}`);
+        for (const test of tests) {
+            const testEl = document.createElement('div');
+            testEl.className = 'test-item';
+            testEl.innerHTML = `
+                <div class="test-header">
+                    <span class="test-name">${test.name}</span>
+                    <span class="test-status status-pending">PENDING</span>
+                </div>
+                <pre class="test-details">Initializing...</pre>
+            `;
+            deviceResultsContainer.appendChild(testEl);
+            
+            const statusEl = testEl.querySelector('.test-status');
+            const detailsEl = testEl.querySelector('.test-details');
+            
+            statusEl.className = 'test-status status-running';
+            statusEl.textContent = 'RUNNING';
+            
+            const logger = new TestLogger(detailsEl);
+            
+            const startTime = performance.now();
+            const result = await test.run(logger, device.id);
+            const duration = Math.round(performance.now() - startTime);
+            
+            if (result.pass) {
+                statusEl.className = 'test-status status-pass';
+                statusEl.textContent = `PASS (${duration}ms)`;
+            } else {
+                statusEl.className = 'test-status status-fail';
+                statusEl.textContent = `FAIL (${duration}ms)`;
+            }
+            
+            logger.log(`\nResult: ${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`);
+            if (result.details) {
+                logger.log(`Details: ${result.details}`);
+            }
         }
     }
     
     runBtn.disabled = false;
+    
+    // Refresh devices to populate labels if permission was granted
+    await enumerateAudioDevices();
 }
 
+// Initialize
+enumerateAudioDevices();
+refreshDevicesBtn.addEventListener('click', enumerateAudioDevices);
 runBtn.addEventListener('click', runAllTests);
