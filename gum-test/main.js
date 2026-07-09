@@ -1,6 +1,15 @@
 const resultsContainer = document.getElementById('test-results');
 const runBtn = document.getElementById('run-tests-btn');
 
+function formatError(error) {
+    if (!error) return "Unknown error";
+    let details = `${error.name}: ${error.message}`;
+    if (error.constraint) {
+        details += ` (Constraint: ${error.constraint})`;
+    }
+    return details;
+}
+
 /**
  * Helper to execute a GUM test and manage its lifecycle.
  */
@@ -38,7 +47,7 @@ const tests = [
             return executeTest(
                 { audio: true, video: false },
                 async (stream, error, logger) => {
-                    if (error) return { pass: false, details: `GUM failed: ${error.name}` };
+                    if (error) return { pass: false, details: `GUM failed: ${formatError(error)}` };
                     
                     const audioTracks = stream.getAudioTracks();
                     if (audioTracks.length === 0) return { pass: false, details: "No audio tracks returned." };
