@@ -2,6 +2,7 @@ const resultsContainer = document.getElementById('test-results');
 const runBtn = document.getElementById('run-tests-btn');
 const deviceCheckboxesContainer = document.getElementById('device-checkboxes');
 const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
+const verboseLogsCb = document.getElementById('verbose-logs-cb');
 
 function formatError(error) {
     if (!error) return "Unknown error";
@@ -557,7 +558,17 @@ async function runAllTests() {
     await enumerateAudioDevices();
 }
 
+function updateVerboseLogsVisibility() {
+    if (verboseLogsCb.checked) {
+        resultsContainer.classList.remove('hide-verbose-logs');
+    } else {
+        resultsContainer.classList.add('hide-verbose-logs');
+    }
+}
+
 // Initialize
+updateVerboseLogsVisibility();
+verboseLogsCb.addEventListener('change', updateVerboseLogsVisibility);
 enumerateAudioDevices();
 refreshDevicesBtn.addEventListener('click', enumerateAudioDevices);
 runBtn.addEventListener('click', runAllTests);
