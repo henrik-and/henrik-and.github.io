@@ -221,6 +221,11 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: false}})", { noiseSuppression: false }),
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: true}}})", { noiseSuppression: { exact: true } }),
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: false}}})", { noiseSuppression: { exact: false } }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: 1}})", { channelCount: 1 }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 1}}})", { channelCount: { exact: 1 } }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: 2}})", { channelCount: 2 }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }),
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger, deviceId) => {
