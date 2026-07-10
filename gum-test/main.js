@@ -199,6 +199,14 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {echoCancellation: {exact: 'remote-only'}}})", { echoCancellation: { exact: 'remote-only' } }),
     createGUMAudioTest("getUserMedia({audio: {echoCancellation: {ideal: 'all'}}})", { echoCancellation: { ideal: 'all' } }),
     createGUMAudioTest("getUserMedia({audio: {echoCancellation: {ideal: 'remote-only'}}})", { echoCancellation: { ideal: 'remote-only' } }),
+    createGUMAudioTest("getUserMedia({audio: {autoGainControl: true}})", { autoGainControl: true }),
+    createGUMAudioTest("getUserMedia({audio: {autoGainControl: false}})", { autoGainControl: false }),
+    createGUMAudioTest("getUserMedia({audio: {autoGainControl: {exact: true}}})", { autoGainControl: { exact: true } }),
+    createGUMAudioTest("getUserMedia({audio: {autoGainControl: {exact: false}}})", { autoGainControl: { exact: false } }),
+    createGUMAudioTest("getUserMedia({audio: {noiseSuppression: true}})", { noiseSuppression: true }),
+    createGUMAudioTest("getUserMedia({audio: {noiseSuppression: false}})", { noiseSuppression: false }),
+    createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: true}}})", { noiseSuppression: { exact: true } }),
+    createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: false}}})", { noiseSuppression: { exact: false } }),
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger, deviceId) => {
