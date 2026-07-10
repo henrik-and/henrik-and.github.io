@@ -227,63 +227,6 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }),
     createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }),
     {
-        name: "Verify dynamic applyConstraints() toggling echoCancellation",
-        run: async (logger, deviceId) => {
-            const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
-            return executeTest(constraints, async (stream, error, logger) => {
-                if (error) return { pass: false, details: `GUM failed: ${error.name}` };
-                
-                const track = stream.getAudioTracks()[0];
-                
-                // Step 1: Apply echoCancellation: false
-                logger.log("Applying constraint: { echoCancellation: false }...");
-                try {
-                    await track.applyConstraints({ echoCancellation: false });
-                } catch (e) {
-                    return { pass: false, details: `Failed to apply echoCancellation: false. Error: ${e.name}` };
-                }
-                
-                let settings = track.getSettings();
-                logger.log(`Settings after apply: ${JSON.stringify(settings)}`);
-                if (settings.echoCancellation !== false) {
-                    return { pass: false, details: `Failed to turn off echoCancellation. Value is still ${settings.echoCancellation}` };
-                }
-                
-                logger.log("Verifying audio flow with AEC off...");
-                let flowResult1 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
-                if (!flowResult1.flowing) {
-                    return { pass: false, details: `Audio flow failed after turning AEC off: ${flowResult1.reason}` };
-                }
-                
-                // Step 2: Apply echoCancellation: true
-                logger.log("Applying constraint: { echoCancellation: true }...");
-                try {
-                    await track.applyConstraints({ echoCancellation: true });
-                } catch (e) {
-                    return { pass: false, details: `Failed to apply echoCancellation: true. Error: ${e.name}` };
-                }
-                
-                settings = track.getSettings();
-                logger.log(`Settings after apply: ${JSON.stringify(settings)}`);
-                if (settings.echoCancellation !== true) {
-                    return { pass: false, details: `Failed to turn on echoCancellation. Value is still ${settings.echoCancellation}` };
-                }
-                
-                logger.log("Verifying audio flow with AEC on...");
-                let flowResult2 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
-                if (!flowResult2.flowing) {
-                    return { pass: false, details: `Audio flow failed after turning AEC back on: ${flowResult2.reason}` };
-                }
-                
-                return { pass: true, details: "Successfully toggled echoCancellation dynamically." };
-            }, logger);
-        }
-    },
-    {
         name: "Target all individual devices via deviceId exact constraints",
         run: async (logger, currentDeviceId) => {
             const selected = getSelectedDevices();
@@ -371,6 +314,75 @@ const tests = [
                 },
                 logger
             );
+        }
+    },
+    {
+        name: "Verify dynamic applyConstraints() toggling echoCancellation",
+        run: async (logger, deviceId) => {
+            const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
+            return executeTest(constraints, async (stream, error, logger) => {
+                if (error) return { pass: false, details: `GUM failed: ${error.name}` };
+                
+                const track = stream.getAudioTracks()[0];
+                
+                // Step 1: Apply echoCancellation: false
+                logger.log("Applying constraint: { echoCancellation: false }...");
+                try {
+                    await track.applyConstraints({ echoCancellation: false });
+                } catch (e) {
+                    return { 
+                        pass: false, 
+                        details: `Failed to apply echoCancellation: false. Error: ${e.name}. Note: This is a known Chromium limitation (crbug/40555809) where applyConstraints() cannot dynamically update audio processing filters.` 
+                    };
+                }
+                
+                let settings = track.getSettings();
+                logger.log(`Settings after apply: ${JSON.stringify(settings)}`);
+                if (settings.echoCancellation !== false) {
+                    return { 
+                        pass: false, 
+                        details: `Failed to turn off echoCancellation. Value is still ${settings.echoCancellation}. Note: This is a known Chromium limitation (crbug/40555809) where applyConstraints() cannot dynamically update audio processing filters.` 
+                    };
+                }
+                
+                logger.log("Verifying audio flow with AEC off...");
+                let flowResult1 = track.stats 
+                    ? await verifyAudioFlowStats(track, logger)
+                    : await verifyAudioFlow(stream, logger);
+                if (!flowResult1.flowing) {
+                    return { pass: false, details: `Audio flow failed after turning AEC off: ${flowResult1.reason}` };
+                }
+                
+                // Step 2: Apply echoCancellation: true
+                logger.log("Applying constraint: { echoCancellation: true }...");
+                try {
+                    await track.applyConstraints({ echoCancellation: true });
+                } catch (e) {
+                    return { 
+                        pass: false, 
+                        details: `Failed to apply echoCancellation: true. Error: ${e.name}. Note: This is a known Chromium limitation (crbug/40555809) where applyConstraints() cannot dynamically update audio processing filters.` 
+                    };
+                }
+                
+                settings = track.getSettings();
+                logger.log(`Settings after apply: ${JSON.stringify(settings)}`);
+                if (settings.echoCancellation !== true) {
+                    return { 
+                        pass: false, 
+                        details: `Failed to turn on echoCancellation. Value is still ${settings.echoCancellation}. Note: This is a known Chromium limitation (crbug/40555809) where applyConstraints() cannot dynamically update audio processing filters.` 
+                    };
+                }
+                
+                logger.log("Verifying audio flow with AEC on...");
+                let flowResult2 = track.stats 
+                    ? await verifyAudioFlowStats(track, logger)
+                    : await verifyAudioFlow(stream, logger);
+                if (!flowResult2.flowing) {
+                    return { pass: false, details: `Audio flow failed after turning AEC back on: ${flowResult2.reason}` };
+                }
+                
+                return { pass: true, details: "Successfully toggled echoCancellation dynamically." };
+            }, logger);
         }
     }
 ];
