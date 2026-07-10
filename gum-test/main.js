@@ -1135,7 +1135,7 @@ function generateMarkdownReport(report) {
         md += `#### ${idx + 1}. ${r.testName}\n`;
         md += `* **Status:** \`${statusText}\` (${r.duration}ms)\n`;
         if (r.details) {
-            const cleanDetails = r.details.replace(/<a [^>]*>([^<]*)<\/a>/gi, "$1");
+            const cleanDetails = r.details.replace(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, "[$2]($1)");
             md += `* **Details:** ${cleanDetails}\n`;
         }
         
