@@ -436,7 +436,7 @@ async function enumerateAudioDevices() {
         addDeviceCheckbox('System Default', null, defaultChecked);
         
         audioInputs.forEach(device => {
-            if (device.deviceId === 'default') return; // Skip duplicate default
+            if (!device.deviceId || device.deviceId === 'default') return; // Skip empty and duplicate default
             
             const label = device.label || `Device (${truncateId(device.deviceId)})`;
             const checked = checkedIds.has(device.deviceId);
