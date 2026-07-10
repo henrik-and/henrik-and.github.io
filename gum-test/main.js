@@ -112,7 +112,7 @@ async function executeTest(constraints, verifyFn, logger) {
         
         return result;
     } catch (err) {
-        logger.log(`GUM rejected with error: ${err.name} - ${err.message}`);
+        logger.log(`GUM rejected with error: ${formatError(err)}`);
         // Run verification on the error
         return await verifyFn(null, err, logger);
     }
