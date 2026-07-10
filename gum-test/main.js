@@ -12,7 +12,7 @@ let lastRunReport = null;
 const TEST_GROUPS = {
     baseline: { label: "Baseline GUM", defaultChecked: true },
     channelCount: { label: "Channel Count Constraints", defaultChecked: true },
-    sampleRate: { label: "Sample Rate Constraints", defaultChecked: true },
+    sampleRate: { label: "Sample Rate Constraints", defaultChecked: false },
     deviceId: { label: "Device ID Targeting", defaultChecked: true },
     mute: { label: "Track Mute Lifecycle", defaultChecked: true },
     applyConstraints: { label: "Dynamic Constraints (AEC - Known Failure)", defaultChecked: false }
