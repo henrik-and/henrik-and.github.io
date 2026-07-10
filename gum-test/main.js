@@ -118,10 +118,36 @@ function createGUMAudioTest(name, audioConstraints) {
                     if (typeof audioConstraints === 'object') {
                         for (const key of Object.keys(audioConstraints)) {
                             if (key === 'deviceId') continue;
-                            const expected = audioConstraints[key];
+                            const constraint = audioConstraints[key];
                             const actual = settings[key];
-                            if (actual !== expected) {
-                                return { pass: false, details: `Constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                            
+                            let expected = constraint;
+                            let isExact = false;
+                            let isIdeal = false;
+                            
+                            if (constraint && typeof constraint === 'object') {
+                                if ('exact' in constraint) {
+                                    expected = constraint.exact;
+                                    isExact = true;
+                                } else if ('ideal' in constraint) {
+                                    expected = constraint.ideal;
+                                    isIdeal = true;
+                                }
+                            }
+                            
+                            if (isExact) {
+                                if (actual !== expected) {
+                                    return { pass: false, details: `Exact constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                                }
+                            } else if (isIdeal) {
+                                if (actual !== expected) {
+                                    logger.log(`Warning: Ideal constraint ${key} not met. Requested: ${expected}, Got: ${actual}`);
+                                }
+                            } else {
+                                // Flat value
+                                if (actual !== expected) {
+                                    return { pass: false, details: `Constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                                }
                             }
                         }
                     }
@@ -157,6 +183,10 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: true}) - Default Microphone", true),
     createGUMAudioTest("getUserMedia({audio: {echoCancellation: true}})", { echoCancellation: true }),
     createGUMAudioTest("getUserMedia({audio: {echoCancellation: false}})", { echoCancellation: false }),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: {exact: 'all'}}})", { echoCancellation: { exact: 'all' } }),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: {exact: 'remote-only'}}})", { echoCancellation: { exact: 'remote-only' } }),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: {ideal: 'all'}}})", { echoCancellation: { ideal: 'all' } }),
+    createGUMAudioTest("getUserMedia({audio: {echoCancellation: {ideal: 'remote-only'}}})", { echoCancellation: { ideal: 'remote-only' } }),
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger, deviceId) => {
