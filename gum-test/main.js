@@ -95,7 +95,7 @@ function createGUMAudioTest(name, audioConstraints) {
     return {
         name: name,
         run: async (logger, deviceId) => {
-            const constraints = mergeDeviceConstraint({ audio: audioConstraints, video: false }, deviceId);
+            const constraints = mergeDeviceConstraint({ audio: audioConstraints }, deviceId);
             return executeTest(
                 constraints,
                 async (stream, error, logger) => {
