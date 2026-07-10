@@ -19,6 +19,18 @@ function truncateId(id) {
     return `${id.slice(0, 4)}...${id.slice(-4)}`;
 }
 
+function formatDetails(detailsText) {
+    if (!detailsText) return "None";
+    const escaped = detailsText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+        
+    return escaped.replace(/crbug\/(\d+)/g, '<a href="https://issues.chromium.org/issues/$1" target="_blank">crbug/$1</a>');
+}
+
 function stringifyConstraints(constraints) {
     const copy = JSON.parse(JSON.stringify(constraints));
     if (copy.audio && copy.audio.deviceId) {
@@ -709,7 +721,7 @@ async function runAllTests() {
             summaryTextEl.style.color = result.pass ? '#155724' : '#721c24';
             summaryTextEl.style.fontWeight = 'bold';
             
-            summaryDetailsEl.textContent = result.details || 'None';
+            summaryDetailsEl.innerHTML = formatDetails(result.details);
             summaryEl.style.display = 'block';
             
             if (!result.pass) {
