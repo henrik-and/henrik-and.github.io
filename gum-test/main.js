@@ -330,6 +330,54 @@ const tests = [
         }
     },
     {
+        name: "Verify track.enabled software mute toggling",
+        run: async (logger, deviceId) => {
+            const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
+            return executeTest(constraints, async (stream, error, logger) => {
+                if (error) return { pass: false, details: `GUM failed: ${error.name}` };
+                
+                const track = stream.getAudioTracks()[0];
+                
+                // 1. Verify audio flows initially
+                logger.log("Verifying initial audio flow...");
+                let flowResult1 = track.stats 
+                    ? await verifyAudioFlowStats(track, logger)
+                    : await verifyAudioFlow(stream, logger);
+                if (!flowResult1.flowing) {
+                    return { pass: false, details: `Initial audio flow failed: ${flowResult1.reason}` };
+                }
+                
+                // 2. Disable track (mute)
+                logger.log("Disabling track (enabled = false)...");
+                track.enabled = false;
+                
+                // Verify output is silent.
+                // We must use Web Audio Analyser here because stats (deliveredFrames) may still increase.
+                logger.log("Verifying audio is silenced (using Web Audio)...");
+                let muteFlowResult = await verifyAudioFlow(stream, logger);
+                if (muteFlowResult.flowing) {
+                    return { pass: false, details: "Mute failed: Audio energy was still detected after disabling the track." };
+                }
+                logger.log("Audio is successfully silenced.");
+                
+                // 3. Re-enable track (unmute)
+                logger.log("Re-enabling track (enabled = true)...");
+                track.enabled = true;
+                
+                // Verify audio flows again
+                logger.log("Verifying audio flow resumes...");
+                let flowResult3 = track.stats 
+                    ? await verifyAudioFlowStats(track, logger)
+                    : await verifyAudioFlow(stream, logger);
+                if (!flowResult3.flowing) {
+                    return { pass: false, details: `Audio flow failed to resume: ${flowResult3.reason}` };
+                }
+                
+                return { pass: true, details: "Successfully verified software mute (enabled = false/true) lifecycle." };
+            }, logger);
+        }
+    },
+    {
         name: "Verify dynamic applyConstraints() toggling echoCancellation",
         run: async (logger, deviceId) => {
             if (!testApplyConstraintsCb.checked) {
