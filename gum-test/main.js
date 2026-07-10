@@ -660,8 +660,9 @@ function renderGroupCheckboxes() {
         input.checked = group.defaultChecked;
         input.style.marginRight = "5px";
         
+        const count = tests.filter(t => (t.group || "baseline") === key).length;
         label.appendChild(input);
-        label.appendChild(document.createTextNode(group.label));
+        label.appendChild(document.createTextNode(`${group.label} (${count})`));
         groupCheckboxesContainer.appendChild(label);
     });
 }
