@@ -645,11 +645,11 @@ async function populateSystemInfo() {
     
     infoDiv.innerHTML = `
         <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
-        <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (GUM will fail)</span>'}<br>
+        <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (getUserMedia will fail)</span>'}<br>
         <strong>Microphone Permission:</strong> <span style="color: ${permissionColor}; font-weight:bold;">${permissionStatus}</span><br>
         <strong>Origin:</strong> ${protocol}//${host}<br>
         <strong>APIs Supported:</strong> 
-        GUM: ${gumSupported ? '✅' : '❌'}, 
+        getUserMedia: ${gumSupported ? '✅' : '❌'}, 
         Web Audio: ${audioContextSupported ? '✅' : '❌'}, 
         Track Stats API: ${statsSupported ? '✅' : '❌ (fallback to Web Audio)'}<br>
         <details style="margin-top: 5px; cursor: pointer;">
