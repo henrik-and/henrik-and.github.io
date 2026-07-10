@@ -215,11 +215,13 @@ function createGUMAudioTest(name, audioConstraints, group = "baseline") {
                         return { pass: true, details: `Audio flowing. Checked constraints: ${JSON.stringify(audioConstraints)}` };
                     } else {
                         if (flowResult.reason === 'ended') {
-                            return { pass: false, details: "Track ended prematurely (native layer failure shortly after GUM start)." };
+                            return { pass: false, details: "Track ended prematurely (native layer failure shortly after GUM start).", errorReason: 'ended' };
+                        } else if (flowResult.reason === 'system-muted') {
+                            return { pass: false, details: "System microphone is likely MUTED in OS or hardware settings (frames are flowing, but audio data is all zeros).", errorReason: 'system-muted' };
                         } else if (flowResult.reason === 'timeout') {
-                            return { pass: false, details: "Audio track is live but no frames detected (silent/no data flow)." };
+                            return { pass: false, details: "Audio track is live but no frames detected (silent/no data flow).", errorReason: 'timeout' };
                         } else {
-                            return { pass: false, details: `Flow verification failed: ${flowResult.reason}` };
+                            return { pass: false, details: `Flow verification failed: ${flowResult.reason}`, errorReason: flowResult.reason };
                         }
                     }
                 },
@@ -273,7 +275,7 @@ const tests = [
                 logger.log("Verifying audio flow at 48kHz...");
                 let flowResult = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult.flowing) {
-                    return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
+                    return { pass: false, details: `Audio flow failed: ${flowResult.reason}`, errorReason: flowResult.reason };
                 }
                 
                 return { pass: true, details: "Supported! Resolved with exact 48000 Hz." };
@@ -302,7 +304,7 @@ const tests = [
                 logger.log("Verifying audio flow at 44.1kHz...");
                 let flowResult = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult.flowing) {
-                    return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
+                    return { pass: false, details: `Audio flow failed: ${flowResult.reason}`, errorReason: flowResult.reason };
                 }
                 
                 return { pass: true, details: "Supported! Resolved with exact 44100 Hz." };
@@ -356,7 +358,7 @@ const tests = [
                         let flowResult = await verifyAudioFlowCombined(stream, devLogger);
                         
                         if (!flowResult.flowing) {
-                            return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
+                            return { pass: false, details: `Audio flow failed: ${flowResult.reason}`, errorReason: flowResult.reason };
                         }
                         
                         return { pass: true };
@@ -364,6 +366,9 @@ const tests = [
                     
                     if (!result.pass) {
                         failedDevices.push(`${device.label} (${result.details})`);
+                        if (result.errorReason === "system-muted") {
+                            return { pass: false, details: result.details, errorReason: "system-muted" };
+                        }
                     }
                 }
                 
@@ -411,7 +416,7 @@ const tests = [
                 logger.log("Verifying initial audio flow...");
                 let flowResult1 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult1.flowing) {
-                    return { pass: false, details: `Initial audio flow failed: ${flowResult1.reason}` };
+                    return { pass: false, details: `Initial audio flow failed: ${flowResult1.reason}`, errorReason: flowResult1.reason };
                 }
                 
                 // 2. Disable track (mute)
@@ -435,7 +440,7 @@ const tests = [
                 logger.log("Verifying audio flow resumes...");
                 let flowResult3 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult3.flowing) {
-                    return { pass: false, details: `Audio flow failed to resume: ${flowResult3.reason}` };
+                    return { pass: false, details: `Audio flow failed to resume: ${flowResult3.reason}`, errorReason: flowResult3.reason };
                 }
                 
                 return { pass: true, details: "Successfully verified software mute (enabled = false/true) lifecycle." };
@@ -475,7 +480,7 @@ const tests = [
                 logger.log("Verifying audio flow with AEC off...");
                 let flowResult1 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult1.flowing) {
-                    return { pass: false, details: `Audio flow failed after turning AEC off: ${flowResult1.reason}` };
+                    return { pass: false, details: `Audio flow failed after turning AEC off: ${flowResult1.reason}`, errorReason: flowResult1.reason };
                 }
                 
                 // Step 2: Apply echoCancellation: true
@@ -501,7 +506,7 @@ const tests = [
                 logger.log("Verifying audio flow with AEC on...");
                 let flowResult2 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult2.flowing) {
-                    return { pass: false, details: `Audio flow failed after turning AEC back on: ${flowResult2.reason}` };
+                    return { pass: false, details: `Audio flow failed after turning AEC back on: ${flowResult2.reason}`, errorReason: flowResult2.reason };
                 }
                 
                 return { pass: true, details: "Successfully toggled echoCancellation dynamically." };
@@ -529,6 +534,11 @@ async function verifyAudioFlowCombined(stream, logger) {
         : Promise.resolve({ flowing: true, reason: "stats-not-supported" });
         
     const [webAudioResult, statsResult] = await Promise.all([webAudioPromise, statsPromise]);
+    
+    if (!webAudioResult.flowing && statsResult.flowing) {
+        logger.log("Combined check failed: Web Audio detected silence, but track stats detected flowing frames. The system microphone is likely MUTED.");
+        return { flowing: false, reason: "system-muted" };
+    }
     
     if (!webAudioResult.flowing) {
         logger.log(`Combined check failed: Web Audio silent/timeout (${webAudioResult.reason})`);
@@ -864,7 +874,9 @@ async function runAllTests() {
     progressBar.style.width = "0%";
     progressContainer.style.display = "block";
     
+    let abortDueToMute = false;
     for (const device of selectedDevices) {
+        if (abortDueToMute) break;
         const deviceSection = document.createElement('div');
         deviceSection.className = 'device-group-section';
         deviceSection.style.marginTop = '20px';
@@ -980,9 +992,29 @@ async function runAllTests() {
                 bugBtn.href = bugUrl;
                 bugContainer.style.display = "block";
             }
+            if (!result.pass && result.errorReason === "system-muted") {
+                abortDueToMute = true;
+                break;
+            }
         }
+        if (abortDueToMute) break;
     }
     
+    if (abortDueToMute) {
+        const alertBanner = document.createElement("div");
+        alertBanner.id = "system-muted-alert-banner";
+        alertBanner.style.background = "#f8d7da";
+        alertBanner.style.color = "#721c24";
+        alertBanner.style.border = "1px solid #f5c6cb";
+        alertBanner.style.padding = "15px";
+        alertBanner.style.marginBottom = "20px";
+        alertBanner.style.borderRadius = "5px";
+        alertBanner.style.fontWeight = "bold";
+        alertBanner.style.fontSize = "1.1em";
+        alertBanner.innerHTML = '⚠️ TEST RUN ABORTED: Your system microphone is likely MUTED. Please unmute your microphone in OS settings or hardware, and click "Run Tests" again.';
+        resultsContainer.insertBefore(alertBanner, resultsContainer.firstChild);
+    }
+
     // Hide progress bar and show download button
     progressContainer.style.display = "none";
     downloadReportBtn.style.display = "inline-block";
