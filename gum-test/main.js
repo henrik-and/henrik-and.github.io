@@ -126,18 +126,26 @@ function createGUMAudioTest(name, audioConstraints) {
                         }
                     }
                     
-                    let audioFlowing = false;
+                    let flowResult = null;
                     if (track.stats) {
                         logger.log("Verifying audio flow via stats...");
-                        audioFlowing = await verifyAudioFlowStats(track, logger);
+                        flowResult = await verifyAudioFlowStats(track, logger);
                     } else {
                         logger.log("Verifying audio flow via Web Audio Analyser...");
-                        audioFlowing = await verifyAudioFlow(stream, logger);
+                        flowResult = await verifyAudioFlow(stream, logger);
                     }
                     
-                    return audioFlowing 
-                        ? { pass: true, details: `Audio flowing. Checked constraints: ${JSON.stringify(audioConstraints)}` }
-                        : { pass: false, details: "Audio track is live but no frames detected (silent)." };
+                    if (flowResult.flowing) {
+                        return { pass: true, details: `Audio flowing. Checked constraints: ${JSON.stringify(audioConstraints)}` };
+                    } else {
+                        if (flowResult.reason === 'ended') {
+                            return { pass: false, details: "Track ended prematurely (native layer failure shortly after GUM start)." };
+                        } else if (flowResult.reason === 'timeout') {
+                            return { pass: false, details: "Audio track is live but no frames detected (silent/no data flow)." };
+                        } else {
+                            return { pass: false, details: `Flow verification failed: ${flowResult.reason}` };
+                        }
+                    }
                 },
                 logger
             );
@@ -175,7 +183,7 @@ async function verifyAudioFlowStats(track, logger) {
             let stats = track.stats;
             if (!stats) {
                 logger.log("track.stats returned null/undefined");
-                resolve(false);
+                resolve({ flowing: false, reason: 'no-stats' });
                 return;
             }
             
@@ -184,13 +192,33 @@ async function verifyAudioFlowStats(track, logger) {
             
             let startTime = performance.now();
             let checkCount = 0;
+            let ended = false;
+            
+            track.onended = () => {
+                logger.log("Event: 'ended' triggered on track.");
+                ended = true;
+            };
+            track.onmute = () => {
+                logger.log("Event: 'mute' triggered on track. Track is now muted.");
+            };
+            track.onunmute = () => {
+                logger.log("Event: 'unmute' triggered on track. Track is now unmuted.");
+            };
             
             function check() {
+                if (ended || track.readyState === 'ended') {
+                    logger.log("Track ended detected during stats check loop.");
+                    cleanup();
+                    resolve({ flowing: false, reason: 'ended' });
+                    return;
+                }
+                
                 checkCount++;
                 const currentStats = track.stats;
                 if (!currentStats) {
                     logger.log("Failed to get current track.stats");
-                    resolve(false);
+                    cleanup();
+                    resolve({ flowing: false, reason: 'no-stats' });
                     return;
                 }
                 
@@ -199,24 +227,33 @@ async function verifyAudioFlowStats(track, logger) {
                 
                 if (currentFrames > initialFrames) {
                     logger.log(`Frames delivery verified: ${currentFrames - initialFrames} new frames detected.`);
-                    resolve(true);
+                    cleanup();
+                    resolve({ flowing: true, reason: 'flowing' });
                 } else if (performance.now() - startTime > 3000) { // 3 seconds timeout
                     logger.log("Timeout waiting for delivered frames to increase.");
-                    resolve(false);
+                    cleanup();
+                    resolve({ flowing: false, reason: 'timeout' });
                 } else {
                     setTimeout(check, 200); // Check every 200ms
                 }
             }
             
+            function cleanup() {
+                track.onended = null;
+                track.onmute = null;
+                track.onunmute = null;
+            }
+            
             setTimeout(check, 200);
         } catch (e) {
             logger.log(`Error in verifyAudioFlowStats: ${e.message}`);
-            resolve(false);
+            resolve({ flowing: false, reason: 'error', error: e.message });
         }
     });
 }
 
 async function verifyAudioFlow(stream, logger) {
+    const track = stream.getAudioTracks()[0];
     return new Promise((resolve) => {
         try {
             const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -233,7 +270,7 @@ async function verifyAudioFlow(stream, logger) {
             const dataArray = new Uint8Array(bufferLength);
             
             let startTime = performance.now();
-            let hasData = false;
+            let ended = false;
             
             if (audioContext.state === 'suspended') {
                 logger.log("AudioContext is suspended, attempting to resume...");
@@ -244,24 +281,48 @@ async function verifyAudioFlow(stream, logger) {
                 });
             }
             
+            if (track) {
+                track.onended = () => {
+                    logger.log("Event: 'ended' triggered on track.");
+                    ended = true;
+                };
+                track.onmute = () => {
+                    logger.log("Event: 'mute' triggered on track. Track is now muted.");
+                };
+                track.onunmute = () => {
+                    logger.log("Event: 'unmute' triggered on track. Track is now unmuted.");
+                };
+            }
+            
             function check() {
+                if (ended || (track && track.readyState === 'ended')) {
+                    logger.log("Track ended detected during Web Audio check loop.");
+                    cleanup();
+                    resolve({ flowing: false, reason: 'ended' });
+                    return;
+                }
+                
                 analyser.getByteFrequencyData(dataArray);
                 const sum = dataArray.reduce((a, b) => a + b, 0);
                 if (sum > 0) {
-                    hasData = true;
                     logger.log(`Audio energy detected: ${sum}`);
                     cleanup();
-                    resolve(true);
+                    resolve({ flowing: true, reason: 'flowing' });
                 } else if (performance.now() - startTime > 3000) { // 3 seconds timeout
                     logger.log("Timeout waiting for audio energy. Data was all zeros.");
                     cleanup();
-                    resolve(false);
+                    resolve({ flowing: false, reason: 'timeout' });
                 } else {
                     requestAnimationFrame(check);
                 }
             }
             
             function cleanup() {
+                if (track) {
+                    track.onended = null;
+                    track.onmute = null;
+                    track.onunmute = null;
+                }
                 source.disconnect();
                 analyser.disconnect();
                 audioContext.close();
@@ -270,7 +331,7 @@ async function verifyAudioFlow(stream, logger) {
             requestAnimationFrame(check);
         } catch (e) {
             logger.log(`Failed to setup Web Audio verification: ${e.message}`);
-            resolve(false);
+            resolve({ flowing: false, reason: 'error', error: e.message });
         }
     });
 }
