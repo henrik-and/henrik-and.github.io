@@ -227,6 +227,78 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }),
     createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }),
     {
+        name: "Target all individual devices via deviceId exact constraints",
+        run: async (logger, currentDeviceId) => {
+            const selected = getSelectedDevices();
+            if (selected.length > 0 && selected[0].id !== currentDeviceId) {
+                logger.log("Skipping to avoid duplicate run (already ran on the first device).");
+                return { pass: true, details: "Skipped (ran on first device)." };
+            }
+            
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default");
+                
+                if (audioInputs.length === 0) {
+                    return { pass: true, details: "No specific devices available to target." };
+                }
+                
+                logger.log(`Found ${audioInputs.length} specific devices to verify.`);
+                let failedDevices = [];
+                
+                for (const device of audioInputs) {
+                    logger.log(`\n--- Testing target: ${device.label} [${truncateId(device.deviceId)}] ---`);
+                    
+                    const constraints = {
+                        audio: { deviceId: { exact: device.deviceId } }
+                    };
+                    
+                    const result = await executeTest(constraints, async (stream, error, devLogger) => {
+                        if (error) {
+                            return { pass: false, details: `GUM failed: ${error.name}` };
+                        }
+                        
+                        const track = stream.getAudioTracks()[0];
+                        const settings = track.getSettings();
+                        
+                        devLogger.log(`Target device resolved. Label: ${track.label}`);
+                        
+                        if (settings.deviceId !== device.deviceId) {
+                            return { pass: false, details: `Device ID mismatch. Expected: ${device.deviceId}, Got: ${settings.deviceId}` };
+                        }
+                        
+                        devLogger.log("Verifying audio flow (short check)...");
+                        let flowResult;
+                        if (track.stats) {
+                            flowResult = await verifyAudioFlowStats(track, devLogger);
+                        } else {
+                            flowResult = await verifyAudioFlow(stream, devLogger);
+                        }
+                        
+                        if (!flowResult.flowing) {
+                            return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
+                        }
+                        
+                        return { pass: true };
+                    }, logger);
+                    
+                    if (!result.pass) {
+                        failedDevices.push(`${device.label} (${result.details})`);
+                    }
+                }
+                
+                if (failedDevices.length > 0) {
+                    return { pass: false, details: `Failed targeting: ${failedDevices.join(", ")}` };
+                }
+                
+                return { pass: true, details: `Successfully targeted all ${audioInputs.length} devices.` };
+                
+            } catch (err) {
+                return { pass: false, details: `Error: ${err.message}` };
+            }
+        }
+    },
+    {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
         run: async (logger, deviceId) => {
             const constraints = mergeDeviceConstraint({ audio: false }, deviceId);
