@@ -163,6 +163,19 @@ function createGUMAudioTest(name, audioConstraints) {
                                 }
                             }
                         }
+                    } else if (audioConstraints === true) {
+                        const typicalDefaults = {
+                            echoCancellation: true,
+                            autoGainControl: true,
+                            noiseSuppression: true
+                        };
+                        for (const key of Object.keys(typicalDefaults)) {
+                            const expected = typicalDefaults[key];
+                            const actual = settings[key];
+                            if (actual !== expected) {
+                                logger.log(`Note: Default ${key} is ${actual} (typical Chrome default is ${expected})`);
+                            }
+                        }
                     }
                     
                     let flowResult = null;
