@@ -587,7 +587,7 @@ async function runAllTests() {
                              `#### Failure Details\n\`\`\`\n${result.details || "None"}\n\`\`\`\n\n` +
                              `#### Test Execution Logs\n\`\`\`\n${logStr}\n\`\`\``;
                 
-                const bugUrl = `https://g-issues.chromium.org/issues/new?component=1457016&template=1922563&title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}`;
+                const bugUrl = `https://g-issues.chromium.org/issues/new?component=1457016&template=1922563&format=MARKDOWN&title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}`;
                 bugBtn.href = bugUrl;
                 bugContainer.style.display = "block";
             }
