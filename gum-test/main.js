@@ -5,6 +5,8 @@ const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
 const verboseLogsCb = document.getElementById('verbose-logs-cb');
 const testApplyConstraintsCb = document.getElementById('test-apply-constraints-cb');
 const downloadReportBtn = document.getElementById('download-report-btn');
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
 let lastRunReport = null;
 
 function formatError(error) {
@@ -735,6 +737,12 @@ async function runAllTests() {
         const permStatus = await navigator.permissions.query({ name: "microphone" });
         lastRunReport.env.microphonePermission = permStatus.state;
     } catch (e) {}
+    
+    const totalTests = selectedDevices.length * tests.length;
+    let completedTests = 0;
+    progressBar.style.width = "0%";
+    progressContainer.style.display = "block";
+    
     for (const device of selectedDevices) {
         const deviceSection = document.createElement('div');
         deviceSection.className = 'device-group-section';
@@ -822,6 +830,10 @@ async function runAllTests() {
                 logs: [...logger.logs]
             });
             
+            completedTests++;
+            const progressPct = Math.round((completedTests / totalTests) * 100);
+            progressBar.style.width = `${progressPct}%`;
+            
             if (!result.pass) {
                 const bugContainer = testEl.querySelector(".bug-report-container");
                 const bugBtn = testEl.querySelector(".bug-report-btn");
@@ -850,7 +862,8 @@ async function runAllTests() {
         }
     }
     
-    // Show download button
+    // Hide progress bar and show download button
+    progressContainer.style.display = "none";
     downloadReportBtn.style.display = "inline-block";
     
     runBtn.disabled = false;
