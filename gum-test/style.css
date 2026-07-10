@@ -28,6 +28,7 @@ body {
 .status-running { background-color: #bee5eb; color: #0c5460; }
 .status-pass { background-color: #d4edda; color: #155724; }
 .status-fail { background-color: #f8d7da; color: #721c24; }
+.status-skip { background-color: #fff3cd; color: #856404; }
 
 .test-logs {
     margin-top: 10px;
@@ -58,6 +59,11 @@ body {
 .test-item:has(.status-fail) .test-result-summary {
     border-left-color: #dc3545;
     background-color: #fdf5f6;
+}
+
+.test-item:has(.status-skip) .test-result-summary {
+    border-left-color: #ffc107;
+    background-color: #fffbeb;
 }
 
 #system-info-container {

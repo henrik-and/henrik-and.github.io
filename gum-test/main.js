@@ -334,7 +334,7 @@ const tests = [
         run: async (logger, deviceId) => {
             if (!testApplyConstraintsCb.checked) {
                 logger.log("Skipped: Dynamic applyConstraints testing is disabled by option checkbox.");
-                return { pass: true, details: "Skipped (disabled by option checkbox)." };
+                return { pass: true, details: "Skipped (disabled by option checkbox).", skipped: true };
             }
             const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
@@ -714,17 +714,31 @@ async function runAllTests() {
             const result = await test.run(logger, device.id);
             const duration = Math.round(performance.now() - startTime);
             
-            statusEl.className = result.pass ? 'test-status status-pass' : 'test-status status-fail';
-            statusEl.textContent = `${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`;
+            let statusText = "PASS";
+            let statusClass = "status-pass";
+            let statusColor = "#155724";
+            
+            if (result.skipped) {
+                statusText = "SKIPPED";
+                statusClass = "status-skip";
+                statusColor = "#856404";
+            } else if (!result.pass) {
+                statusText = "FAIL";
+                statusClass = "status-fail";
+                statusColor = "#721c24";
+            }
+            
+            statusEl.className = `test-status ${statusClass}`;
+            statusEl.textContent = `${statusText} (${duration}ms)`;
             
             // Show summary
-            const summaryEl = testEl.querySelector('.test-result-summary');
-            const summaryTextEl = testEl.querySelector('.summary-text');
-            const summaryDetailsEl = testEl.querySelector('.summary-details');
+            const summaryEl = testEl.querySelector(".test-result-summary");
+            const summaryTextEl = testEl.querySelector(".summary-text");
+            const summaryDetailsEl = testEl.querySelector(".summary-details");
             
-            summaryTextEl.textContent = `${result.pass ? 'PASS' : 'FAIL'} (${duration}ms)`;
-            summaryTextEl.style.color = result.pass ? '#155724' : '#721c24';
-            summaryTextEl.style.fontWeight = 'bold';
+            summaryTextEl.textContent = `${statusText} (${duration}ms)`;
+            summaryTextEl.style.color = statusColor;
+            summaryTextEl.style.fontWeight = "bold";
             
             summaryDetailsEl.innerHTML = formatDetails(result.details);
             summaryEl.style.display = 'block';
