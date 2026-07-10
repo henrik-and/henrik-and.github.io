@@ -3,11 +3,19 @@ const runBtn = document.getElementById('run-tests-btn');
 const deviceCheckboxesContainer = document.getElementById('device-checkboxes');
 const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
 const verboseLogsCb = document.getElementById('verbose-logs-cb');
-const testApplyConstraintsCb = document.getElementById('test-apply-constraints-cb');
+const groupCheckboxesContainer = document.getElementById('group-checkboxes');
 const downloadReportBtn = document.getElementById('download-report-btn');
 const progressContainer = document.getElementById('progress-container');
 const progressBar = document.getElementById('progress-bar');
 let lastRunReport = null;
+
+const TEST_GROUPS = {
+    baseline: { label: "Baseline GUM", defaultChecked: true },
+    channelCount: { label: "Channel Count Constraints", defaultChecked: true },
+    deviceId: { label: "Device ID Targeting", defaultChecked: true },
+    mute: { label: "Track Mute Lifecycle", defaultChecked: true },
+    applyConstraints: { label: "Dynamic Constraints (AEC - Known Failure)", defaultChecked: false }
+};
 
 function formatError(error) {
     if (!error) return "Unknown error";
@@ -113,9 +121,10 @@ async function executeTest(constraints, verifyFn, logger) {
  * Factory to generate standard GUM audio tests.
  * Performs stream setup, logs settings, checks constraints, and verifies data flow.
  */
-function createGUMAudioTest(name, audioConstraints) {
+function createGUMAudioTest(name, audioConstraints, group = "baseline") {
     return {
         name: name,
+        group: group,
         run: async (logger, deviceId) => {
             const constraints = mergeDeviceConstraint({ audio: audioConstraints }, deviceId);
             return executeTest(
@@ -238,13 +247,14 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: false}})", { noiseSuppression: false }),
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: true}}})", { noiseSuppression: { exact: true } }),
     createGUMAudioTest("getUserMedia({audio: {noiseSuppression: {exact: false}}})", { noiseSuppression: { exact: false } }),
-    createGUMAudioTest("getUserMedia({audio: {channelCount: 1}})", { channelCount: 1 }),
-    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 1}}})", { channelCount: { exact: 1 } }),
-    createGUMAudioTest("getUserMedia({audio: {channelCount: 2}})", { channelCount: 2 }),
-    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }),
-    createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: 1}})", { channelCount: 1 }, "channelCount"),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 1}}})", { channelCount: { exact: 1 } }, "channelCount"),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: 2}})", { channelCount: 2 }, "channelCount"),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }, "channelCount"),
+    createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }, "channelCount"),
     {
         name: "Target all individual devices via deviceId exact constraints",
+        group: "deviceId",
         run: async (logger, currentDeviceId) => {
             const selected = getSelectedDevices();
             if (selected.length > 0 && selected[0].id !== currentDeviceId) {
@@ -317,6 +327,7 @@ const tests = [
     },
     {
         name: "getUserMedia({audio: false}) - Audio False (Should Reject)",
+        group: "baseline",
         run: async (logger, deviceId) => {
             const constraints = mergeDeviceConstraint({ audio: false }, deviceId);
             return executeTest(
@@ -335,6 +346,7 @@ const tests = [
     },
     {
         name: "Verify track.enabled software mute toggling",
+        group: "mute",
         run: async (logger, deviceId) => {
             const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
@@ -383,11 +395,8 @@ const tests = [
     },
     {
         name: "Verify dynamic applyConstraints() toggling echoCancellation",
+        group: "applyConstraints",
         run: async (logger, deviceId) => {
-            if (!testApplyConstraintsCb.checked) {
-                logger.log("Skipped: Dynamic applyConstraints testing is disabled by option checkbox.");
-                return { pass: true, details: "Skipped (disabled by option checkbox).", skipped: true };
-            }
             const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
                 if (error) return { pass: false, details: `GUM failed: ${error.name}` };
@@ -635,6 +644,28 @@ class TestLogger {
     }
 }
 
+function renderGroupCheckboxes() {
+    groupCheckboxesContainer.innerHTML = "";
+    Object.keys(TEST_GROUPS).forEach(key => {
+        const group = TEST_GROUPS[key];
+        
+        const label = document.createElement("label");
+        label.style.fontWeight = "bold";
+        label.style.cursor = "pointer";
+        label.style.marginRight = "15px";
+        
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.id = `group-cb-${key}`;
+        input.checked = group.defaultChecked;
+        input.style.marginRight = "5px";
+        
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(group.label));
+        groupCheckboxesContainer.appendChild(label);
+    });
+}
+
 /**
  * Queries available audio input devices and renders them as checkboxes.
  * Preserves selected state on refresh.
@@ -738,7 +769,19 @@ async function runAllTests() {
         lastRunReport.env.microphonePermission = permStatus.state;
     } catch (e) {}
     
-    const totalTests = selectedDevices.length * tests.length;
+    const activeTests = tests.filter(test => {
+        const groupKey = test.group || "baseline";
+        const cb = document.getElementById(`group-cb-${groupKey}`);
+        return cb ? cb.checked : true;
+    });
+    
+    if (activeTests.length === 0) {
+        resultsContainer.innerHTML = '<p class="error" style="color: red; font-weight: bold;">Please select at least one test group to run.</p>';
+        runBtn.disabled = false;
+        return;
+    }
+    
+    const totalTests = selectedDevices.length * activeTests.length;
     let completedTests = 0;
     progressBar.style.width = "0%";
     progressContainer.style.display = "block";
@@ -759,7 +802,7 @@ async function runAllTests() {
         deviceSection.appendChild(deviceResultsContainer);
         resultsContainer.appendChild(deviceSection);
         
-        for (const test of tests) {
+        for (const test of activeTests) {
             const testEl = document.createElement('div');
             testEl.className = 'test-item';
             testEl.innerHTML = `
@@ -961,6 +1004,7 @@ async function populateSystemInfo() {
 }
 
 // Initialize
+renderGroupCheckboxes();
 populateSystemInfo();
 updateVerboseLogsVisibility();
 verboseLogsCb.addEventListener('change', updateVerboseLogsVisibility);

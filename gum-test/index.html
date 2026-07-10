@@ -22,12 +22,16 @@
         <button id="refresh-devices-btn">Refresh Devices</button>
     </div>
 
+    <div id="test-groups-container" style="margin-bottom: 20px; user-select: none;">
+        <h3 style="margin-bottom: 5px;">Select Test Groups to Run:</h3>
+        <div id="group-checkboxes" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 5px;">
+            Loading test groups...
+        </div>
+    </div>
+
     <div id="options-container" style="margin-bottom: 15px; user-select: none;">
         <input type="checkbox" id="verbose-logs-cb" checked>
         <label for="verbose-logs-cb" style="font-weight: bold; cursor: pointer; margin-right: 15px;">Show detailed logs</label>
-        
-        <input type="checkbox" id="test-apply-constraints-cb">
-        <label for="test-apply-constraints-cb" style="font-weight: bold; cursor: pointer;">Test dynamic applyConstraints() (known failure)</label>
     </div>
 
     <div style="margin-bottom: 20px; display: flex; align-items: center;">
