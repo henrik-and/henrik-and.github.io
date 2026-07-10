@@ -255,6 +255,7 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }, "channelCount"),
     createGUMAudioTest("getUserMedia({audio: {sampleRate: 48000}})", { sampleRate: 48000 }, "sampleRate"),
     createGUMAudioTest("getUserMedia({audio: {sampleRate: {exact: 48000}}})", { sampleRate: { exact: 48000 } }, "sampleRate"),
+    createGUMAudioTest("getUserMedia({audio: {sampleRate: {exact: 44100}}})", { sampleRate: { exact: 44100 } }, "sampleRate"),
     createGUMAudioTest("getUserMedia({audio: {sampleRate: {ideal: 44100}}})", { sampleRate: { ideal: 44100 } }, "sampleRate"),
     {
         name: "Target all individual devices via deviceId exact constraints",
