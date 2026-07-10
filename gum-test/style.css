@@ -60,6 +60,26 @@ body {
     background-color: #fdf5f6;
 }
 
+#system-info-container {
+    background: #e9ecef;
+    padding: 15px;
+    border: 1px solid #ccc;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+#system-info-container h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 1.1em;
+}
+
+#system-info-details {
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
 #device-selection-container {
     background: white;
     padding: 15px;

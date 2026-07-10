@@ -579,7 +579,67 @@ function updateVerboseLogsVisibility() {
     }
 }
 
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let tem;
+    let M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+    if (/trident/i.test(M[1])) {
+        tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
+        return { name: 'IE', version: (tem[1] || '') };
+    }
+    if (M[1] === 'Chrome') {
+        tem = ua.match(/\b(OPR|Edg)\/(\d+)/);
+        if (tem != null) return { name: tem[1].replace('OPR', 'Opera'), version: tem[2] };
+    }
+    M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
+    if ((tem = ua.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
+    return {
+        name: M[0],
+        version: M[1]
+    };
+}
+
+function getOSInfo() {
+    const ua = navigator.userAgent;
+    if (ua.indexOf("Win") !== -1) return "Windows";
+    if (ua.indexOf("Mac") !== -1) return "MacOS";
+    if (ua.indexOf("Linux") !== -1) return "Linux";
+    if (ua.indexOf("Android") !== -1) return "Android";
+    if (ua.indexOf("like Mac") !== -1) return "iOS";
+    return "Unknown OS";
+}
+
+function populateSystemInfo() {
+    const infoDiv = document.getElementById('system-info-details');
+    if (!infoDiv) return;
+    
+    const browser = getBrowserInfo();
+    const os = getOSInfo();
+    const isSecure = window.isSecureContext;
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    
+    const gumSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const audioContextSupported = !!(window.AudioContext || window.webkitAudioContext);
+    const statsSupported = typeof MediaStreamTrack !== 'undefined' && ('stats' in MediaStreamTrack.prototype);
+    
+    infoDiv.innerHTML = `
+        <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
+        <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (GUM will fail)</span>'}<br>
+        <strong>Origin:</strong> ${protocol}//${host}<br>
+        <strong>APIs Supported:</strong> 
+        GUM: ${gumSupported ? '✅' : '❌'}, 
+        Web Audio: ${audioContextSupported ? '✅' : '❌'}, 
+        Track Stats API: ${statsSupported ? '✅' : '❌ (fallback to Web Audio)'}<br>
+        <details style="margin-top: 5px; cursor: pointer;">
+            <summary style="font-size: 0.9em; color: #666;">Raw User Agent</summary>
+            <pre style="margin: 5px 0 0 0; font-size: 0.85em; white-space: pre-wrap; background: #f1f3f5; padding: 5px; border-radius: 3px;">${navigator.userAgent}</pre>
+        </details>
+    `;
+}
+
 // Initialize
+populateSystemInfo();
 updateVerboseLogsVisibility();
 verboseLogsCb.addEventListener('change', updateVerboseLogsVisibility);
 enumerateAudioDevices();
