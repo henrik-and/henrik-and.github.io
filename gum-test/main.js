@@ -579,12 +579,13 @@ async function runAllTests() {
                 }
                 
                 const title = `[AudioCapture Test Failure] ${test.name} on ${browser.name} (${os})`;
-                const desc = `**Test Failed:** ${test.name}\n` +
-                             `**Device:** ${device.label} (ID: ${device.id || "default"})\n` +
-                             `**Browser:** ${browser.name} ${browser.version} (${os})\n` +
-                             `**User Agent:** ${navigator.userAgent}\n\n` +
-                             `**Failure Details:**\n${result.details || "None"}\n\n` +
-                             `**Test Logs:**\n\`\`\`\n${logStr}\n\`\`\``;
+                const desc = `### Test Failure Report\n\n` +
+                             `- **Test Case:** \`${test.name}\`\n` +
+                             `- **Device:** ${device.label} (ID: \`${device.id || "default"}\`)\n` +
+                             `- **Browser:** ${browser.name} ${browser.version} (${os})\n` +
+                             `- **User Agent:** \`${navigator.userAgent}\`\n\n` +
+                             `#### Failure Details\n\`\`\`\n${result.details || "None"}\n\`\`\`\n\n` +
+                             `#### Test Execution Logs\n\`\`\`\n${logStr}\n\`\`\``;
                 
                 const bugUrl = `https://g-issues.chromium.org/issues/new?component=1363614&template=1922563&title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}`;
                 bugBtn.href = bugUrl;
