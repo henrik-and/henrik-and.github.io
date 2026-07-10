@@ -532,6 +532,9 @@ async function runAllTests() {
                 <div class="test-result-summary" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
                     <strong>Result:</strong> <span class="summary-text"></span><br>
                     <strong>Details:</strong> <span class="summary-details"></span>
+                    <div class="bug-report-container" style="display: none; margin-top: 10px;">
+                        <a href="#" target="_blank" class="bug-report-btn">🐞 Report Chromium Bug</a>
+                    </div>
                 </div>
             `;
             deviceResultsContainer.appendChild(testEl);
@@ -562,6 +565,44 @@ async function runAllTests() {
             
             summaryDetailsEl.textContent = result.details || 'None';
             summaryEl.style.display = 'block';
+            
+            if (!result.pass) {
+                const bugContainer = testEl.querySelector('.bug-report-container');
+                const bugBtn = testEl.querySelector('.bug-report-btn');
+                
+                const browser = getBrowserInfo();
+                const os = getOSInfo();
+                
+                let logStr = logger.logs.join('
+');
+                if (logStr.length > 2000) {
+                    logStr = logStr.slice(0, 2000) + '
+... (logs truncated for URL limit)';
+                }
+                
+                const title = `[AudioCapture Test Failure] ${test.name} on ${browser.name} (${os})`;
+                const desc = `**Test Failed:** ${test.name}
+` +
+                             `**Device:** ${device.label} (ID: ${device.id || 'default'})
+` +
+                             `**Browser:** ${browser.name} ${browser.version} (${os})
+` +
+                             `**User Agent:** ${navigator.userAgent}
+
+` +
+                             `**Failure Details:**
+${result.details || 'None'}
+
+` +
+                             `**Test Logs:**
+\`\`\`
+${logStr}
+\`\`\``;
+                
+                const bugUrl = `https://g-issues.chromium.org/issues/new?component=1363614&template=1922563&title=${encodeURIComponent(title)}&description=${encodeURIComponent(desc)}`;
+                bugBtn.href = bugUrl;
+                bugContainer.style.display = 'block';
+            }
         }
     }
     
