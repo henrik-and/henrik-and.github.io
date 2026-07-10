@@ -3,6 +3,7 @@ const runBtn = document.getElementById('run-tests-btn');
 const deviceCheckboxesContainer = document.getElementById('device-checkboxes');
 const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
 const verboseLogsCb = document.getElementById('verbose-logs-cb');
+const testApplyConstraintsCb = document.getElementById('test-apply-constraints-cb');
 
 function formatError(error) {
     if (!error) return "Unknown error";
@@ -331,6 +332,10 @@ const tests = [
     {
         name: "Verify dynamic applyConstraints() toggling echoCancellation",
         run: async (logger, deviceId) => {
+            if (!testApplyConstraintsCb.checked) {
+                logger.log("Skipped: Dynamic applyConstraints testing is disabled by option checkbox.");
+                return { pass: true, details: "Skipped (disabled by option checkbox)." };
+            }
             const constraints = mergeDeviceConstraint({ audio: true }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
                 if (error) return { pass: false, details: `GUM failed: ${error.name}` };
