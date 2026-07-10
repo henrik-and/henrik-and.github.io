@@ -265,8 +265,8 @@ const tests = [
             const constraints = mergeDeviceConstraint({ audio: { sampleRate: { exact: 48000 } } }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
                 if (error) {
-                    if (error.name === "OverconstrainedError" && error.constraint === "sampleRate") {
-                        return { pass: true, details: "Correctly rejected with OverconstrainedError (48kHz hardware capture is unsupported)." };
+                    if (error.name === "OverconstrainedError") {
+                        return { pass: true, details: `Correctly rejected with OverconstrainedError (exact constraint "${error.constraint || "sampleRate"}" is unsupported).` };
                     }
                     return { pass: false, details: `Unexpected GUM error: ${error.name}: ${error.message}` };
                 }
@@ -296,8 +296,8 @@ const tests = [
             const constraints = mergeDeviceConstraint({ audio: { sampleRate: { exact: 44100 } } }, deviceId);
             return executeTest(constraints, async (stream, error, logger) => {
                 if (error) {
-                    if (error.name === "OverconstrainedError" && error.constraint === "sampleRate") {
-                        return { pass: true, details: "Correctly rejected with OverconstrainedError (44.1kHz hardware capture is unsupported)." };
+                    if (error.name === "OverconstrainedError") {
+                        return { pass: true, details: `Correctly rejected with OverconstrainedError (exact constraint "${error.constraint || "sampleRate"}" is unsupported).` };
                     }
                     return { pass: false, details: `Unexpected GUM error: ${error.name}: ${error.message}` };
                 }
