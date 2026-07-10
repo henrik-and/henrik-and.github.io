@@ -113,6 +113,9 @@ async function executeTest(constraints, verifyFn, logger) {
         return result;
     } catch (err) {
         logger.log(`GUM rejected with error: ${formatError(err)}`);
+        if (err.name === "NotAllowedError") {
+            return { pass: false, details: `GUM failed: ${formatError(err)}`, errorReason: "permission-denied" };
+        }
         // Run verification on the error
         return await verifyFn(null, err, logger);
     }
@@ -364,7 +367,7 @@ const tests = [
                         return { pass: true };
                     }, logger);
                     
-                    if (!result.pass && result.errorReason !== "system-muted") {
+                    if (!result.pass && result.errorReason !== "system-muted" && result.errorReason !== "permission-denied") {
                         failedDevices.push(`${device.label} (${result.details})`);
                         if (result.errorReason === "system-muted") {
                             return { pass: false, details: result.details, errorReason: "system-muted" };
@@ -874,9 +877,10 @@ async function runAllTests() {
     progressBar.style.width = "0%";
     progressContainer.style.display = "block";
     
-    let abortDueToMute = false;
+    let shouldAbort = false;
+    let abortReason = null;
     for (const device of selectedDevices) {
-        if (abortDueToMute) break;
+        if (shouldAbort) break;
         const deviceSection = document.createElement('div');
         deviceSection.className = 'device-group-section';
         deviceSection.style.marginTop = '20px';
@@ -967,7 +971,7 @@ async function runAllTests() {
             const progressPct = Math.round((completedTests / totalTests) * 100);
             progressBar.style.width = `${progressPct}%`;
             
-            if (!result.pass && result.errorReason !== "system-muted") {
+            if (!result.pass && result.errorReason !== "system-muted" && result.errorReason !== "permission-denied") {
                 const bugContainer = testEl.querySelector(".bug-report-container");
                 const bugBtn = testEl.querySelector(".bug-report-btn");
                 
@@ -992,17 +996,18 @@ async function runAllTests() {
                 bugBtn.href = bugUrl;
                 bugContainer.style.display = "block";
             }
-            if (!result.pass && result.errorReason === "system-muted") {
-                abortDueToMute = true;
+            if (!result.pass && (result.errorReason === "system-muted" || result.errorReason === "permission-denied")) {
+                shouldAbort = true;
+                abortReason = result.errorReason;
                 break;
             }
         }
-        if (abortDueToMute) break;
+        if (shouldAbort) break;
     }
     
-    if (abortDueToMute) {
+    if (shouldAbort) {
         const alertBanner = document.createElement("div");
-        alertBanner.id = "system-muted-alert-banner";
+        alertBanner.id = "abort-alert-banner";
         alertBanner.style.background = "#f8d7da";
         alertBanner.style.color = "#721c24";
         alertBanner.style.border = "1px solid #f5c6cb";
@@ -1011,7 +1016,11 @@ async function runAllTests() {
         alertBanner.style.borderRadius = "5px";
         alertBanner.style.fontWeight = "bold";
         alertBanner.style.fontSize = "1.1em";
-        alertBanner.innerHTML = '⚠️ TEST RUN ABORTED: Your system microphone is likely MUTED. Please unmute your microphone in OS settings or hardware, and click "Run Tests" again.';
+        if (abortReason === "system-muted") {
+            alertBanner.innerHTML = '⚠️ TEST RUN ABORTED: Your system microphone is likely MUTED. Please unmute your microphone in OS settings or hardware, and click "Run Tests" again.';
+        } else if (abortReason === "permission-denied") {
+            alertBanner.innerHTML = '⚠️ TEST RUN ABORTED: Microphone permission has been DENIED for this page. Please allow microphone access in your browser settings and click "Run Tests" again.';
+        }
         resultsContainer.insertBefore(alertBanner, resultsContainer.firstChild);
     }
 
