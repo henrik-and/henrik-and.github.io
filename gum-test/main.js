@@ -114,7 +114,15 @@ function createGUMAudioTest(name, audioConstraints) {
                         return { pass: false, details: `Device ID mismatch. Requested: ${deviceId}, Got: ${settings.deviceId}` };
                     }
                     
-                    // Verify constraints match settings
+                    // Verify constraints match settings.
+                    // - exact: If you use { exact: value } and the browser resolves GUM, we strictly check
+                    //   that the final setting matches. If it doesn't, the test fails (exact constraint violated).
+                    //   (If the browser doesn't support the value, GUM itself should reject with OverconstrainedError,
+                    //   failing the test at the GUM level).
+                    // - ideal: If you use { ideal: value }, the test will pass as long as GUM succeeds and audio flows.
+                    //   If the setting doesn't match the ideal value, it prints a warning in the log, but keeps the
+                    //   test as PASS (since ideal constraints are non-blocking hints).
+                    // - Flat values (like true / false): Handled strictly. If they don't match, the test fails.
                     if (typeof audioConstraints === 'object') {
                         for (const key of Object.keys(audioConstraints)) {
                             if (key === 'deviceId') continue;
