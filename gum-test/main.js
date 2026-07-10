@@ -209,14 +209,7 @@ function createGUMAudioTest(name, audioConstraints, group = "baseline") {
                         }
                     }
                     
-                    let flowResult = null;
-                    if (track.stats) {
-                        logger.log("Verifying audio flow via stats...");
-                        flowResult = await verifyAudioFlowStats(track, logger);
-                    } else {
-                        logger.log("Verifying audio flow via Web Audio Analyser...");
-                        flowResult = await verifyAudioFlow(stream, logger);
-                    }
+                    let flowResult = await verifyAudioFlowCombined(stream, logger);
                     
                     if (flowResult.flowing) {
                         return { pass: true, details: `Audio flowing. Checked constraints: ${JSON.stringify(audioConstraints)}` };
@@ -278,9 +271,7 @@ const tests = [
                 }
                 
                 logger.log("Verifying audio flow at 48kHz...");
-                let flowResult = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult.flowing) {
                     return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
                 }
@@ -309,9 +300,7 @@ const tests = [
                 }
                 
                 logger.log("Verifying audio flow at 44.1kHz...");
-                let flowResult = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult.flowing) {
                     return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
                 }
@@ -364,12 +353,7 @@ const tests = [
                         }
                         
                         devLogger.log("Verifying audio flow (short check)...");
-                        let flowResult;
-                        if (track.stats) {
-                            flowResult = await verifyAudioFlowStats(track, devLogger);
-                        } else {
-                            flowResult = await verifyAudioFlow(stream, devLogger);
-                        }
+                        let flowResult = await verifyAudioFlowCombined(stream, devLogger);
                         
                         if (!flowResult.flowing) {
                             return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
@@ -425,9 +409,7 @@ const tests = [
                 
                 // 1. Verify audio flows initially
                 logger.log("Verifying initial audio flow...");
-                let flowResult1 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult1 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult1.flowing) {
                     return { pass: false, details: `Initial audio flow failed: ${flowResult1.reason}` };
                 }
@@ -451,9 +433,7 @@ const tests = [
                 
                 // Verify audio flows again
                 logger.log("Verifying audio flow resumes...");
-                let flowResult3 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult3 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult3.flowing) {
                     return { pass: false, details: `Audio flow failed to resume: ${flowResult3.reason}` };
                 }
@@ -493,9 +473,7 @@ const tests = [
                 }
                 
                 logger.log("Verifying audio flow with AEC off...");
-                let flowResult1 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult1 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult1.flowing) {
                     return { pass: false, details: `Audio flow failed after turning AEC off: ${flowResult1.reason}` };
                 }
@@ -521,9 +499,7 @@ const tests = [
                 }
                 
                 logger.log("Verifying audio flow with AEC on...");
-                let flowResult2 = track.stats 
-                    ? await verifyAudioFlowStats(track, logger)
-                    : await verifyAudioFlow(stream, logger);
+                let flowResult2 = await verifyAudioFlowCombined(stream, logger);
                 if (!flowResult2.flowing) {
                     return { pass: false, details: `Audio flow failed after turning AEC back on: ${flowResult2.reason}` };
                 }
@@ -533,6 +509,38 @@ const tests = [
         }
     }
 ];
+
+/**
+ * Verifies audio flow using BOTH Web Audio Analyser (energy check to confirm not muted)
+ * and MediaStreamTrackAudioStats (if available, to confirm capture pipeline active).
+ * Executes both checks in parallel and returns success only if both are passing.
+ */
+async function verifyAudioFlowCombined(stream, logger) {
+    const track = stream.getAudioTracks()[0];
+    if (!track) {
+        return { flowing: false, reason: "no-track" };
+    }
+    
+    logger.log("Verifying audio flow (combined stats & energy)...");
+    
+    const webAudioPromise = verifyAudioFlow(stream, logger);
+    const statsPromise = track.stats 
+        ? verifyAudioFlowStats(track, logger)
+        : Promise.resolve({ flowing: true, reason: "stats-not-supported" });
+        
+    const [webAudioResult, statsResult] = await Promise.all([webAudioPromise, statsPromise]);
+    
+    if (!webAudioResult.flowing) {
+        logger.log(`Combined check failed: Web Audio silent/timeout (${webAudioResult.reason})`);
+        return { flowing: false, reason: `WebAudio: ${webAudioResult.reason}` };
+    }
+    if (!statsResult.flowing) {
+        logger.log(`Combined check failed: Track Stats frozen/timeout (${statsResult.reason})`);
+        return { flowing: false, reason: `Stats: ${statsResult.reason}` };
+    }
+    
+    return { flowing: true, reason: "flowing" };
+}
 
 /**
  * Verifies audio flow using MediaStreamTrackAudioStats (deliveredFrames).
