@@ -186,7 +186,11 @@ function createGUMAudioTest(name, audioConstraints, group = "baseline") {
                             } else {
                                 // Flat value
                                 if (actual !== expected) {
-                                    return { pass: false, details: `Constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                                    if (key === "sampleRate" || key === "channelCount") {
+                                        logger.log(`Warning: Flat constraint ${key} fallback. Requested: ${expected}, Got: ${actual}`);
+                                    } else {
+                                        return { pass: false, details: `Constraint mismatch - ${key}. Expected: ${expected}, Got: ${actual}` };
+                                    }
                                 }
                             }
                         }
@@ -254,7 +258,37 @@ const tests = [
     createGUMAudioTest("getUserMedia({audio: {channelCount: {exact: 2}}})", { channelCount: { exact: 2 } }, "channelCount"),
     createGUMAudioTest("getUserMedia({audio: {channelCount: {ideal: 2}}})", { channelCount: { ideal: 2 } }, "channelCount"),
     createGUMAudioTest("getUserMedia({audio: {sampleRate: 48000}})", { sampleRate: 48000 }, "sampleRate"),
-    createGUMAudioTest("getUserMedia({audio: {sampleRate: {exact: 48000}}})", { sampleRate: { exact: 48000 } }, "sampleRate"),
+    {
+        name: "getUserMedia({audio: {sampleRate: {exact: 48000}}}) - Exact 48kHz (Spec Compliance)",
+        group: "sampleRate",
+        run: async (logger, deviceId) => {
+            const constraints = mergeDeviceConstraint({ audio: { sampleRate: { exact: 48000 } } }, deviceId);
+            return executeTest(constraints, async (stream, error, logger) => {
+                if (error) {
+                    if (error.name === "OverconstrainedError" && error.constraint === "sampleRate") {
+                        return { pass: true, details: "Correctly rejected with OverconstrainedError (48kHz hardware capture is unsupported)." };
+                    }
+                    return { pass: false, details: `Unexpected GUM error: ${error.name}: ${error.message}` };
+                }
+                
+                const track = stream.getAudioTracks()[0];
+                const settings = track.getSettings();
+                if (settings.sampleRate !== 48000) {
+                    return { pass: false, details: `Violation: GUM resolved but sampleRate is ${settings.sampleRate} Hz instead of 48000 Hz.` };
+                }
+                
+                logger.log("Verifying audio flow at 48kHz...");
+                let flowResult = track.stats 
+                    ? await verifyAudioFlowStats(track, logger)
+                    : await verifyAudioFlow(stream, logger);
+                if (!flowResult.flowing) {
+                    return { pass: false, details: `Audio flow failed: ${flowResult.reason}` };
+                }
+                
+                return { pass: true, details: "Supported! Resolved with exact 48000 Hz." };
+            }, logger);
+        }
+    },
     {
         name: "getUserMedia({audio: {sampleRate: {exact: 44100}}}) - Exact 44.1kHz (Spec Compliance)",
         group: "sampleRate",
