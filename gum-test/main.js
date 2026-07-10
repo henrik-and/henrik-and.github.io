@@ -609,7 +609,7 @@ function getOSInfo() {
     return "Unknown OS";
 }
 
-function populateSystemInfo() {
+async function populateSystemInfo() {
     const infoDiv = document.getElementById('system-info-details');
     if (!infoDiv) return;
     
@@ -623,9 +623,30 @@ function populateSystemInfo() {
     const audioContextSupported = !!(window.AudioContext || window.webkitAudioContext);
     const statsSupported = typeof MediaStreamTrack !== 'undefined' && ('stats' in MediaStreamTrack.prototype);
     
+    let permissionStatus = 'Unknown';
+    if (navigator.permissions && navigator.permissions.query) {
+        try {
+            const status = await navigator.permissions.query({ name: 'microphone' });
+            permissionStatus = status.state; // 'granted', 'prompt', 'denied'
+            
+            // Auto-refresh when user updates permissions
+            status.onchange = () => {
+                populateSystemInfo();
+                enumerateAudioDevices();
+            };
+        } catch (e) {
+            permissionStatus = `Error: ${e.message}`;
+        }
+    }
+    
+    let permissionColor = 'orange';
+    if (permissionStatus === 'granted') permissionColor = 'green';
+    if (permissionStatus === 'denied') permissionColor = 'red';
+    
     infoDiv.innerHTML = `
         <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
         <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (GUM will fail)</span>'}<br>
+        <strong>Microphone Permission:</strong> <span style="color: ${permissionColor}; font-weight:bold;">${permissionStatus}</span><br>
         <strong>Origin:</strong> ${protocol}//${host}<br>
         <strong>APIs Supported:</strong> 
         GUM: ${gumSupported ? '✅' : '❌'}, 
