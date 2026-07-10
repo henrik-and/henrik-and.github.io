@@ -91,6 +91,10 @@ async function executeTest(constraints, verifyFn, logger) {
     }
 }
 
+/**
+ * Factory to generate standard GUM audio tests.
+ * Performs stream setup, logs settings, checks constraints, and verifies data flow.
+ */
 function createGUMAudioTest(name, audioConstraints) {
     return {
         name: name,
@@ -215,6 +219,10 @@ const tests = [
     }
 ];
 
+/**
+ * Verifies audio flow using MediaStreamTrackAudioStats (deliveredFrames).
+ * Terminates early if the track receives an 'ended' event (native layer crash).
+ */
 async function verifyAudioFlowStats(track, logger) {
     return new Promise((resolve) => {
         try {
@@ -290,6 +298,10 @@ async function verifyAudioFlowStats(track, logger) {
     });
 }
 
+/**
+ * Fallback audio flow verifier using Web Audio Analyser to detect volume energy.
+ * Useful if the browser does not support track.stats.
+ */
 async function verifyAudioFlow(stream, logger) {
     const track = stream.getAudioTracks()[0];
     return new Promise((resolve) => {
@@ -386,6 +398,10 @@ class TestLogger {
     }
 }
 
+/**
+ * Queries available audio input devices and renders them as checkboxes.
+ * Preserves selected state on refresh.
+ */
 async function enumerateAudioDevices() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
         deviceCheckboxesContainer.innerHTML = '<p class="error">enumerateDevices not supported</p>';
@@ -451,6 +467,10 @@ function getSelectedDevices() {
     }));
 }
 
+/**
+ * Main execution loop. Runs the full test suite sequentially for
+ * each checked input device.
+ */
 async function runAllTests() {
     resultsContainer.innerHTML = '';
     runBtn.disabled = true;
