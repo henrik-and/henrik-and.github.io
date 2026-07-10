@@ -4,6 +4,8 @@ const deviceCheckboxesContainer = document.getElementById('device-checkboxes');
 const refreshDevicesBtn = document.getElementById('refresh-devices-btn');
 const verboseLogsCb = document.getElementById('verbose-logs-cb');
 const testApplyConstraintsCb = document.getElementById('test-apply-constraints-cb');
+const downloadReportBtn = document.getElementById('download-report-btn');
+let lastRunReport = null;
 
 function formatError(error) {
     if (!error) return "Unknown error";
@@ -705,8 +707,9 @@ function getSelectedDevices() {
  * each checked input device.
  */
 async function runAllTests() {
-    resultsContainer.innerHTML = '';
+    resultsContainer.innerHTML = "";
     runBtn.disabled = true;
+    downloadReportBtn.style.display = "none";
     
     const selectedDevices = getSelectedDevices();
     if (selectedDevices.length === 0) {
@@ -715,6 +718,23 @@ async function runAllTests() {
         return;
     }
     
+    lastRunReport = {
+        timestamp: new Date().toISOString(),
+        env: {
+            userAgent: navigator.userAgent,
+            browser: getBrowserInfo(),
+            os: getOSInfo(),
+            origin: window.location.href,
+            microphonePermission: "unknown"
+        },
+        selectedDevices: selectedDevices.map(d => d.label),
+        results: []
+    };
+    
+    try {
+        const permStatus = await navigator.permissions.query({ name: "microphone" });
+        lastRunReport.env.microphonePermission = permStatus.state;
+    } catch (e) {}
     for (const device of selectedDevices) {
         const deviceSection = document.createElement('div');
         deviceSection.className = 'device-group-section';
@@ -791,6 +811,17 @@ async function runAllTests() {
             summaryDetailsEl.innerHTML = formatDetails(result.details);
             summaryEl.style.display = 'block';
             
+            // Record result in report
+            lastRunReport.results.push({
+                deviceLabel: device.label,
+                testName: test.name,
+                pass: result.pass,
+                skipped: !!result.skipped,
+                duration: duration,
+                details: result.details || "",
+                logs: [...logger.logs]
+            });
+            
             if (!result.pass) {
                 const bugContainer = testEl.querySelector(".bug-report-container");
                 const bugBtn = testEl.querySelector(".bug-report-btn");
@@ -818,6 +849,9 @@ async function runAllTests() {
             }
         }
     }
+    
+    // Show download button
+    downloadReportBtn.style.display = "inline-block";
     
     runBtn.disabled = false;
     
@@ -920,3 +954,72 @@ verboseLogsCb.addEventListener('change', updateVerboseLogsVisibility);
 enumerateAudioDevices();
 refreshDevicesBtn.addEventListener('click', enumerateAudioDevices);
 runBtn.addEventListener('click', runAllTests);
+
+
+downloadReportBtn.addEventListener("click", () => {
+    if (!lastRunReport) return;
+    const markdown = generateMarkdownReport(lastRunReport);
+    
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `gum-audio-test-report-${new Date().toISOString().slice(0,10)}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+function generateMarkdownReport(report) {
+    let md = `# getUserMedia Audio Sequential Test Report\n\n`;
+    md += `* **Generated:** ${new Date(report.timestamp).toLocaleString()} (${report.timestamp})\n`;
+    md += `* **Origin:** ${report.env.origin}\n\n`;
+    
+    md += `## Environment Info\n`;
+    md += `* **Browser:** ${report.env.browser.name} ${report.env.browser.version}\n`;
+    md += `* **OS:** ${report.env.os}\n`;
+    md += `* **User Agent:** \`${report.env.userAgent}\`\n`;
+    md += `* **Microphone Permission:** \`${report.env.microphonePermission}\`\n\n`;
+    
+    md += `## Device Configuration\n`;
+    md += `* **Selected Devices to Test:**\n`;
+    if (report.selectedDevices.length === 0) {
+        md += `  * None selected.\n`;
+    } else {
+        report.selectedDevices.forEach(d => {
+            md += `  * ${d}\n`;
+        });
+    }
+    md += `\n`;
+    
+    md += `## Test Results\n\n`;
+    
+    let currentDevice = "";
+    report.results.forEach((r, idx) => {
+        if (r.deviceLabel !== currentDevice) {
+            currentDevice = r.deviceLabel;
+            md += `### Target Device: ${currentDevice}\n\n`;
+        }
+        
+        let statusText = "PASS";
+        if (r.skipped) statusText = "SKIPPED";
+        else if (!r.pass) statusText = "FAIL";
+        
+        md += `#### ${idx + 1}. ${r.testName}\n`;
+        md += `* **Status:** \`${statusText}\` (${r.duration}ms)\n`;
+        if (r.details) {
+            const cleanDetails = r.details.replace(/<a [^>]*>([^<]*)<\/a>/gi, "$1");
+            md += `* **Details:** ${cleanDetails}\n`;
+        }
+        
+        if (r.logs && r.logs.length > 0) {
+            md += `* **Logs:**\n\`\`\`text\n`;
+            md += r.logs.join("\n") + "\n";
+            md += `\`\`\`\n`;
+        }
+        md += `\n`;
+    });
+    
+    md += `\n---\n*Report compiled by Jetski automated testing framework.*\n`;
+    return md;
+}

@@ -150,6 +150,31 @@ body {
     transform: none;
 }
 
+#download-report-btn {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(23, 162, 184, 0.2);
+    transition: all 0.2s ease;
+    margin-left: 15px;
+}
+
+#download-report-btn:hover {
+    background-color: #138496;
+    box-shadow: 0 6px 12px rgba(23, 162, 184, 0.3);
+    transform: translateY(-1px);
+}
+
+#download-report-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);
+}
+
 .device-group-section h2 {
     font-size: 1.3em;
     color: #333;
