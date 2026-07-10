@@ -364,7 +364,7 @@ const tests = [
                         return { pass: true };
                     }, logger);
                     
-                    if (!result.pass) {
+                    if (!result.pass && result.errorReason !== "system-muted") {
                         failedDevices.push(`${device.label} (${result.details})`);
                         if (result.errorReason === "system-muted") {
                             return { pass: false, details: result.details, errorReason: "system-muted" };
@@ -967,7 +967,7 @@ async function runAllTests() {
             const progressPct = Math.round((completedTests / totalTests) * 100);
             progressBar.style.width = `${progressPct}%`;
             
-            if (!result.pass) {
+            if (!result.pass && result.errorReason !== "system-muted") {
                 const bugContainer = testEl.querySelector(".bug-report-container");
                 const bugBtn = testEl.querySelector(".bug-report-btn");
                 
