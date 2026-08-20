@@ -378,6 +378,15 @@ button:disabled {
   margin: 0;
 }
 
+#track-constraints:empty,
+#track-settings:empty,
+#track-properties:empty,
+#track-stats:empty,
+#audio-input-device:empty,
+#audio-output-info:empty {
+  display: none;
+}
+
 #outbound-rtp-stats,
 #inbound-rtp-stats,
 #audio-playout-stats {

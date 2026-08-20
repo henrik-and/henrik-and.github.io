@@ -389,19 +389,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   updatePeerConnectionTooltip();
   updateDtxTooltip();
 
+  const constraintSelects = [
+    echoCancellationSelect,
+    autoGainControlSelect,
+    noiseSuppressionSelect,
+    voiceIsolationSelect,
+    channelCountSelect,
+    audioDeviceSelect,
+  ].filter(Boolean);
+  const constraintsPreElements = document.querySelectorAll('.settings-container > pre');
+
   function updateInputSourceUI() {
     const isMic = micSourceRadio.checked;
-    audioDeviceSelect.disabled = !isMic;
     
     // Toggle visibility of the file selection container
     fileSelectionContainer.style.display = isMic ? 'none' : 'flex';
 
+    constraintSelects.forEach(select => {
+      select.disabled = !isMic;
+      if (!isMic) {
+        select.parentElement.classList.add('disabled-setting');
+      } else {
+        select.parentElement.classList.remove('disabled-setting');
+      }
+    });
+
+    constraintsPreElements.forEach(pre => {
+      if (!isMic) {
+        pre.classList.add('disabled-setting');
+      } else {
+        pre.classList.remove('disabled-setting');
+      }
+    });
+
     if (!isMic) {
-      audioDeviceSelect.value = 'undefined';
-      audioDeviceSelect.parentElement.classList.add('disabled-setting');
       sourceInfoDisplay.innerHTML = '<span class="note-warning">Note:</span> Uses audioElement.captureStream() to mock a MediaStream.';
     } else {
-      audioDeviceSelect.parentElement.classList.remove('disabled-setting');
       sourceInfoDisplay.textContent = 'Standard behavior: requests getUserMedia from selected device.';
     }
   }
@@ -471,21 +494,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function setConstraintsDisabled(disabled) {
-    echoCancellationSelect.disabled = disabled;
-    autoGainControlSelect.disabled = disabled;
-    noiseSuppressionSelect.disabled = disabled;
-    if (voiceIsolationSelect) {
-      voiceIsolationSelect.disabled = disabled;
-    }
-    channelCountSelect.disabled = disabled;
+    constraintSelects.forEach(select => {
+      select.disabled = disabled;
+    });
     micSourceRadio.disabled = disabled;
     fileSourceRadio.disabled = disabled;
     audioFileSelect.disabled = disabled;
     localFileInput.disabled = disabled;
 
-    if (disabled) {
-      audioDeviceSelect.disabled = true;
-    } else {
+    if (!disabled) {
       updateInputSourceUI();
     }
   }
@@ -1138,15 +1155,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     console.log('constraints:', JSON.stringify(constraints, null, 2));
 
-    // For display purposes, create a deep copy and truncate the deviceId if it exists.
-    const displayConstraints = structuredClone(constraints);
-    if (displayConstraints.audio && displayConstraints.audio.deviceId && displayConstraints.audio.deviceId.exact) {
-        const id = displayConstraints.audio.deviceId.exact;
-        if (typeof id === 'string' && id !== 'default') {
-            displayConstraints.audio.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
-        }
+    if (micSourceRadio.checked) {
+      // For display purposes, create a deep copy and truncate the deviceId if it exists.
+      const displayConstraints = structuredClone(constraints);
+      if (displayConstraints.audio && displayConstraints.audio.deviceId && displayConstraints.audio.deviceId.exact) {
+          const id = displayConstraints.audio.deviceId.exact;
+          if (typeof id === 'string' && id !== 'default') {
+              displayConstraints.audio.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
+          }
+      }
+      trackConstraintsElement.textContent = 'constraints:\n' + JSON.stringify(displayConstraints, null, 2);
+      trackConstraintsElement.style.display = 'block';
+    } else {
+      trackConstraintsElement.textContent = '';
+      trackConstraintsElement.style.display = 'none';
     }
-    trackConstraintsElement.textContent = 'constraints:\n' + JSON.stringify(displayConstraints, null, 2);
 
     try {
       let stream;
@@ -1182,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           fileSourceAudio.oncanplaythrough = resolve;
           fileSourceAudio.load();
         });
+        fileSourceAudio.muted = true;
         await fileSourceAudio.play();
         // captureStream() might take an optional frameRate, but for audio it's usually just captureStream()
         stream = fileSourceAudio.captureStream ? fileSourceAudio.captureStream() : fileSourceAudio.mozCaptureStream();
@@ -1323,23 +1347,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  channels: <span id="info-channels">Loading...</span>\n` +
             `<span id="info-extra-wav"></span>` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
-            `<progress id="audio-file-progress" value="0" max="100"></progress>` +
-            `<div style="margin-top: 5px; display: flex; align-items: center;">` +
-            `  <input type="checkbox" id="mute-file-source">` +
-            `  <label for="mute-file-source" style="margin-left: 5px; cursor: pointer;">Mute Source (Local)</label>` +
-            `</div>`;
+            `<progress id="audio-file-progress" value="0" max="100"></progress>`;
         audioInputDeviceElement.style.display = 'block';
         updateAudioFileProgress();
-
-        // Attach listener for the new mute checkbox
-        const muteFileSourceCheckbox = document.getElementById('mute-file-source');
-        if (muteFileSourceCheckbox) {
-          muteFileSourceCheckbox.checked = fileSourceAudio.muted;
-          muteFileSourceCheckbox.addEventListener('change', () => {
-            fileSourceAudio.muted = muteFileSourceCheckbox.checked;
-            console.log(`File source muted: ${fileSourceAudio.muted}`);
-          });
-        }
 
         // Fetch and update metadata
         getAudioFileMetadata(fileSourceAudio.src).then(metadata => {
@@ -1767,21 +1777,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    // Add the current constraint values to the search parameters.
-    addParam('echoCancellation', echoCancellationSelect);
-    addParam('autoGainControl', autoGainControlSelect);
-    addParam('noiseSuppression', noiseSuppressionSelect);
-    if (isVoiceIsolationSupported && voiceIsolationSelect) {
-      addParam('voiceIsolation', voiceIsolationSelect);
-    }
-    addParam('channelCount', channelCountSelect);
-    addParam('deviceId', audioDeviceSelect);
-
-    if (fileSourceRadio.checked) {
+    if (micSourceRadio.checked) {
+      // Add the current constraint values to the search parameters.
+      addParam('echoCancellation', echoCancellationSelect);
+      addParam('autoGainControl', autoGainControlSelect);
+      addParam('noiseSuppression', noiseSuppressionSelect);
+      if (isVoiceIsolationSupported && voiceIsolationSelect) {
+        addParam('voiceIsolation', voiceIsolationSelect);
+      }
+      addParam('channelCount', channelCountSelect);
+      addParam('deviceId', audioDeviceSelect);
+      params.set('inputSource', 'microphone');
+    } else {
       params.set('inputSource', 'file');
       params.set('audioFile', audioFileSelect.value);
-    } else {
-      params.set('inputSource', 'microphone');
     }
 
     if (peerConnectionCheckbox.checked) {
