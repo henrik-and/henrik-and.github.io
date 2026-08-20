@@ -707,10 +707,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => {
       const highlightedElements = trackPropertiesElement.querySelectorAll('.highlight');
       highlightedElements.forEach(el => {
-        // We fade the background color to transparent to smoothly return to the original.
-        el.style.backgroundColor = 'transparent';
+        el.classList.add('fade-out');
       });
-    }, 2000);
+    }, 5000);
   }
 
   function updateTrackStats(audioTrack) {

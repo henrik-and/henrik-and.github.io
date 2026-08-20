@@ -398,9 +398,39 @@ button:disabled {
   display: none;
 }
 
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 143, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(255, 143, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(255, 143, 0, 0.6);
+  }
+}
+
 .highlight {
-  background-color: #FFF59D; /* A more distinct yellow */
-  transition: background-color 0.5s ease-in-out;
+  display: inline-block;
+  background-color: #FFEB3B;
+  color: #000000;
+  font-weight: bold;
+  padding: 2px 8px;
+  border: 1.5px solid #FF8F00;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(255, 143, 0, 0.8);
+  animation: highlight-pulse 1.2s ease-in-out 3;
+  transition: all 1s ease-in-out;
+}
+
+.highlight.fade-out {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font-weight: normal !important;
+  padding: 2px 0;
+  animation: none;
 }
 
 #bookmark-url-container {
