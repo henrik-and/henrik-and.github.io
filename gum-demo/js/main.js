@@ -1095,16 +1095,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const autoGainControl = autoGainControlSelect.value;
     if (autoGainControl !== 'undefined') {
-      audioConstraints.autoGainControl = autoGainControl === 'true';
+      if (autoGainControl.startsWith('exact:')) {
+        audioConstraints.autoGainControl = { exact: autoGainControl.substring(6) === 'true' };
+      } else if (autoGainControl.startsWith('ideal:')) {
+        audioConstraints.autoGainControl = { ideal: autoGainControl.substring(6) === 'true' };
+      } else {
+        audioConstraints.autoGainControl = autoGainControl === 'true';
+      }
     }
     const noiseSuppression = noiseSuppressionSelect.value;
     if (noiseSuppression !== 'undefined') {
-      audioConstraints.noiseSuppression = noiseSuppression === 'true';
+      if (noiseSuppression.startsWith('exact:')) {
+        audioConstraints.noiseSuppression = { exact: noiseSuppression.substring(6) === 'true' };
+      } else if (noiseSuppression.startsWith('ideal:')) {
+        audioConstraints.noiseSuppression = { ideal: noiseSuppression.substring(6) === 'true' };
+      } else {
+        audioConstraints.noiseSuppression = noiseSuppression === 'true';
+      }
     }
     if (isVoiceIsolationSupported && voiceIsolationSelect) {
       const voiceIsolation = voiceIsolationSelect.value;
       if (voiceIsolation !== 'undefined') {
-        audioConstraints.voiceIsolation = voiceIsolation === 'true';
+        if (voiceIsolation.startsWith('exact:')) {
+          audioConstraints.voiceIsolation = { exact: voiceIsolation.substring(6) === 'true' };
+        } else if (voiceIsolation.startsWith('ideal:')) {
+          audioConstraints.voiceIsolation = { ideal: voiceIsolation.substring(6) === 'true' };
+        } else {
+          audioConstraints.voiceIsolation = voiceIsolation === 'true';
+        }
       }
     }
     const channelCount = channelCountSelect.value;
