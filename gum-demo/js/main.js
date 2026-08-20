@@ -1,11 +1,18 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Supported constraints:', navigator.mediaDevices.getSupportedConstraints());
+  const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
+  console.log('Supported constraints:', supportedConstraints);
+  const isVoiceIsolationSupported = !!supportedConstraints.voiceIsolation;
   const gumButton = document.getElementById('gum-button');
   const echoCancellationSelect = document.getElementById('echoCancellation');
   const autoGainControlSelect = document.getElementById('autoGainControl');
   const noiseSuppressionSelect = document.getElementById('noiseSuppression');
+  const voiceIsolationContainer = document.getElementById('voiceIsolation-container');
+  const voiceIsolationSelect = document.getElementById('voiceIsolation');
+  if (isVoiceIsolationSupported && voiceIsolationContainer) {
+    voiceIsolationContainer.style.display = '';
+  }
   const channelCountSelect = document.getElementById('channelCount');
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
@@ -422,6 +429,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSelectValue('echoCancellation', echoCancellationSelect);
     setSelectValue('autoGainControl', autoGainControlSelect);
     setSelectValue('noiseSuppression', noiseSuppressionSelect);
+    if (isVoiceIsolationSupported && voiceIsolationSelect) {
+      setSelectValue('voiceIsolation', voiceIsolationSelect);
+    }
     setSelectValue('channelCount', channelCountSelect);
     setSelectValue('deviceId', audioDeviceSelect);
 
@@ -453,6 +463,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
     console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
     console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
+    if (isVoiceIsolationSupported) {
+      console.log(`applyUrlParameters: voiceIsolation from URL is "${params.get('voiceIsolation')}"`);
+    }
     console.log(`applyUrlParameters: channelCount from URL is "${params.get('channelCount')}"`);
     console.log(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
   }
@@ -461,6 +474,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     echoCancellationSelect.disabled = disabled;
     autoGainControlSelect.disabled = disabled;
     noiseSuppressionSelect.disabled = disabled;
+    if (voiceIsolationSelect) {
+      voiceIsolationSelect.disabled = disabled;
+    }
     channelCountSelect.disabled = disabled;
     micSourceRadio.disabled = disabled;
     fileSourceRadio.disabled = disabled;
@@ -1084,6 +1100,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const noiseSuppression = noiseSuppressionSelect.value;
     if (noiseSuppression !== 'undefined') {
       audioConstraints.noiseSuppression = noiseSuppression === 'true';
+    }
+    if (isVoiceIsolationSupported && voiceIsolationSelect) {
+      const voiceIsolation = voiceIsolationSelect.value;
+      if (voiceIsolation !== 'undefined') {
+        audioConstraints.voiceIsolation = voiceIsolation === 'true';
+      }
     }
     const channelCount = channelCountSelect.value;
     if (channelCount !== 'undefined') {
@@ -1732,6 +1754,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     addParam('echoCancellation', echoCancellationSelect);
     addParam('autoGainControl', autoGainControlSelect);
     addParam('noiseSuppression', noiseSuppressionSelect);
+    if (isVoiceIsolationSupported && voiceIsolationSelect) {
+      addParam('voiceIsolation', voiceIsolationSelect);
+    }
     addParam('channelCount', channelCountSelect);
     addParam('deviceId', audioDeviceSelect);
 
