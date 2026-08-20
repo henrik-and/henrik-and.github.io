@@ -25,7 +25,10 @@
         <input type="file" id="localFileInput" accept="audio/*">
       </div>
       <div class="settings-and-copy-container">
-        <button id="gum-button">getUserMedia</button>
+        <div class="action-buttons-container">
+          <button id="gum-button">getUserMedia</button>
+          <button id="apply-constraints-button" disabled>applyConstraints</button>
+        </div>
         <div class="settings-container">
           <div class="peerconnection-container">
             <input type="checkbox" id="peerconnection-checkbox">
@@ -37,85 +40,88 @@
           </div>
           <pre>constraints = {
   audio: {</pre>
-          <div class="setting">
-            <label for="echoCancellation">echoCancellation:</label>
-            <select id="echoCancellation">
-              <option value="undefined" selected>undefined</option>
-              <optgroup label="Booleans">
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </optgroup>
-              <optgroup label="Exact">
-                <option value="all">all</option>
-                <option value="remote-only">remote-only</option>
-              </optgroup>
-              <optgroup label="Ideal">
-                <option value="ideal:all">all</option>
-                <option value="ideal:remote-only">remote-only</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="setting">
-            <label for="autoGainControl">autoGainControl:</label>
-            <select id="autoGainControl">
-              <option value="undefined" selected>undefined</option>
-              <optgroup label="Booleans">
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </optgroup>
-              <optgroup label="Exact">
-                <option value="exact:true">true</option>
-                <option value="exact:false">false</option>
-              </optgroup>
-              <optgroup label="Ideal">
-                <option value="ideal:true">true</option>
-                <option value="ideal:false">false</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="setting">
-            <label for="noiseSuppression">noiseSuppression:</label>
-            <select id="noiseSuppression">
-              <option value="undefined" selected>undefined</option>
-              <optgroup label="Booleans">
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </optgroup>
-              <optgroup label="Exact">
-                <option value="exact:true">true</option>
-                <option value="exact:false">false</option>
-              </optgroup>
-              <optgroup label="Ideal">
-                <option value="ideal:true">true</option>
-                <option value="ideal:false">false</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="setting" id="voiceIsolation-container" style="display: none;">
-            <label for="voiceIsolation">voiceIsolation:</label>
-            <select id="voiceIsolation">
-              <option value="undefined" selected>undefined</option>
-              <optgroup label="Booleans">
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </optgroup>
-              <optgroup label="Exact">
-                <option value="exact:true">true</option>
-                <option value="exact:false">false</option>
-              </optgroup>
-              <optgroup label="Ideal">
-                <option value="ideal:true">true</option>
-                <option value="ideal:false">false</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="setting">
-            <label for="channelCount">channelCount:</label>
-            <select id="channelCount">
-              <option value="undefined" selected>undefined</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-            </select>
+          <div class="dynamic-constraints-group">
+            <div class="dynamic-constraints-header">// applyConstraints() scope</div>
+            <div class="setting">
+              <label for="echoCancellation">echoCancellation:</label>
+              <select id="echoCancellation">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="all">all</option>
+                  <option value="remote-only">remote-only</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:all">all</option>
+                  <option value="ideal:remote-only">remote-only</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="setting">
+              <label for="autoGainControl">autoGainControl:</label>
+              <select id="autoGainControl">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="setting">
+              <label for="noiseSuppression">noiseSuppression:</label>
+              <select id="noiseSuppression">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="setting" id="voiceIsolation-container" style="display: none;">
+              <label for="voiceIsolation">voiceIsolation:</label>
+              <select id="voiceIsolation">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="setting">
+              <label for="channelCount">channelCount:</label>
+              <select id="channelCount">
+                <option value="undefined" selected>undefined</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
           </div>
           <div class="setting">
             <label for="audioDevice">deviceId:</label>

@@ -159,12 +159,41 @@ body {
   margin-right: 5px;
 }
 
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dynamic-constraints-group {
+  border: 1px dashed #81C784;
+  border-radius: 6px;
+  padding: 6px 14px 6px 0;
+  margin: 4px 0 4px 1.5em;
+  background-color: rgba(255, 255, 255, 0.45);
+  width: fit-content;
+}
+
+.dynamic-constraints-group .setting {
+  margin-left: 1em;
+}
+
+.dynamic-constraints-header {
+  font-family: monospace;
+  font-size: 11px;
+  color: #2E7D32;
+  margin-left: 1em;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
 .disabled-setting {
   opacity: 0.5;
   pointer-events: none;
 }
 
 #gum-button,
+#apply-constraints-button,
 #copy-bookmark-button,
 #copy-markdown-button,
 #save-snapshot-button {
@@ -179,6 +208,7 @@ body {
   height: fit-content;
 }
 #gum-button:hover,
+#apply-constraints-button:hover,
 #copy-bookmark-button:hover,
 #copy-markdown-button:hover,
 #save-snapshot-button:hover {
@@ -194,6 +224,7 @@ body {
 }
 
 #gum-button:disabled,
+#apply-constraints-button:disabled,
 #copy-bookmark-button:disabled {
   background-color: #cccccc;
 }

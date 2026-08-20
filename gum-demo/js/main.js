@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('Supported constraints:', supportedConstraints);
   const isVoiceIsolationSupported = !!supportedConstraints.voiceIsolation;
   const gumButton = document.getElementById('gum-button');
+  const applyConstraintsButton = document.getElementById('apply-constraints-button');
   const echoCancellationSelect = document.getElementById('echoCancellation');
   const autoGainControlSelect = document.getElementById('autoGainControl');
   const noiseSuppressionSelect = document.getElementById('noiseSuppression');
@@ -389,42 +390,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   updatePeerConnectionTooltip();
   updateDtxTooltip();
 
-  const constraintSelects = [
+  const dynamicConstraintSelects = [
     echoCancellationSelect,
     autoGainControlSelect,
     noiseSuppressionSelect,
     voiceIsolationSelect,
     channelCountSelect,
+  ].filter(Boolean);
+  const constraintSelects = [
+    ...dynamicConstraintSelects,
     audioDeviceSelect,
   ].filter(Boolean);
   const constraintsPreElements = document.querySelectorAll('.settings-container > pre');
 
   function updateInputSourceUI() {
     const isMic = micSourceRadio.checked;
+    const isStreamActive = !!(localStream && localStream.active);
     
     // Toggle visibility of the file selection container
     fileSelectionContainer.style.display = isMic ? 'none' : 'flex';
 
-    constraintSelects.forEach(select => {
-      select.disabled = !isMic;
-      if (!isMic) {
-        select.parentElement.classList.add('disabled-setting');
-      } else {
-        select.parentElement.classList.remove('disabled-setting');
-      }
-    });
-
-    constraintsPreElements.forEach(pre => {
-      if (!isMic) {
-        pre.classList.add('disabled-setting');
-      } else {
-        pre.classList.remove('disabled-setting');
-      }
-    });
-
     if (!isMic) {
+      constraintSelects.forEach(select => {
+        select.disabled = true;
+        select.parentElement.classList.add('disabled-setting');
+      });
+      constraintsPreElements.forEach(pre => pre.classList.add('disabled-setting'));
+      document.querySelector('.dynamic-constraints-group')?.classList.add('disabled-setting');
+      applyConstraintsButton.disabled = true;
       sourceInfoDisplay.innerHTML = '<span class="note-warning">Note:</span> Uses audioElement.captureStream() to mock a MediaStream.';
     } else {
+      constraintsPreElements.forEach(pre => pre.classList.remove('disabled-setting'));
+      document.querySelector('.dynamic-constraints-group')?.classList.remove('disabled-setting');
+      if (isStreamActive) {
+        dynamicConstraintSelects.forEach(select => {
+          select.disabled = false;
+          select.parentElement.classList.remove('disabled-setting');
+        });
+        audioDeviceSelect.disabled = true;
+        audioDeviceSelect.parentElement.classList.add('disabled-setting');
+        applyConstraintsButton.disabled = false;
+      } else {
+        constraintSelects.forEach(select => {
+          select.disabled = false;
+          select.parentElement.classList.remove('disabled-setting');
+        });
+        applyConstraintsButton.disabled = true;
+      }
       sourceInfoDisplay.textContent = 'Standard behavior: requests getUserMedia from selected device.';
     }
   }
@@ -727,6 +739,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.classList.add('fade-out');
       });
     }, 5000);
+  }
+
+  function updateTrackConstraints(audioTrack) {
+    if (!micSourceRadio.checked || !audioTrack) {
+      trackConstraintsElement.textContent = '';
+      trackConstraintsElement.style.display = 'none';
+      return;
+    }
+    const constraints = audioTrack.getConstraints ? audioTrack.getConstraints() : {};
+    const displayConstraints = structuredClone(constraints);
+    if (displayConstraints.deviceId) {
+      if (typeof displayConstraints.deviceId === 'string' && displayConstraints.deviceId !== 'default') {
+        displayConstraints.deviceId = `${displayConstraints.deviceId.substring(0, 8)}..${displayConstraints.deviceId.substring(displayConstraints.deviceId.length - 8)}`;
+      } else if (displayConstraints.deviceId.exact && typeof displayConstraints.deviceId.exact === 'string' && displayConstraints.deviceId.exact !== 'default') {
+        const id = displayConstraints.deviceId.exact;
+        displayConstraints.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
+      }
+    }
+    trackConstraintsElement.textContent = 'MediaStreamTrack constraints:\n' + JSON.stringify(displayConstraints, null, 2);
+    trackConstraintsElement.style.display = 'block';
   }
 
   function updateTrackStats(audioTrack) {
@@ -1075,26 +1107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  gumButton.addEventListener('click', async () => {
-    gumButton.disabled = true;
-    copyBookmarkButton.disabled = true;
-    peerConnectionCheckbox.disabled = true;
-    dtxCheckbox.disabled = true;
-    setConstraintsDisabled(true);
-    previousStats = null;
-    previousTrackProperties = null;
-    previousOutboundRtpStats = null;
-    previousInboundRtpStats = null;
-    previousPlayoutStats = null;
-    total_intervals = 0;
-    glitchy_intervals = 0;
-    errorMessageElement.textContent = '';
-    errorMessageElement.style.display = 'none';
-    bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
-    // Reset to default error colors from CSS
-    errorMessageElement.style.color = '';
-    errorMessageElement.style.backgroundColor = '';
-    errorMessageElement.style.borderColor = '';
+  function buildAudioConstraints() {
     const audioConstraints = {};
     const echoCancellation = echoCancellationSelect.value;
     console.log('Selected echoCancellation value:', echoCancellation);
@@ -1145,6 +1158,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (channelCount !== 'undefined') {
       audioConstraints.channelCount = parseInt(channelCount, 10);
     }
+    return audioConstraints;
+  }
+
+  gumButton.addEventListener('click', async () => {
+    gumButton.disabled = true;
+    copyBookmarkButton.disabled = true;
+    peerConnectionCheckbox.disabled = true;
+    dtxCheckbox.disabled = true;
+    setConstraintsDisabled(true);
+    previousStats = null;
+    previousTrackProperties = null;
+    previousOutboundRtpStats = null;
+    previousInboundRtpStats = null;
+    previousPlayoutStats = null;
+    total_intervals = 0;
+    glitchy_intervals = 0;
+    errorMessageElement.textContent = '';
+    errorMessageElement.style.display = 'none';
+    bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
+    // Reset to default error colors from CSS
+    errorMessageElement.style.color = '';
+    errorMessageElement.style.backgroundColor = '';
+    errorMessageElement.style.borderColor = '';
+    const audioConstraints = buildAudioConstraints();
     const deviceId = audioDeviceSelect.value;
     if (deviceId !== 'undefined') {
       audioConstraints.deviceId = { exact: deviceId };
@@ -1153,29 +1190,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       audio: Object.keys(audioConstraints).length === 0 ? true : audioConstraints,
       video: false
     };
-    console.log('constraints:', JSON.stringify(constraints, null, 2));
-
-    if (micSourceRadio.checked) {
-      // For display purposes, create a deep copy and truncate the deviceId if it exists.
-      const displayConstraints = structuredClone(constraints);
-      if (displayConstraints.audio && displayConstraints.audio.deviceId && displayConstraints.audio.deviceId.exact) {
-          const id = displayConstraints.audio.deviceId.exact;
-          if (typeof id === 'string' && id !== 'default') {
-              displayConstraints.audio.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
-          }
-      }
-      trackConstraintsElement.textContent = 'constraints:\n' + JSON.stringify(displayConstraints, null, 2);
-      trackConstraintsElement.style.display = 'block';
-    } else {
-      trackConstraintsElement.textContent = '';
-      trackConstraintsElement.style.display = 'none';
-    }
+    console.log('--- getUserMedia() START ---');
+    console.log('Supplied constraints to getUserMedia():', JSON.stringify(constraints, null, 2));
 
     try {
       let stream;
       if (micSourceRadio.checked) {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('getUserMedia() successful');
+        console.log('navigator.mediaDevices.getUserMedia() succeeded.');
       } else {
         if (currentFileSourceType === 'predefined') {
           const selectedFile = audioFileSelect.value;
@@ -1230,7 +1252,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const [audioTrack] = stream.getAudioTracks();
-      console.log('audioTrack:', audioTrack);
+      console.log('Created audioTrack:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
+      console.log('audioTrack.getConstraints() returns:', audioTrack.getConstraints ? audioTrack.getConstraints() : 'N/A');
+      console.log('audioTrack.getSettings() returns:', audioTrack.getSettings());
+      console.log('--- getUserMedia() END ---');
+      updateTrackConstraints(audioTrack);
       const settings = audioTrack.getSettings();
       console.log('MediaStreamTrack settings:', settings);
       if (settings.groupId && typeof settings.groupId === 'string') {
@@ -1382,6 +1408,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       htmlPlayCheckbox.checked = false;
       isRecording = false;
       updateRecordButtonUI();
+
+      if (micSourceRadio.checked) {
+        applyConstraintsButton.disabled = false;
+        dynamicConstraintSelects.forEach(select => {
+          select.disabled = false;
+          select.parentElement.classList.remove('disabled-setting');
+        });
+        audioDeviceSelect.disabled = true;
+        audioDeviceSelect.parentElement.classList.add('disabled-setting');
+      } else {
+        applyConstraintsButton.disabled = true;
+      }
     } catch (err) {
       console.error(err);
       if (err.name === 'OverconstrainedError' && err.constraint) {
@@ -1393,10 +1431,72 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       errorMessageElement.style.display = 'block';
       gumButton.disabled = false;
+      applyConstraintsButton.disabled = true;
       copyBookmarkButton.disabled = false;
       peerConnectionCheckbox.disabled = false;
       dtxCheckbox.disabled = false;
       setConstraintsDisabled(false);
+    }
+  });
+
+  applyConstraintsButton.addEventListener('click', async () => {
+    if (!localStream || !micSourceRadio.checked) return;
+    const [audioTrack] = localStream.getAudioTracks();
+    if (!audioTrack || audioTrack.readyState !== 'live') return;
+
+    const audioConstraints = buildAudioConstraints();
+    console.log('--- applyConstraints() START ---');
+    console.log('Target track:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
+    console.log('Before applyConstraints -> audioTrack.getConstraints() was:', audioTrack.getConstraints());
+    console.log('Before applyConstraints -> audioTrack.getSettings() was:', audioTrack.getSettings());
+    console.log('Supplied constraints payload to applyConstraints():', JSON.stringify(audioConstraints, null, 2));
+
+    try {
+      await audioTrack.applyConstraints(audioConstraints);
+      console.log('audioTrack.applyConstraints() promise resolved successfully.');
+      console.log('After applyConstraints -> audioTrack.getConstraints() now returns:', audioTrack.getConstraints());
+      console.log('After applyConstraints -> audioTrack.getSettings() now returns:', audioTrack.getSettings());
+      console.log('--- applyConstraints() END ---');
+
+      errorMessageElement.textContent = '';
+      errorMessageElement.style.display = 'none';
+
+      // Reset to default error colors from CSS
+      errorMessageElement.style.color = '';
+      errorMessageElement.style.backgroundColor = '';
+      errorMessageElement.style.borderColor = '';
+
+      // Update MediaStreamTrack settings
+      const settings = audioTrack.getSettings();
+      if (settings.groupId && typeof settings.groupId === 'string') {
+        settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
+      }
+      if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
+        settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
+      }
+      trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
+      updateTrackProperties(audioTrack);
+
+      // Update displayed constraints
+      updateTrackConstraints(audioTrack);
+
+      // Visual feedback on button
+      const originalText = applyConstraintsButton.textContent;
+      applyConstraintsButton.textContent = 'Applied!';
+      setTimeout(() => {
+        applyConstraintsButton.textContent = originalText;
+      }, 1500);
+    } catch (err) {
+      console.error('audioTrack.applyConstraints() promise rejected:', err);
+      console.log('--- applyConstraints() FAILED ---');
+      if (err.name === 'OverconstrainedError' && err.constraint) {
+        errorMessageElement.textContent = `applyConstraints OverconstrainedError: constraint "${err.constraint}"`;
+      } else if (err.message) {
+        errorMessageElement.textContent = `applyConstraints Error: ${err.name} - ${err.message}`;
+      } else {
+        errorMessageElement.textContent = `applyConstraints Error: ${err.name}`;
+      }
+      errorMessageElement.style.display = 'block';
     }
   });
 
@@ -1497,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioOutputInfoElement.style.display = 'none';
     audioOutputInfoElement.textContent = '';
     gumButton.disabled = false;
+    applyConstraintsButton.disabled = true;
     copyBookmarkButton.disabled = false;
     stopButton.disabled = true;
     recordButton.disabled = true;
