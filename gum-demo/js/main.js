@@ -1222,6 +1222,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /**
+   * Compares requested audio constraints against track settings and computes
+   * a status map indicating whether each constraint was applied or not applied.
+   * @param {Object} requestedConstraints
+   * @param {Object} trackSettings
+   * @returns {Record<string, 'applied' | 'not-applied'>}
+   */
+  function computeConstraintStatusMap(requestedConstraints, trackSettings = {}) {
+    const statusMap = {};
+    const requestedKeys = Object.keys(requestedConstraints);
+
+    requestedKeys.forEach(key => {
+      const constraintVal = requestedConstraints[key];
+      let targetVal = constraintVal;
+      if (constraintVal && typeof constraintVal === 'object') {
+        if (constraintVal.exact !== undefined) targetVal = constraintVal.exact;
+        else if (constraintVal.ideal !== undefined) targetVal = constraintVal.ideal;
+      }
+
+      const actualVal = trackSettings[key];
+      // Compare targetVal with actualVal in settings (with float tolerance for latency/sampleRate)
+      let isMatch = false;
+      if (actualVal !== undefined) {
+        if (typeof targetVal === 'number' && typeof actualVal === 'number') {
+          isMatch = Math.abs(targetVal - actualVal) < 0.0001;
+        } else {
+          isMatch = actualVal === targetVal;
+        }
+      }
+      if (isMatch) {
+        statusMap[key] = 'applied';
+      } else {
+        statusMap[key] = 'not-applied';
+      }
+    });
+
+    return statusMap;
+  }
+
+  /**
    * Updates the 'getSettings():' UI box using track.getSettings().
    *
    * @param {MediaStreamTrack} audioTrack - The active audio track to inspect.
@@ -1817,8 +1856,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('audioTrack.getSettings() returns:', audioTrack.getSettings());
       console.log('--- getUserMedia() END ---');
       logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia' : 'captureStream', `Acquired audio track "${audioTrack.label || 'Audio track'}" (id: ${audioTrack.id.substring(0, 8)}..)`, 'success');
-      updateTrackConstraints(audioTrack);
-      updateTrackSettings(audioTrack);
+      const requestedKeys = micSourceRadio.checked ? Object.keys(audioConstraints) : [];
+      const statusMap = micSourceRadio.checked
+        ? computeConstraintStatusMap(audioConstraints, audioTrack.getSettings ? audioTrack.getSettings() : {})
+        : {};
+      updateTrackConstraints(audioTrack, requestedKeys);
+      updateTrackSettings(audioTrack, statusMap);
       updateTrackProperties(audioTrack);
       rmsAudioLevels = [];
       latestRmsAudioLevel = null;
@@ -2039,32 +2082,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Determine which constraint keys were requested and evaluate if getSettings() adopted them
       const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
       const requestedKeys = Object.keys(audioConstraints);
-      const statusMap = {};
-
-      requestedKeys.forEach(key => {
-        const constraintVal = audioConstraints[key];
-        let targetVal = constraintVal;
-        if (constraintVal && typeof constraintVal === 'object') {
-          if (constraintVal.exact !== undefined) targetVal = constraintVal.exact;
-          else if (constraintVal.ideal !== undefined) targetVal = constraintVal.ideal;
-        }
-
-        const actualVal = settings[key];
-        // Compare targetVal with actualVal in settings (with float tolerance for latency/sampleRate)
-        let isMatch = false;
-        if (actualVal !== undefined) {
-          if (typeof targetVal === 'number' && typeof actualVal === 'number') {
-            isMatch = Math.abs(targetVal - actualVal) < 0.0001;
-          } else {
-            isMatch = actualVal === targetVal;
-          }
-        }
-        if (isMatch) {
-          statusMap[key] = 'applied';
-        } else {
-          statusMap[key] = 'not-applied';
-        }
-      });
+      const statusMap = computeConstraintStatusMap(audioConstraints, settings);
 
       // Update getSettings() with green (applied) / red (not-applied) markers
       updateTrackSettings(audioTrack, statusMap);
