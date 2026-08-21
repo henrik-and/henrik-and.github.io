@@ -10,9 +10,9 @@ body {
 
 #system-info-container {
   background: #f1f3f5;
-  padding: 8px 12px;
+  padding: 5px 10px;
   border: 1px solid #d0d5dd;
-  margin-top: 8px;
+  margin-top: 6px;
   margin-bottom: 0;
   border-radius: 6px;
   width: fit-content;
@@ -20,13 +20,22 @@ body {
   box-sizing: border-box;
 }
 
-#system-info-container h3 {
-  margin-top: 0;
-  margin-bottom: 4px;
+#system-info-container summary {
+  cursor: pointer;
+  user-select: none;
   color: #495057;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   text-align: left;
+  outline: none;
+}
+
+#system-info-container[open] {
+  padding: 8px 12px;
+}
+
+#system-info-container[open] summary {
+  margin-bottom: 6px;
 }
 
 #system-info-details {
