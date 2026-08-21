@@ -793,10 +793,11 @@ document.addEventListener('DOMContentLoaded', async () => {
    *   pipeline (always concrete primitives like booleans, numbers, and default values).
    *
    * @param {MediaStreamTrack} audioTrack - The active audio track to inspect.
+   * @param {string[]} highlightedKeys - Array of constraint keys to highlight in yellow.
    */
-  function updateTrackConstraints(audioTrack) {
+  function updateTrackConstraints(audioTrack, highlightedKeys = []) {
     if (!micSourceRadio.checked || !audioTrack) {
-      trackConstraintsElement.textContent = '';
+      trackConstraintsElement.innerHTML = '';
       trackConstraintsElement.style.display = 'none';
       return;
     }
@@ -810,8 +811,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayConstraints.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
       }
     }
-    trackConstraintsElement.textContent = 'getConstraints():\n' + JSON.stringify(displayConstraints, null, 2);
+
+    const header = 'getConstraints():\n';
+    const entries = Object.entries(displayConstraints);
+    if (entries.length === 0) {
+      trackConstraintsElement.innerHTML = header + '{}';
+      trackConstraintsElement.style.display = 'block';
+      return;
+    }
+
+    let content = '{\n';
+    entries.forEach(([key, value], index) => {
+      const isLast = index === entries.length - 1;
+      const jsonVal = JSON.stringify(value, null, 2);
+      const indentedVal = jsonVal.includes('\n')
+        ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
+        : jsonVal;
+      const leadingSpaces = '  ';
+      const textContent = `"${key}": ${indentedVal}${isLast ? '' : ','}`;
+      if (highlightedKeys.includes(key)) {
+        content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
+      } else {
+        content += `${leadingSpaces}${textContent}\n`;
+      }
+    });
+    content += '}';
+
+    trackConstraintsElement.innerHTML = header + content;
     trackConstraintsElement.style.display = 'block';
+
+    if (highlightedKeys.length > 0) {
+      setTimeout(() => {
+        const elements = trackConstraintsElement.querySelectorAll('.highlight');
+        elements.forEach(el => el.classList.add('fade-out'));
+      }, 5000);
+    }
+  }
+
+  /**
+   * Updates the 'getSettings():' UI box using track.getSettings().
+   *
+   * @param {MediaStreamTrack} audioTrack - The active audio track to inspect.
+   * @param {Record<string, 'applied' | 'not-applied'>} statusMap - Mapping of setting keys to their application status.
+   */
+  function updateTrackSettings(audioTrack, statusMap = {}) {
+    if (!audioTrack) {
+      trackSettingsElement.innerHTML = '';
+      return;
+    }
+    const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+    const displaySettings = structuredClone(settings);
+    if (displaySettings.groupId && typeof displaySettings.groupId === 'string') {
+      displaySettings.groupId = `${displaySettings.groupId.substring(0, 8)}..${displaySettings.groupId.substring(displaySettings.groupId.length - 8)}`;
+    }
+    if (displaySettings.deviceId && typeof displaySettings.deviceId === 'string' && displaySettings.deviceId !== 'default') {
+      displaySettings.deviceId = `${displaySettings.deviceId.substring(0, 8)}..${displaySettings.deviceId.substring(displaySettings.deviceId.length - 8)}`;
+    }
+
+    const header = 'getSettings():\n';
+    const entries = Object.entries(displaySettings);
+    if (entries.length === 0) {
+      trackSettingsElement.innerHTML = header + '{}';
+      return;
+    }
+
+    let content = '{\n';
+    entries.forEach(([key, value], index) => {
+      const isLast = index === entries.length - 1;
+      const jsonVal = JSON.stringify(value, null, 2);
+      const indentedVal = jsonVal.includes('\n')
+        ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
+        : jsonVal;
+      const leadingSpaces = '  ';
+      const textContent = `"${key}": ${indentedVal}${isLast ? '' : ','}`;
+      const status = statusMap[key];
+      if (status === 'applied') {
+        content += `${leadingSpaces}<span class="highlight-green">${textContent}</span>\n`;
+      } else if (status === 'not-applied') {
+        content += `${leadingSpaces}<span class="highlight-red">${textContent}</span>\n`;
+      } else {
+        content += `${leadingSpaces}${textContent}\n`;
+      }
+    });
+    content += '}';
+
+    trackSettingsElement.innerHTML = header + content;
+
+    if (Object.keys(statusMap).length > 0) {
+      setTimeout(() => {
+        const elements = trackSettingsElement.querySelectorAll('.highlight-green, .highlight-red');
+        elements.forEach(el => el.classList.add('fade-out'));
+      }, 5000);
+    }
   }
 
   function updateTrackStats(audioTrack) {
@@ -1316,15 +1407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('audioTrack.getSettings() returns:', audioTrack.getSettings());
       console.log('--- getUserMedia() END ---');
       updateTrackConstraints(audioTrack);
-      const settings = audioTrack.getSettings();
-      console.log('MediaStreamTrack settings:', settings);
-      if (settings.groupId && typeof settings.groupId === 'string') {
-        settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
-      }
-      if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
-        settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
-      }
-      trackSettingsElement.textContent = 'getSettings():\n' + JSON.stringify(settings, null, 2);
+      updateTrackSettings(audioTrack);
       updateTrackProperties(audioTrack);
       rmsAudioLevels = [];
       latestRmsAudioLevel = null;
@@ -1536,19 +1619,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessageElement.style.backgroundColor = '';
       errorMessageElement.style.borderColor = '';
 
-      // Update MediaStreamTrack settings (reflects actual pipeline state from getSettings())
-      const settings = audioTrack.getSettings();
-      if (settings.groupId && typeof settings.groupId === 'string') {
-        settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
-      }
-      if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
-        settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
-      }
-      trackSettingsElement.textContent = 'getSettings():\n' + JSON.stringify(settings, null, 2);
+      // Determine which constraint keys were requested and evaluate if getSettings() adopted them
+      const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+      const requestedKeys = Object.keys(audioConstraints);
+      const statusMap = {};
+
+      requestedKeys.forEach(key => {
+        const constraintVal = audioConstraints[key];
+        let targetVal = constraintVal;
+        if (constraintVal && typeof constraintVal === 'object') {
+          if (constraintVal.exact !== undefined) targetVal = constraintVal.exact;
+          else if (constraintVal.ideal !== undefined) targetVal = constraintVal.ideal;
+        }
+
+        const actualVal = settings[key];
+        // Compare targetVal with actualVal in settings
+        if (actualVal !== undefined && actualVal === targetVal) {
+          statusMap[key] = 'applied';
+        } else {
+          statusMap[key] = 'not-applied';
+        }
+      });
+
+      // Update getSettings() with green (applied) / red (not-applied) markers
+      updateTrackSettings(audioTrack, statusMap);
       updateTrackProperties(audioTrack);
 
-      // Update displayed constraints
-      updateTrackConstraints(audioTrack);
+      // Update getConstraints() with yellow requested change markers
+      updateTrackConstraints(audioTrack, requestedKeys);
 
       // Visual feedback on button
       const originalText = applyConstraintsButton.textContent;

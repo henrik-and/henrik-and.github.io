@@ -60,8 +60,12 @@ audio.
 *   **Live Constraint Reconfiguration:** Test
     `MediaStreamTrack.applyConstraints()` on active audio tracks.
 *   **MediaStreamTrack Inspection:** Real-time side-by-side display of:
-    *   `getConstraints():` Requested constraint dictionary.
-    *   `getSettings():` Actual runtime pipeline state.
+    *   `getConstraints():` Requested constraint dictionary with yellow pulse
+        highlights on dynamically requested changes.
+    *   `getSettings():` Actual runtime pipeline state with green pulse
+        highlights when constraints are successfully applied, and red pulse
+        highlights when an `applyConstraints()` change is unhonored by the
+        browser pipeline.
     *   `properties:` Track properties (`id`, `kind`, `label`, `enabled`,
         `muted`, `readyState`) with pulse highlights on changes.
     *   `stats:` Frame rate, delivered frames, dropped frames, and latency
