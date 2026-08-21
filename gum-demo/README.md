@@ -21,9 +21,10 @@ audio.
         without requiring microphone permissions.
 2.  **Configure Audio Constraints:**
     *   Adjust audio processing constraints (`echoCancellation`,
-        `autoGainControl`, `noiseSuppression`, `voiceIsolation`, and
-        `channelCount`).
-    *   Supports boolean (`true`/`false`), `exact`, and `ideal` constraints.
+        `autoGainControl`, `noiseSuppression`, `voiceIsolation`, `channelCount`,
+        `latency`, `sampleRate`, and `sampleSize`).
+    *   Supports boolean (`true`/`false`), direct values, `exact`, and `ideal`
+        constraints.
     *   Hover over the **(i)** icon next to any constraint for details on its
         behavior.
 3.  **Optional WebRTC Loopback:**
@@ -54,9 +55,10 @@ audio.
 
 *   **Input Source Selection:** Switch between physical microphone and
     pre-recorded/local audio files.
-*   **Full Constraint Suite:** Test boolean, `exact`, and `ideal` configurations
-    for `echoCancellation`, `autoGainControl`, `noiseSuppression`,
-    `voiceIsolation`, and `channelCount`.
+*   **Full Constraint Suite:** Test boolean, direct, `exact`, and `ideal`
+    configurations for `echoCancellation`, `autoGainControl`,
+    `noiseSuppression`, `voiceIsolation`, `channelCount`, `latency`,
+    `sampleRate`, and `sampleSize`.
 *   **Live Constraint Reconfiguration:** Test
     `MediaStreamTrack.applyConstraints()` on active audio tracks.
 *   **MediaStreamTrack Inspection:** Real-time side-by-side display of:

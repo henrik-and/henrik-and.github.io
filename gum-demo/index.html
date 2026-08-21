@@ -127,10 +127,93 @@
               <label for="channelCount">channelCount:</label>
               <select id="channelCount">
                 <option value="undefined" selected>undefined</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
+                <optgroup label="Direct">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:1">exact: 1</option>
+                  <option value="exact:2">exact: 2</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:1">ideal: 1</option>
+                  <option value="ideal:2">ideal: 2</option>
+                </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture.">i</span>
+              <span class="info-icon" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture. Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="latencyConstraint">latency:</label>
+              <select id="latencyConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Seconds)">
+                  <option value="0.005">0.005 (5ms)</option>
+                  <option value="0.01">0.01 (10ms)</option>
+                  <option value="0.02">0.02 (20ms)</option>
+                  <option value="0.05">0.05 (50ms)</option>
+                  <option value="0.1">0.1 (100ms)</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:0.01">exact: 0.01</option>
+                  <option value="exact:0.02">exact: 0.02</option>
+                  <option value="exact:0.05">exact: 0.05</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:0.01">ideal: 0.01</option>
+                  <option value="ideal:0.02">ideal: 0.02</option>
+                  <option value="ideal:0.05">ideal: 0.05</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" data-tooltip="Target audio capture hardware latency in seconds (e.g. 0.01 for 10ms, 0.02 for 20ms). Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="sampleRateConstraint">sampleRate:</label>
+              <select id="sampleRateConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Hz)">
+                  <option value="16000">16000</option>
+                  <option value="24000">24000</option>
+                  <option value="32000">32000</option>
+                  <option value="44100">44100</option>
+                  <option value="48000">48000</option>
+                  <option value="96000">96000</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:16000">exact: 16000</option>
+                  <option value="exact:44100">exact: 44100</option>
+                  <option value="exact:48000">exact: 48000</option>
+                  <option value="exact:96000">exact: 96000</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:16000">ideal: 16000</option>
+                  <option value="ideal:44100">ideal: 44100</option>
+                  <option value="ideal:48000">ideal: 48000</option>
+                  <option value="ideal:96000">ideal: 96000</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" data-tooltip="Audio capture sampling rate in Hz (e.g. 16000, 44100, 48000, 96000). Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="sampleSizeConstraint">sampleSize:</label>
+              <select id="sampleSizeConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Bits)">
+                  <option value="16">16</option>
+                  <option value="24">24</option>
+                  <option value="32">32</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:16">exact: 16</option>
+                  <option value="exact:24">exact: 24</option>
+                  <option value="exact:32">exact: 32</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:16">ideal: 16</option>
+                  <option value="ideal:24">ideal: 24</option>
+                  <option value="ideal:32">ideal: 32</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" data-tooltip="Linear PCM sample resolution in bits per sample (e.g. 16, 24, 32). Supports direct, exact, and ideal constraints.">i</span>
             </div>
           </div>
           <div class="setting">
@@ -222,6 +305,6 @@
   <p id="error-message" class="error"></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=8" defer></script>
+  <script type="module" src="js/main.js?v=9" defer></script>
 </body>
 </html>

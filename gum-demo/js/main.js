@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     voiceIsolationContainer.style.display = '';
   }
   const channelCountSelect = document.getElementById('channelCount');
+  const latencyConstraintSelect = document.getElementById('latencyConstraint');
+  const sampleRateConstraintSelect = document.getElementById('sampleRateConstraint');
+  const sampleSizeConstraintSelect = document.getElementById('sampleSizeConstraint');
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
@@ -722,7 +725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (applyConstraintsButton.disabled) {
       applyConstraintsButton.setAttribute('data-tooltip', 'applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first.');
     } else {
-      applyConstraintsButton.setAttribute('data-tooltip', 'Apply new dynamic constraints (echoCancellation, autoGainControl, noiseSuppression, voiceIsolation, channelCount) to the live audio track using MediaStreamTrack.applyConstraints().');
+      applyConstraintsButton.setAttribute('data-tooltip', 'Apply new dynamic constraints (echoCancellation, autoGainControl, noiseSuppression, voiceIsolation, channelCount, latency, sampleRate, sampleSize) to the live audio track using MediaStreamTrack.applyConstraints().');
     }
   }
 
@@ -798,6 +801,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     noiseSuppressionSelect,
     voiceIsolationSelect,
     channelCountSelect,
+    latencyConstraintSelect,
+    sampleRateConstraintSelect,
+    sampleSizeConstraintSelect,
   ].filter(Boolean);
   const constraintSelects = [
     ...dynamicConstraintSelects,
@@ -868,6 +874,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       setSelectValue('voiceIsolation', voiceIsolationSelect);
     }
     setSelectValue('channelCount', channelCountSelect);
+    setSelectValue('latency', latencyConstraintSelect);
+    setSelectValue('sampleRate', sampleRateConstraintSelect);
+    setSelectValue('sampleSize', sampleSizeConstraintSelect);
     setSelectValue('deviceId', audioDeviceSelect);
 
     if (params.has('inputSource')) {
@@ -902,6 +911,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log(`applyUrlParameters: voiceIsolation from URL is "${params.get('voiceIsolation')}"`);
     }
     console.log(`applyUrlParameters: channelCount from URL is "${params.get('channelCount')}"`);
+    console.log(`applyUrlParameters: latency from URL is "${params.get('latency')}"`);
+    console.log(`applyUrlParameters: sampleRate from URL is "${params.get('sampleRate')}"`);
+    console.log(`applyUrlParameters: sampleSize from URL is "${params.get('sampleSize')}"`);
     console.log(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
   }
 
@@ -1666,7 +1678,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const channelCount = channelCountSelect.value;
     if (channelCount !== 'undefined') {
-      audioConstraints.channelCount = parseInt(channelCount, 10);
+      if (channelCount.startsWith('exact:')) {
+        audioConstraints.channelCount = { exact: parseInt(channelCount.substring(6), 10) };
+      } else if (channelCount.startsWith('ideal:')) {
+        audioConstraints.channelCount = { ideal: parseInt(channelCount.substring(6), 10) };
+      } else {
+        audioConstraints.channelCount = parseInt(channelCount, 10);
+      }
+    }
+    const latency = latencyConstraintSelect ? latencyConstraintSelect.value : 'undefined';
+    if (latency !== 'undefined') {
+      if (latency.startsWith('exact:')) {
+        audioConstraints.latency = { exact: parseFloat(latency.substring(6)) };
+      } else if (latency.startsWith('ideal:')) {
+        audioConstraints.latency = { ideal: parseFloat(latency.substring(6)) };
+      } else {
+        audioConstraints.latency = parseFloat(latency);
+      }
+    }
+    const sampleRate = sampleRateConstraintSelect ? sampleRateConstraintSelect.value : 'undefined';
+    if (sampleRate !== 'undefined') {
+      if (sampleRate.startsWith('exact:')) {
+        audioConstraints.sampleRate = { exact: parseInt(sampleRate.substring(6), 10) };
+      } else if (sampleRate.startsWith('ideal:')) {
+        audioConstraints.sampleRate = { ideal: parseInt(sampleRate.substring(6), 10) };
+      } else {
+        audioConstraints.sampleRate = parseInt(sampleRate, 10);
+      }
+    }
+    const sampleSize = sampleSizeConstraintSelect ? sampleSizeConstraintSelect.value : 'undefined';
+    if (sampleSize !== 'undefined') {
+      if (sampleSize.startsWith('exact:')) {
+        audioConstraints.sampleSize = { exact: parseInt(sampleSize.substring(6), 10) };
+      } else if (sampleSize.startsWith('ideal:')) {
+        audioConstraints.sampleSize = { ideal: parseInt(sampleSize.substring(6), 10) };
+      } else {
+        audioConstraints.sampleSize = parseInt(sampleSize, 10);
+      }
     }
     return audioConstraints;
   }
@@ -2002,8 +2050,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const actualVal = settings[key];
-        // Compare targetVal with actualVal in settings
-        if (actualVal !== undefined && actualVal === targetVal) {
+        // Compare targetVal with actualVal in settings (with float tolerance for latency/sampleRate)
+        let isMatch = false;
+        if (actualVal !== undefined) {
+          if (typeof targetVal === 'number' && typeof actualVal === 'number') {
+            isMatch = Math.abs(targetVal - actualVal) < 0.0001;
+          } else {
+            isMatch = actualVal === targetVal;
+          }
+        }
+        if (isMatch) {
           statusMap[key] = 'applied';
         } else {
           statusMap[key] = 'not-applied';
@@ -2498,6 +2554,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         addParam('voiceIsolation', voiceIsolationSelect);
       }
       addParam('channelCount', channelCountSelect);
+      if (latencyConstraintSelect) {
+        addParam('latency', latencyConstraintSelect);
+      }
+      if (sampleRateConstraintSelect) {
+        addParam('sampleRate', sampleRateConstraintSelect);
+      }
+      if (sampleSizeConstraintSelect) {
+        addParam('sampleSize', sampleSizeConstraintSelect);
+      }
       addParam('deviceId', audioDeviceSelect);
       params.set('inputSource', 'microphone');
     } else {
