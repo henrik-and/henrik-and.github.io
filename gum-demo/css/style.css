@@ -156,7 +156,41 @@ body {
   display: inline-block;
   width: 17ch;
   font-family: monospace;
-  margin-right: 5px;
+  margin-right: 6px;
+}
+
+.dynamic-constraints-group .setting select {
+  width: 140px;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 11px;
+  color: #2E7D32;
+  border: 1px solid #81C784;
+  border-radius: 50%;
+  margin-left: 8px;
+  margin-right: 4px;
+  cursor: help;
+  user-select: none;
+  background-color: #FFFFFF;
+  line-height: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.info-icon:hover {
+  background-color: #E8F5E9;
+  color: #1B5E20;
+  border-color: #388E3C;
 }
 
 .action-buttons-container {
@@ -264,12 +298,9 @@ button:disabled {
   margin-right: 5px;
 }
 
-.latency-hint-select {
-  margin-right: 20px;
-}
-
+.latency-hint-select,
 .sample-rate-select {
-  margin-right: 10px;
+  margin-right: 0;
 }
 
 .webaudio-settings-group {

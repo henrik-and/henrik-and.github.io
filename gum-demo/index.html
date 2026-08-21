@@ -59,6 +59,7 @@
                   <option value="ideal:remote-only">remote-only</option>
                 </optgroup>
               </select>
+              <span class="info-icon" data-tooltip="Acoustic Echo Cancellation (AEC) removes speaker feedback from microphone input. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="autoGainControl">autoGainControl:</label>
@@ -77,6 +78,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
+              <span class="info-icon" data-tooltip="Automatic Gain Control (AGC) adjusts microphone input sensitivity. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="noiseSuppression">noiseSuppression:</label>
@@ -95,6 +97,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
+              <span class="info-icon" data-tooltip="Noise Suppression (NS) filters background ambient noise. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting" id="voiceIsolation-container" style="display: none;">
               <label for="voiceIsolation">voiceIsolation:</label>
@@ -113,6 +116,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
+              <span class="info-icon" data-tooltip="Voice Isolation uses deep learning to isolate voice from background sound. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="channelCount">channelCount:</label>
@@ -121,6 +125,7 @@
                 <option value="1">1</option>
                 <option value="2">2</option>
               </select>
+              <span class="info-icon" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture.">i</span>
             </div>
           </div>
           <div class="setting">
@@ -128,6 +133,7 @@
             <select id="audioDevice">
               <option value="undefined" selected>undefined</option>
             </select>
+            <span class="info-icon" data-tooltip="Requests audio capture from a specific input device matching the selected deviceId.">i</span>
           </div>
           <pre>  },
   video: false
@@ -164,7 +170,8 @@
           <option value="balanced">balanced</option>
           <option value="playback">playback</option>
         </select>
-        <label for="sampleRate">sampleRate:</label>
+        <span class="info-icon" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback).">i</span>
+        <label for="sampleRate" style="margin-left: 10px;">sampleRate:</label>
         <select id="sampleRate" class="sample-rate-select">
           <option value="undefined" selected>undefined</option>
           <option value="44100">44100</option>
@@ -172,11 +179,13 @@
           <option value="88200">88200</option>
           <option value="96000">96000</option>
         </select>
+        <span class="info-icon" data-tooltip="AudioContext hardware/processing sample rate in Hz (e.g. 44100, 48000, 96000).">i</span>
       </div>
       <label for="audioOutputDevice">sinkId:</label>
       <select id="audioOutputDevice">
         <option value="undefined" selected>undefined</option>
       </select>
+      <span class="info-icon" data-tooltip="Routes audio playback to a specific physical output speaker via setSinkId().">i</span>
     </div>
     <fieldset id="track-section-container">
       <legend id="track-section-title">MediaStreamTrack (Audio) Getters & Properties</legend>
