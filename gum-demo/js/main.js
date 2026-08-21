@@ -126,6 +126,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentFileSourceType = 'predefined'; // 'predefined' or 'local'
   let localFileBlobUrl = null;
   let localFileName = '';
+  let previousAudioInputsCount = null;
+  let previousAudioOutputsCount = null;
+  let audioInputsHighlightExpiry = 0;
+  let audioOutputsHighlightExpiry = 0;
+  let audioInputsFadeTimer = null;
+  let audioOutputsFadeTimer = null;
 
   function updateAudioFileProgress() {
     const progressBar = document.getElementById('audio-file-progress');
@@ -2041,9 +2047,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Audio playback paused.');
   });
 
-  navigator.mediaDevices.addEventListener('devicechange', () => {
-    populateAudioInputDevices();
-    populateAudioOutputDevices();
+  navigator.mediaDevices.addEventListener('devicechange', async () => {
+    console.log('--- navigator.mediaDevices "devicechange" event received ---');
+
+    // Check if the currently active microphone device was disconnected
+    if (localStream && micSourceRadio.checked) {
+      const [audioTrack] = localStream.getAudioTracks();
+      if (audioTrack) {
+        const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+        const activeDeviceId = settings.deviceId;
+        console.log('devicechange: inspecting active audio track:', {
+          label: audioTrack.label,
+          activeDeviceId: activeDeviceId || 'undefined/default',
+          readyState: audioTrack.readyState
+        });
+
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+          let isDisconnected = false;
+          if (activeDeviceId && activeDeviceId !== 'default') {
+            if (!audioInputs.some(d => d.deviceId === activeDeviceId)) {
+              isDisconnected = true;
+            }
+          } else if (audioInputs.length === 0 || audioTrack.readyState === 'ended') {
+            isDisconnected = true;
+          }
+
+          if (isDisconnected) {
+            console.warn(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is no longer available. Stopping stream.`);
+            const label = audioTrack.label || 'Microphone';
+            stopButton.click();
+            errorMessageElement.textContent = `Warning: Active audio input device disconnected (${label}). Stream stopped.`;
+            errorMessageElement.style.display = 'block';
+          } else {
+            console.log(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is still connected.`);
+          }
+        } catch (e) {
+          console.warn('Error checking device disconnection on devicechange:', e);
+        }
+      }
+    }
+
+    await populateAudioInputDevices();
+    await populateAudioOutputDevices();
+    await populateSystemInfo();
+    console.log('devicechange: device lists and System Diagnostics updated.');
   });
 
   copyBookmarkButton.addEventListener('click', () => {
@@ -2223,6 +2273,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    if (previousAudioInputsCount !== null && audioInputsCount !== previousAudioInputsCount) {
+      audioInputsHighlightExpiry = Date.now() + 5000;
+    }
+    if (previousAudioOutputsCount !== null && audioOutputsCount !== previousAudioOutputsCount) {
+      audioOutputsHighlightExpiry = Date.now() + 5000;
+    }
+
+    previousAudioInputsCount = audioInputsCount;
+    previousAudioOutputsCount = audioOutputsCount;
+
+    const isInputsHighlighted = Date.now() < audioInputsHighlightExpiry;
+    const isOutputsHighlighted = Date.now() < audioOutputsHighlightExpiry;
+
+    const inputsText = `${audioInputsCount} Audio Input${audioInputsCount !== 1 ? 's' : ''} (mic)`;
+    const outputsText = `${audioOutputsCount} Audio Output${audioOutputsCount !== 1 ? 's' : ''} (speaker)`;
+
+    const displayedInputs = isInputsHighlighted
+      ? `<span id="highlight-audio-inputs" class="highlight">${inputsText}</span>`
+      : inputsText;
+    const displayedOutputs = isOutputsHighlighted
+      ? `<span id="highlight-audio-outputs" class="highlight">${outputsText}</span>`
+      : outputsText;
+
     // 4. Supported Audio Constraints
     const supConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
     const constraintsSummary = [
@@ -2243,7 +2316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <strong>Origin:</strong> ${protocol}//${host}<br>
       <strong>System Resources:</strong> ${systemResources}<br>
       <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}<br>
-      <strong>Detected Devices:</strong> ${audioInputsCount} Audio Input${audioInputsCount !== 1 ? 's' : ''} (mic), ${audioOutputsCount} Audio Output${audioOutputsCount !== 1 ? 's' : ''} (speaker)<br>
+      <strong>Detected Devices:</strong> ${displayedInputs}, ${displayedOutputs}<br>
       <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}<br>
       <strong>Supported Constraints:</strong> ${constraintsSummary}<br>
       <details style="margin-top: 4px; cursor: pointer;">
@@ -2251,6 +2324,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         <pre style="margin: 3px 0 0 0; font-size: 10px; white-space: pre-wrap; background: #e9ecef; padding: 4px 6px; border-radius: 3px;">${navigator.userAgent}</pre>
       </details>
     `;
+
+    if (isInputsHighlighted) {
+      if (audioInputsFadeTimer) clearTimeout(audioInputsFadeTimer);
+      const remainingMs = Math.max(0, audioInputsHighlightExpiry - Date.now());
+      audioInputsFadeTimer = setTimeout(() => {
+        const el = document.getElementById('highlight-audio-inputs');
+        if (el) el.classList.add('fade-out');
+      }, remainingMs);
+    }
+
+    if (isOutputsHighlighted) {
+      if (audioOutputsFadeTimer) clearTimeout(audioOutputsFadeTimer);
+      const remainingMs = Math.max(0, audioOutputsHighlightExpiry - Date.now());
+      audioOutputsFadeTimer = setTimeout(() => {
+        const el = document.getElementById('highlight-audio-outputs');
+        if (el) el.classList.add('fade-out');
+      }, remainingMs);
+    }
   }
 
   /**
