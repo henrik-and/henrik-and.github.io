@@ -85,7 +85,9 @@ audio.
 *   **Opus Recording & Visualizer:** In-browser recording with multi-MIME
     support and audio level meters.
 *   **System Diagnostics:** Header banner detecting browser, OS, secure context
-    status, microphone permissions, API support, and raw user agent.
+    status, microphone permissions, CPU compute pressure (`PressureObserver`),
+    live 1Hz mapped history graph (`light 25%`, `moderate 50%`, `high 75%`,
+    `heavy 100%`), state simulation cycle, API support, and raw user agent.
 *   **State Snapshot Export:** Single-click JSON export of all current
     configuration, system diagnostics, and performance data.
 
