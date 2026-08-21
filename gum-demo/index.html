@@ -178,17 +178,23 @@
         <option value="undefined" selected>undefined</option>
       </select>
     </div>
-    <div id="track-settings-container">
-      <pre id="track-constraints"></pre>
-      <pre id="track-settings"></pre>
-      <pre id="track-properties"></pre>
-      <pre id="track-stats"></pre>
-    </div>
-    <div id="rtp-stats-container">
-      <pre id="outbound-rtp-stats"></pre>
-      <pre id="inbound-rtp-stats"></pre>
-      <pre id="audio-playout-stats"></pre>
-    </div>
+    <fieldset id="track-section-container">
+      <legend id="track-section-title">MediaStreamTrack (Audio) Getters & Properties</legend>
+      <div id="track-settings-container">
+        <pre id="track-constraints"></pre>
+        <pre id="track-settings"></pre>
+        <pre id="track-properties"></pre>
+        <pre id="track-stats"></pre>
+      </div>
+    </fieldset>
+    <fieldset id="rtp-stats-section-container">
+      <legend id="rtp-stats-section-title">RTCPeerConnection (getStats() Audio Reports)</legend>
+      <div id="rtp-stats-container">
+        <pre id="outbound-rtp-stats"></pre>
+        <pre id="inbound-rtp-stats"></pre>
+        <pre id="audio-playout-stats"></pre>
+      </div>
+    </fieldset>
     <div id="snapshot-button-container">
       <button id="save-snapshot-button">Save Snapshot</button>
     </div>

@@ -371,6 +371,27 @@ button:disabled {
   margin-top: 1em;
 }
 
+#track-section-container {
+  border: 1px solid #A5D6A7;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 14px auto 0 auto;
+  background-color: rgba(232, 245, 233, 0.35);
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#track-section-title {
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 13px;
+  color: #2E7D32;
+  padding: 0 8px;
+  margin: 0 auto;
+  text-align: center;
+}
+
 #track-settings-container {
   width: 100%;
   display: flex;
@@ -383,6 +404,28 @@ button:disabled {
   height: 10px;
   margin-top: 5px;
   display: block;
+}
+
+#rtp-stats-section-container {
+  display: none; /* Shown when peerconnection stats are active */
+  border: 1px solid #90CAF9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 14px auto 0 auto;
+  background-color: rgba(227, 242, 253, 0.35);
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#rtp-stats-section-title {
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 13px;
+  color: #1565C0;
+  padding: 0 8px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 #rtp-stats-container {

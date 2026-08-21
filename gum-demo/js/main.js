@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const localFileInput = document.getElementById('localFileInput');
   const settingsContainer = document.querySelector('.settings-container');
   const outboundRtpStatsElement = document.getElementById('outbound-rtp-stats');
+  const rtpStatsSectionContainer = document.getElementById('rtp-stats-section-container');
 
   const audioFiles = [
     'concatenate_female.wav',
@@ -706,7 +707,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('MediaStreamTrack properties:', currentProperties);
 
     // Build the HTML string for the properties display.
-    const header = 'MediaStreamTrack properties:\n';
+    const header = 'properties:\n';
     let content = '{\n';
     // Get an array of [key, value] pairs to use .forEach() and track the index.
     const entries = Object.entries(currentProperties);
@@ -741,6 +742,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 5000);
   }
 
+  /**
+   * Updates the 'getConstraints():' UI box using track.getConstraints().
+   *
+   * Note on getConstraints() vs getSettings():
+   * - track.getConstraints() returns the *requested* constraint dictionary applied to the track
+   *   (via getUserMedia or applyConstraints). It can contain { ideal: ... }, { exact: ... },
+   *   or plain values, and omits any properties that were left undefined.
+   * - track.getSettings() returns the *actual resolved runtime state* running in the browser / hardware
+   *   pipeline (always concrete primitives like booleans, numbers, and default values).
+   *
+   * @param {MediaStreamTrack} audioTrack - The active audio track to inspect.
+   */
   function updateTrackConstraints(audioTrack) {
     if (!micSourceRadio.checked || !audioTrack) {
       trackConstraintsElement.textContent = '';
@@ -757,7 +770,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayConstraints.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
       }
     }
-    trackConstraintsElement.textContent = 'MediaStreamTrack constraints:\n' + JSON.stringify(displayConstraints, null, 2);
+    trackConstraintsElement.textContent = 'getConstraints():\n' + JSON.stringify(displayConstraints, null, 2);
     trackConstraintsElement.style.display = 'block';
   }
 
@@ -787,7 +800,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       extendedStats.droppedFrames = currentStats.totalFrames - currentStats.deliveredFrames;
       extendedStats.averageLatency = currentStats.averageLatency.toFixed(1);
 
-      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\n' + JSON.stringify(extendedStats, null, 2);
+      trackStatsElement.textContent = 'stats:\n' + JSON.stringify(extendedStats, null, 2);
 
       // Update previousStats for the next call, storing only the necessary fields.
       previousStats = {
@@ -796,7 +809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         droppedFrames: extendedStats.droppedFrames,
       };
     } else {
-      trackStatsElement.textContent = 'MediaStreamTrackAudioStats:\nNot supported';
+      trackStatsElement.textContent = 'stats:\nNot supported';
       previousStats = null;
     }
   }
@@ -812,7 +825,10 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   async function updateRtpStats() {
     if (!pc1 || !peerConnectionCheckbox.checked) {
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = 'none';
       outboundRtpStatsElement.style.display = 'none';
+      inboundRtpStatsElement.style.display = 'none';
+      audioPlayoutStatsElement.style.display = 'none';
       return;
     }
 
@@ -890,17 +906,19 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.channels = codec.channels;
             }
           }
-          outboundRtpStatsElement.textContent = 'RTCOutboundRtpStreamStats:\n' + JSON.stringify(displayStats, null, 2);
-          inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n';
-          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
+          outboundRtpStatsElement.textContent = 'outbound-rtp (pc1):\n' + JSON.stringify(displayStats, null, 2);
+          inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n';
+          audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
         }
       }
       // Show or hide the element based on whether stats were found in this report.
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = outboundStatsFound ? 'block' : 'none';
       outboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
       inboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
       audioPlayoutStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
     } catch (err) {
       console.error('Error getting RTP stats:', err);
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = 'none';
       outboundRtpStatsElement.style.display = 'none';
       inboundRtpStatsElement.style.display = 'none';
       audioPlayoutStatsElement.style.display = 'none';
@@ -1032,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   '"rmsAudioLevel": <b>$1</b>'
               );
             }
-            inboundRtpStatsElement.innerHTML = 'RTCInboundRtpStreamStats:\n' + statsString;
+            inboundRtpStatsElement.innerHTML = 'inbound-rtp (pc2):\n' + statsString;
           }
           if (stats.type === 'media-playout') {
             playoutStatsFound = true;
@@ -1092,14 +1110,14 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalSamplesCount: stats.totalSamplesCount,
             };
 
-            audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n' + JSON.stringify(displayStats, null, 2);
+            audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n' + JSON.stringify(displayStats, null, 2);
           }
         }
         if (!playoutStatsFound) {
-          audioPlayoutStatsElement.textContent = 'RTCAudioPlayoutStats:\n';
+          audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
         }
         if (!inboundRtpStatsFound) {
-          inboundRtpStatsElement.textContent = 'RTCInboundRtpStreamStats:\n';
+          inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n';
         }
       } catch (err) {
         console.error('Error getting RTP stats from pc2:', err);
@@ -1265,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
         settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
       }
-      trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
+      trackSettingsElement.textContent = 'getSettings():\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
       rmsAudioLevels = [];
       latestRmsAudioLevel = null;
@@ -1444,6 +1462,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [audioTrack] = localStream.getAudioTracks();
     if (!audioTrack || audioTrack.readyState !== 'live') return;
 
+    // Build the track-level constraints object from the UI dropdowns (echoCancellation,
+    // autoGainControl, noiseSuppression, voiceIsolation, channelCount).
     const audioConstraints = buildAudioConstraints();
     console.log('--- applyConstraints() START ---');
     console.log('Target track:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
@@ -1452,6 +1472,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Supplied constraints payload to applyConstraints():', JSON.stringify(audioConstraints, null, 2));
 
     try {
+      // Call standard MediaStreamTrack.applyConstraints().
+      // Note: In Chromium, applyConstraints() resolves and updates track.getConstraints(),
+      // but Chrome's underlying audio capture pipeline (MediaStreamAudioProcessor) does not
+      // dynamically reconfigure WebRTC APM filters (AEC/AGC/NS) on an active capture stream.
+      // Consequently, track.getSettings() reflects the active pipeline settings (which remain
+      // unchanged), while track.getConstraints() reflects the newly requested constraint dictionary.
       await audioTrack.applyConstraints(audioConstraints);
       console.log('audioTrack.applyConstraints() promise resolved successfully.');
       console.log('After applyConstraints -> audioTrack.getConstraints() now returns:', audioTrack.getConstraints());
@@ -1466,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessageElement.style.backgroundColor = '';
       errorMessageElement.style.borderColor = '';
 
-      // Update MediaStreamTrack settings
+      // Update MediaStreamTrack settings (reflects actual pipeline state from getSettings())
       const settings = audioTrack.getSettings();
       if (settings.groupId && typeof settings.groupId === 'string') {
         settings.groupId = `${settings.groupId.substring(0, 8)}..${settings.groupId.substring(settings.groupId.length - 8)}`;
@@ -1474,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (settings.deviceId && typeof settings.deviceId === 'string' && settings.deviceId !== 'default') {
         settings.deviceId = `${settings.deviceId.substring(0, 8)}..${settings.deviceId.substring(settings.deviceId.length - 8)}`;
       }
-      trackSettingsElement.textContent = 'MediaStreamTrack settings:\n' + JSON.stringify(settings, null, 2);
+      trackSettingsElement.textContent = 'getSettings():\n' + JSON.stringify(settings, null, 2);
       updateTrackProperties(audioTrack);
 
       // Update displayed constraints
@@ -1617,7 +1643,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackStatsElement.textContent = '';
     trackConstraintsElement.textContent = '';
     audioInputDeviceElement.textContent = '';
-    audioInputDeviceElement.style.display = 'none';
+    if (rtpStatsSectionContainer) {
+      rtpStatsSectionContainer.style.display = 'none';
+    }
     outboundRtpStatsElement.textContent = '';
     outboundRtpStatsElement.style.display = 'none';
     inboundRtpStatsElement.textContent = '';
@@ -1982,25 +2010,43 @@ document.addEventListener('DOMContentLoaded', async () => {
       return deviceInfo;
     };
 
-    // Create the main snapshot object. The `textContent` property of each DOM element
-    // provides a string, which is then passed to the appropriate parsing function
-    // to be converted into a structured object. The resulting `snapshot` is an object
-    // where keys are strings (describing the data) and values are the parsed
-    // results, which can be objects, strings, or null.
+    // Build the MediaStreamTrack getters and properties sub-object.
+    const trackSection = {
+      'getConstraints()': parseJsonContent(trackConstraintsElement.textContent),
+      'getSettings()': parseJsonContent(trackSettingsElement.textContent),
+      'properties': parseJsonContent(trackPropertiesElement.textContent),
+      'stats': parseJsonContent(trackStatsElement.textContent),
+    };
+    for (const key in trackSection) {
+      const value = trackSection[key];
+      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
+        delete trackSection[key];
+      }
+    }
+
+    // Build the RTCPeerConnection audio reports sub-object.
+    const rtpStatsSection = {
+      'outbound-rtp (pc1)': parseJsonContent(outboundRtpStatsElement.textContent),
+      'inbound-rtp (pc2)': parseJsonContent(inboundRtpStatsElement.textContent),
+      'audio-playout (pc2)': parseJsonContent(audioPlayoutStatsElement.textContent),
+    };
+    for (const key in rtpStatsSection) {
+      const value = rtpStatsSection[key];
+      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
+        delete rtpStatsSection[key];
+      }
+    }
+
+    // Create the main snapshot object.
     const snapshot = {
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
-      'constraints': parseJsonContent(trackConstraintsElement.textContent),
       'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
       'Audio output sinkId': audioOutputDeviceSelect.value,
-      'MediaStreamTrack settings': parseJsonContent(trackSettingsElement.textContent),
-      'MediaStreamTrack properties': parseJsonContent(trackPropertiesElement.textContent),
-      'MediaStreamTrackAudioStats': parseJsonContent(trackStatsElement.textContent),
-      'RTCOutboundRtpStreamStats': parseJsonContent(outboundRtpStatsElement.textContent),
-      'RTCInboundRtpStreamStats': parseJsonContent(inboundRtpStatsElement.textContent),
-      'RTCAudioPlayoutStats': parseJsonContent(audioPlayoutStatsElement.textContent),
+      'MediaStreamTrack (Audio) Getters & Properties': trackSection,
+      'RTCPeerConnection (getStats() Audio Reports)': rtpStatsSection,
     };
 
     // Clean up the snapshot by removing any sections that are empty or null.
