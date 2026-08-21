@@ -132,6 +132,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   let audioOutputsHighlightExpiry = 0;
   let audioInputsFadeTimer = null;
   let audioOutputsFadeTimer = null;
+  const lifecycleEvents = [];
+
+  function logLifecycleEvent(category, message, level = 'info') {
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+    const entry = { time: timeStr, category, message, level };
+    lifecycleEvents.push(entry);
+
+    const logContainer = document.getElementById('lifecycle-events-log');
+    const countSpan = document.getElementById('lifecycle-events-count');
+
+    if (countSpan) {
+      countSpan.textContent = `${lifecycleEvents.length} event${lifecycleEvents.length !== 1 ? 's' : ''}`;
+    }
+
+    if (logContainer) {
+      const line = document.createElement('div');
+      line.className = `lifecycle-event-line event-${level}`;
+
+      let marker = '';
+      if (level === 'error') marker = '<span class="event-marker">⛔</span>';
+      else if (level === 'warning') marker = '<span class="event-marker">⚠️</span>';
+      else if (level === 'success') marker = '<span class="event-marker">✅</span>';
+
+      line.innerHTML = `${marker}<span class="event-timestamp">[${timeStr}]</span> <strong>${category}:</strong> ${message}`;
+      logContainer.appendChild(line);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    console.log(`[Lifecycle] [${level.toUpperCase()}] ${timeStr} [${category}] ${message}`);
+  }
 
   function updateAudioFileProgress() {
     const progressBar = document.getElementById('audio-file-progress');
@@ -1402,6 +1432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           console.error('PeerConnection setup failed:', err);
           errorMessageElement.textContent = `PC Error: ${err.name} - ${err.message}`;
           errorMessageElement.style.display = 'block';
+          logLifecycleEvent('PeerConnection Error', `${err.name}: ${err.message}`, 'error');
           // Don't proceed with a broken stream setup
           return;
         }
@@ -1412,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('audioTrack.getConstraints() returns:', audioTrack.getConstraints ? audioTrack.getConstraints() : 'N/A');
       console.log('audioTrack.getSettings() returns:', audioTrack.getSettings());
       console.log('--- getUserMedia() END ---');
+      logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia' : 'captureStream', `Acquired audio track "${audioTrack.label || 'Audio track'}" (id: ${audioTrack.id.substring(0, 8)}..)`, 'success');
       updateTrackConstraints(audioTrack);
       updateTrackSettings(audioTrack);
       updateTrackProperties(audioTrack);
@@ -1423,6 +1455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 1000);
       audioTrack.onmute = (event) => {
         console.log('Audio track muted:', event);
+        logLifecycleEvent('track.onmute', `Warning: Audio track muted - ${event.type}`, 'warning');
         errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
         errorMessageElement.style.display = 'block';
         errorMessageElement.style.color = '#2F652F';
@@ -1432,6 +1465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
       audioTrack.onunmute = (event) => {
         console.log('Audio track unmuted:', event);
+        logLifecycleEvent('track.onunmute', 'Audio track unmuted - capture resumed', 'success');
         errorMessageElement.textContent = '';
         errorMessageElement.style.display = 'none';
         // Reset to default error colors from CSS
@@ -1442,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
       audioTrack.onended = (event) => {
         console.error('Audio track ended:', event);
+        logLifecycleEvent('track.onended', `Warning: Audio track ended - ${event.type}`, 'warning');
         
         updateTrackProperties(audioTrack);
         if (rmsAudioLevels.length > 0) {
@@ -1572,14 +1607,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateActionButtonsTooltips();
     } catch (err) {
       console.error(err);
+      let errorMsg = '';
       if (err.name === 'OverconstrainedError' && err.constraint) {
-        errorMessageElement.textContent = `OverconstrainedError: constraint "${err.constraint}"`;
+        errorMsg = `OverconstrainedError: constraint "${err.constraint}"`;
       } else if (err.message) {
-        errorMessageElement.textContent = `Error: ${err.name} - ${err.message}`;
+        errorMsg = `Error: ${err.name} - ${err.message}`;
       } else {
-        errorMessageElement.textContent = `Error: ${err.name}`;
+        errorMsg = `Error: ${err.name}`;
       }
+      errorMessageElement.textContent = errorMsg;
       errorMessageElement.style.display = 'block';
+      logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia Error' : 'captureStream Error', errorMsg, 'error');
       gumButton.disabled = false;
       applyConstraintsButton.disabled = true;
       copyBookmarkButton.disabled = false;
@@ -1651,6 +1689,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateTrackSettings(audioTrack, statusMap);
       updateTrackProperties(audioTrack);
 
+      // Log the applyConstraints outcome
+      const statusSummary = Object.entries(statusMap).map(([k, s]) => `${k}:${s}`).join(', ');
+      logLifecycleEvent('applyConstraints', `Requested {${requestedKeys.join(', ')}} -> ${statusSummary}`);
+
       // Update getConstraints() with yellow requested change markers
       updateTrackConstraints(audioTrack, requestedKeys);
 
@@ -1663,14 +1705,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('audioTrack.applyConstraints() promise rejected:', err);
       console.log('--- applyConstraints() FAILED ---');
+      let errorMsg = '';
       if (err.name === 'OverconstrainedError' && err.constraint) {
-        errorMessageElement.textContent = `applyConstraints OverconstrainedError: constraint "${err.constraint}"`;
+        errorMsg = `applyConstraints OverconstrainedError: constraint "${err.constraint}"`;
       } else if (err.message) {
-        errorMessageElement.textContent = `applyConstraints Error: ${err.name} - ${err.message}`;
+        errorMsg = `applyConstraints Error: ${err.name} - ${err.message}`;
       } else {
-        errorMessageElement.textContent = `applyConstraints Error: ${err.name}`;
+        errorMsg = `applyConstraints Error: ${err.name}`;
       }
+      errorMessageElement.textContent = errorMsg;
       errorMessageElement.style.display = 'block';
+      logLifecycleEvent('applyConstraints Error', errorMsg, 'error');
     }
   });
 
@@ -1825,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     errorMessageElement.style.backgroundColor = '';
     errorMessageElement.style.borderColor = '';
     console.log('Stream stopped and visualizer cleared.');
+    logLifecycleEvent('Stream', 'Stream stopped and audio pipeline closed');
   });
 
   recordButton.addEventListener('click', () => {
@@ -1835,6 +1881,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Cannot record: No active stream.');
         return;
       }
+      logLifecycleEvent('MediaRecorder', 'Recording started');
       recordedAudio.style.display = 'none';
       if (recordedAudio.src) {
         URL.revokeObjectURL(recordedAudio.src);
@@ -1870,6 +1917,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessageElement.style.display = 'block';
       }
     } else {
+      logLifecycleEvent('MediaRecorder', 'Recording stopped');
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
       }
@@ -1935,6 +1983,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const [audioTrack] = localStream.getAudioTracks();
       audioTrack.enabled = !muteCheckbox.checked;
       updateTrackProperties(audioTrack);
+      logLifecycleEvent('track.enabled', `Track enabled set to ${audioTrack.enabled}`);
     }
   });
 
@@ -1954,6 +2003,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           await updateAudioOutputInfo(audioPlayback.sinkId);
           audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
+          logLifecycleEvent('HTML:Play', `Playback started (sinkId: ${audioOutputDeviceSelect.value || 'default'})`);
         } catch (err) {
           console.error('Error setting audio output device:', err);
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
@@ -1962,11 +2012,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           htmlPlayCheckbox.checked = false;
           updateHtmlPlayTooltip();
           audioOutputDeviceSelect.disabled = false;
+          logLifecycleEvent('HTML:Play', `Failed to start playback (${err.name})`);
         }
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.style.display = 'none';
         audioOutputDeviceSelect.disabled = false;
+        logLifecycleEvent('HTML:Play', 'Playback stopped');
       }
     }
   });
@@ -2009,6 +2061,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           audioOutputDeviceSelect.disabled = true;
           latencyHintSelect.disabled = true;
           sampleRateSelect.disabled = true;
+          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms)`);
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
@@ -2022,6 +2075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             webAudioContext.close();
             webAudioContext = null;
           }
+          logLifecycleEvent('WebAudio:Play', `Failed to start AudioContext playback (${err.message})`);
         }
       } else {
         if (webAudioContext) {
@@ -2033,6 +2087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         audioOutputDeviceSelect.disabled = false;
         latencyHintSelect.disabled = false;
         sampleRateSelect.disabled = false;
+        logLifecycleEvent('WebAudio:Play', 'AudioContext playback stopped');
       }
     }
   });
@@ -2078,6 +2133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (isDisconnected) {
             console.warn(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is no longer available. Stopping stream.`);
             const label = audioTrack.label || 'Microphone';
+            logLifecycleEvent('devicechange', `Active mic disconnected (${label})`);
             stopButton.click();
             errorMessageElement.textContent = `Warning: Active audio input device disconnected (${label}). Stream stopped.`;
             errorMessageElement.style.display = 'block';
@@ -2094,6 +2150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await populateAudioOutputDevices();
     await populateSystemInfo();
     console.log('devicechange: device lists and System Diagnostics updated.');
+    logLifecycleEvent('devicechange', `Device lists and system diagnostics refreshed`);
   });
 
   copyBookmarkButton.addEventListener('click', () => {
@@ -2498,6 +2555,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Audio output sinkId': audioOutputDeviceSelect.value,
       'MediaStreamTrack (Audio) Getters & Properties': trackSection,
       'RTCPeerConnection (getStats() Audio Reports)': rtpStatsSection,
+      'Lifecycle Activity Log': lifecycleEvents.map(e => ({
+        time: e.time,
+        level: e.level,
+        category: e.category,
+        message: e.message,
+      })),
     };
 
     // Clean up the snapshot by removing any sections that are empty or null.

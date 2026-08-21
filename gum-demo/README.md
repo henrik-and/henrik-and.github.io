@@ -70,6 +70,9 @@ audio.
         `muted`, `readyState`) with pulse highlights on changes.
     *   `stats:` Frame rate, delivered frames, dropped frames, and latency
         metrics via `MediaStreamTrackAudioStats`.
+    *   `Lifecycle Activity Log:` Collapsible, timestamped event log recording
+        real-time track events (`onmute`, `onunmute`, `onended`,
+        `applyConstraints`, `devicechange`, playback transitions).
 *   **RTCPeerConnection (getStats() Reports):** Real-time metrics for:
     *   `outbound-rtp (pc1):` Sent bitrate (bps), packets per second (pps),
         bytes per packet (bpp), and codec info.
