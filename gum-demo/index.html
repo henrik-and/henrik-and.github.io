@@ -6,6 +6,12 @@
 </head>
 <body>
   <h1><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">MediaDevices: getUserMedia()</a> Audio Demo</h1>
+  <div id="system-info-container">
+    <h3>System Diagnostics</h3>
+    <div id="system-info-details">
+      Loading diagnostics...
+    </div>
+  </div>
   <div class="api-call-container">
     <div class="constraints-container">
       <div class="source-selector">
@@ -15,7 +21,6 @@
         <input type="radio" id="file-source" name="input-source" value="file">
         <label for="file-source" data-tooltip="Simulate a MediaStreamTrack from an audio file using HTMLMediaElement.captureStream() without microphone permissions.">Audio File</label>
       </div>
-      <div id="source-info-display" class="source-info-display"></div>
       <div id="file-selection-container" class="file-settings-container" style="display: none;">
         <label for="audioFile">Audio File:</label>
         <select id="audioFile">

@@ -77,8 +77,10 @@ audio.
     Web Audio API (`AudioContext`).
 *   **Opus Recording & Visualizer:** In-browser recording with multi-MIME
     support and audio level meters.
+*   **System Diagnostics:** Header banner detecting browser, OS, secure context
+    status, microphone permissions, API support, and raw user agent.
 *   **State Snapshot Export:** Single-click JSON export of all current
-    configuration and performance data.
+    configuration, system diagnostics, and performance data.
 
 ## Advanced Debugging with `chrome://webrtc-internals`
 

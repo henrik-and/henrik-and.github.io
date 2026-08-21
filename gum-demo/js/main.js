@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dtxCheckbox = document.getElementById('dtx-checkbox');
   const micSourceRadio = document.getElementById('mic-source');
   const fileSourceRadio = document.getElementById('file-source');
-  const sourceInfoDisplay = document.getElementById('source-info-display');
   const fileSelectionContainer = document.getElementById('file-selection-container');
   const audioFileSelect = document.getElementById('audioFile');
   const localFileInput = document.getElementById('localFileInput');
@@ -460,7 +459,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       constraintsPreElements.forEach(pre => pre.classList.add('disabled-setting'));
       document.querySelector('.dynamic-constraints-group')?.classList.add('disabled-setting');
       applyConstraintsButton.disabled = true;
-      sourceInfoDisplay.innerHTML = '<span class="note-warning">Note:</span> Uses audioElement.captureStream() to mock a MediaStream.';
     } else {
       constraintsPreElements.forEach(pre => pre.classList.remove('disabled-setting'));
       document.querySelector('.dynamic-constraints-group')?.classList.remove('disabled-setting');
@@ -479,7 +477,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         applyConstraintsButton.disabled = true;
       }
-      sourceInfoDisplay.textContent = 'Standard behavior: requests getUserMedia from selected device.';
     }
   }
 
@@ -1403,6 +1400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       snapshotButtonContainer.style.display = 'block';
       visualizeAudio(streamForPlaybackAndVisualizer);
       await populateAudioInputDevices();
+      await populateSystemInfo();
 
       // Display the properties of the audio device that the track is actively using.
       // This is the source of truth, especially when 'undefined' is selected for deviceId,
@@ -2016,12 +2014,153 @@ document.addEventListener('DOMContentLoaded', async () => {
     bookmarkUrlContainer.appendChild(link);
   });
 
+  let lastPermissionStatus = 'Unknown';
+
+  function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let tem;
+    let M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+    if (/trident/i.test(M[1])) {
+      tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
+      return { name: 'IE', version: (tem[1] || '') };
+    }
+    if (M[1] === 'Chrome') {
+      tem = ua.match(/\b(OPR|Edg)\/(\d+)/);
+      if (tem != null) return { name: tem[1].replace('OPR', 'Opera'), version: tem[2] };
+    }
+    M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
+    if ((tem = ua.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
+    return {
+      name: M[0],
+      version: M[1]
+    };
+  }
+
+  function getOSInfo() {
+    const ua = navigator.userAgent;
+    if (ua.indexOf("Win") !== -1) return "Windows";
+    if (ua.indexOf("Mac") !== -1) return "MacOS";
+    if (ua.indexOf("Linux") !== -1) return "Linux";
+    if (ua.indexOf("Android") !== -1) return "Android";
+    if (ua.indexOf("like Mac") !== -1) return "iOS";
+    return "Unknown OS";
+  }
+
+  async function populateSystemInfo() {
+    const infoDiv = document.getElementById('system-info-details');
+    if (!infoDiv) return;
+
+    const browser = getBrowserInfo();
+    const os = getOSInfo();
+    const isSecure = window.isSecureContext;
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+
+    const gumSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const applyConstraintsSupported = typeof MediaStreamTrack !== 'undefined' && ('applyConstraints' in MediaStreamTrack.prototype);
+    const setSinkIdSupported = typeof HTMLMediaElement !== 'undefined' && ('setSinkId' in HTMLMediaElement.prototype);
+    const peerConnectionSupported = typeof RTCPeerConnection !== 'undefined';
+    const mediaRecorderSupported = typeof MediaRecorder !== 'undefined';
+    const audioContextSupported = !!(window.AudioContext || window.webkitAudioContext);
+    const statsSupported = typeof MediaStreamTrack !== 'undefined' && ('stats' in MediaStreamTrack.prototype);
+    const captureStreamSupported = typeof HTMLMediaElement !== 'undefined' && ('captureStream' in HTMLMediaElement.prototype || 'mozCaptureStream' in HTMLMediaElement.prototype);
+
+    let permissionStatus = 'Unknown';
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const status = await navigator.permissions.query({ name: 'microphone' });
+        permissionStatus = status.state; // 'granted', 'prompt', 'denied'
+        lastPermissionStatus = permissionStatus;
+
+        // Auto-refresh when user updates permissions
+        status.onchange = () => {
+          populateSystemInfo();
+          populateAudioInputDevices();
+        };
+      } catch (e) {
+        permissionStatus = `Error: ${e.message}`;
+        lastPermissionStatus = permissionStatus;
+      }
+    }
+
+    let permissionColor = 'orange';
+    if (permissionStatus === 'granted') permissionColor = 'green';
+    if (permissionStatus === 'denied') permissionColor = 'red';
+
+    // 1. System Resources
+    const cores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : null;
+    const mem = navigator.deviceMemory ? `${navigator.deviceMemory} GB RAM` : null;
+    const systemResources = [cores, mem].filter(Boolean).join(', ') || 'N/A';
+
+    // 2. Audio Hardware & Context defaults
+    let hwSampleRate = 'N/A';
+    let hwBaseLatency = 'N/A';
+    let hwOutputLatency = 'N/A';
+    if (audioContextSupported) {
+      try {
+        const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        hwSampleRate = `${probeCtx.sampleRate} Hz`;
+        if (typeof probeCtx.baseLatency === 'number') {
+          hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
+        }
+        if (typeof probeCtx.outputLatency === 'number') {
+          hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
+        }
+        probeCtx.close();
+      } catch (e) {
+        console.warn('Probe AudioContext error:', e);
+      }
+    }
+
+    // 3. Detected Audio Devices
+    let audioInputsCount = 0;
+    let audioOutputsCount = 0;
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        audioInputsCount = devices.filter(d => d.kind === 'audioinput').length;
+        audioOutputsCount = devices.filter(d => d.kind === 'audiooutput').length;
+      } catch (e) {
+        console.warn('Enumerate devices error in system diagnostics:', e);
+      }
+    }
+
+    // 4. Supported Audio Constraints
+    const supConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
+    const constraintsSummary = [
+      `echoCancellation:${supConstraints.echoCancellation ? '✅' : '❌'}`,
+      `autoGainControl:${supConstraints.autoGainControl ? '✅' : '❌'}`,
+      `noiseSuppression:${supConstraints.noiseSuppression ? '✅' : '❌'}`,
+      `voiceIsolation:${supConstraints.voiceIsolation ? '✅' : '❌'}`,
+      `channelCount:${supConstraints.channelCount ? '✅' : '❌'}`,
+      `latency:${supConstraints.latency ? '✅' : '❌'}`,
+      `sampleRate:${supConstraints.sampleRate ? '✅' : '❌'}`,
+      `sampleSize:${supConstraints.sampleSize ? '✅' : '❌'}`,
+    ].join(', ');
+
+    infoDiv.innerHTML = `
+      <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
+      <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (getUserMedia will fail)</span>'}<br>
+      <strong>Microphone Permission:</strong> <span style="color: ${permissionColor}; font-weight:bold;">${permissionStatus}</span><br>
+      <strong>Origin:</strong> ${protocol}//${host}<br>
+      <strong>System Resources:</strong> ${systemResources}<br>
+      <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}<br>
+      <strong>Detected Devices:</strong> ${audioInputsCount} Audio Input${audioInputsCount !== 1 ? 's' : ''} (mic), ${audioOutputsCount} Audio Output${audioOutputsCount !== 1 ? 's' : ''} (speaker)<br>
+      <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}<br>
+      <strong>Supported Constraints:</strong> ${constraintsSummary}<br>
+      <details style="margin-top: 4px; cursor: pointer;">
+        <summary style="font-size: 10px; color: #666;">Raw User Agent</summary>
+        <pre style="margin: 3px 0 0 0; font-size: 10px; white-space: pre-wrap; background: #e9ecef; padding: 4px 6px; border-radius: 3px;">${navigator.userAgent}</pre>
+      </details>
+    `;
+  }
+
   /**
    * Handles the click event of the 'Save Snapshot' button. It gathers all the displayed track
    * and device information, formats it into a structured JSON object, and triggers a download
    * for the user.
    */
-  function handleSaveSnapshot() {
+  async function handleSaveSnapshot() {
     /**
      * Parses the text content of a <pre> element that is expected to contain a title line
      * followed by a JSON string.
@@ -2092,8 +2231,76 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    const browser = getBrowserInfo();
+    const os = getOSInfo();
+    let probeCtx = null;
+    let hwSampleRate = 'N/A';
+    let hwBaseLatency = 'N/A';
+    let hwOutputLatency = 'N/A';
+    try {
+      probeCtx = (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') ?
+        new (window.AudioContext || window.webkitAudioContext)() : null;
+      if (probeCtx) {
+        hwSampleRate = `${probeCtx.sampleRate} Hz`;
+        if (typeof probeCtx.baseLatency === 'number') {
+          hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
+        }
+        if (typeof probeCtx.outputLatency === 'number') {
+          hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
+        }
+        probeCtx.close();
+      }
+    } catch (e) {
+      console.warn('Probe AudioContext in snapshot error:', e);
+    }
+
+    let audioInputsCount = 0;
+    let audioOutputsCount = 0;
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        audioInputsCount = devices.filter(d => d.kind === 'audioinput').length;
+        audioOutputsCount = devices.filter(d => d.kind === 'audiooutput').length;
+      } catch (e) {
+        console.warn('Enumerate devices in snapshot error:', e);
+      }
+    }
+
+    const systemDiagnostics = {
+      'Browser': `${browser.name} ${browser.version} (${os})`,
+      'Secure Context': window.isSecureContext,
+      'Microphone Permission': lastPermissionStatus || 'Unknown',
+      'Origin': `${window.location.protocol}//${window.location.host}`,
+      'System Resources': {
+        'Logical Cores': navigator.hardwareConcurrency || 'N/A',
+        'Device Memory (GB)': navigator.deviceMemory || 'N/A',
+      },
+      'Hardware Audio': {
+        'Native Sample Rate': hwSampleRate,
+        'Base Latency': hwBaseLatency,
+        'Output Latency': hwOutputLatency,
+      },
+      'Detected Devices': {
+        'Audio Inputs (mics)': audioInputsCount,
+        'Audio Outputs (speakers)': audioOutputsCount,
+      },
+      'APIs Supported': {
+        'getUserMedia': !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+        'applyConstraints': typeof MediaStreamTrack !== 'undefined' && ('applyConstraints' in MediaStreamTrack.prototype),
+        'setSinkId': typeof HTMLMediaElement !== 'undefined' && ('setSinkId' in HTMLMediaElement.prototype),
+        'RTCPeerConnection': typeof RTCPeerConnection !== 'undefined',
+        'MediaRecorder': typeof MediaRecorder !== 'undefined',
+        'Web Audio': !!(window.AudioContext || window.webkitAudioContext),
+        'Track Stats API': typeof MediaStreamTrack !== 'undefined' && ('stats' in MediaStreamTrack.prototype),
+        'captureStream': typeof HTMLMediaElement !== 'undefined' && ('captureStream' in HTMLMediaElement.prototype || 'mozCaptureStream' in HTMLMediaElement.prototype),
+      },
+      'Supported Constraints': navigator.mediaDevices?.getSupportedConstraints?.() || {},
+      'User Agent': navigator.userAgent,
+    };
+
     // Create the main snapshot object.
     const snapshot = {
+      'System Diagnostics': systemDiagnostics,
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
       'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
@@ -2132,7 +2339,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   saveSnapshotButton.addEventListener('click', handleSaveSnapshot);
 
-  // Initialize the application by populating devices and then applying URL parameters.
+  // Initialize the application by populating system info, devices, and then applying URL parameters.
+  populateSystemInfo();
   await populateAudioInputDevices();
   await populateAudioOutputDevices();
   applyUrlParameters();

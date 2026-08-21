@@ -8,6 +8,34 @@ body {
   align-items: center;
 }
 
+#system-info-container {
+  background: #f1f3f5;
+  padding: 8px 12px;
+  border: 1px solid #d0d5dd;
+  margin-top: 8px;
+  margin-bottom: 0;
+  border-radius: 6px;
+  width: fit-content;
+  max-width: 90%;
+  box-sizing: border-box;
+}
+
+#system-info-container h3 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  color: #495057;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: left;
+}
+
+#system-info-details {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #333;
+  text-align: left;
+}
+
 .api-call-container {
   display: flex;
   align-items: center;
@@ -57,14 +85,6 @@ body {
   align-items: center;
 }
 
-.source-info-display {
-  font-family: monospace;
-  font-size: 0.9em;
-  margin-left: 5px;
-  margin-bottom: 0;
-  color: #333;
-}
-
 .file-settings-container {
   border: 1px solid darkgrey;
   padding: 10px;
@@ -98,11 +118,6 @@ body {
   font-size: inherit;
   padding: 2px 8px;
   cursor: pointer;
-}
-
-.note-warning {
-  color: #FF8C00; /* Dark Orange */
-  font-weight: bold;
 }
 
 .settings-and-copy-container {
