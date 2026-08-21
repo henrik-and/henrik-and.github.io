@@ -11,9 +11,9 @@
       <div class="source-selector">
         <span class="source-selector-label">Input source:</span>
         <input type="radio" id="mic-source" name="input-source" value="microphone" checked>
-        <label for="mic-source">Microphone</label>
+        <label for="mic-source" data-tooltip="Acquire live audio from local microphone via navigator.mediaDevices.getUserMedia().">Microphone</label>
         <input type="radio" id="file-source" name="input-source" value="file">
-        <label for="file-source">Audio File</label>
+        <label for="file-source" data-tooltip="Simulate a MediaStreamTrack from an audio file using HTMLMediaElement.captureStream() without microphone permissions.">Audio File</label>
       </div>
       <div id="source-info-display" class="source-info-display"></div>
       <div id="file-selection-container" class="file-settings-container" style="display: none;">
@@ -26,17 +26,17 @@
       </div>
       <div class="settings-and-copy-container">
         <div class="action-buttons-container">
-          <button id="gum-button">getUserMedia</button>
-          <button id="apply-constraints-button" disabled>applyConstraints</button>
+          <button id="gum-button" data-tooltip="Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.">getUserMedia</button>
+          <button id="apply-constraints-button" data-tooltip="applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first." disabled>applyConstraints</button>
         </div>
         <div class="settings-container">
           <div class="peerconnection-container">
             <input type="checkbox" id="peerconnection-checkbox">
-            <label for="peerconnection-checkbox">PeerConnection</label>
+            <label for="peerconnection-checkbox" data-tooltip="Send and receive the recorded local audio track via an RTCPeerConnection loopback (pc1 -> pc2) using Opus stereo.">PeerConnection</label>
           </div>
           <div class="dtx-container">
             <input type="checkbox" id="dtx-checkbox">
-            <label for="dtx-checkbox">VAD/DTX/CNG</label>
+            <label for="dtx-checkbox" data-tooltip="Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.">VAD/DTX/CNG</label>
           </div>
           <pre>constraints = {
   audio: {</pre>
@@ -133,7 +133,7 @@
   video: false
 }</pre>
         </div>
-        <button id="copy-bookmark-button">Copy Bookmark</button>
+        <button id="copy-bookmark-button" data-tooltip="Serialize current constraint selections into URL parameters and copy shareable link to clipboard using navigator.clipboard.writeText().">Copy Bookmark</button>
       </div>
     </div>
   </div>
@@ -144,19 +144,19 @@
   <div id="stream-controls-container">
     <div id="visualizer-and-stop-container">
       <canvas id="audio-visualizer" width="100" height="34"></canvas>
-      <button id="record-button"><span class="record-dot"></span>Rec</button>
+      <button id="record-button" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API."><span class="record-dot"></span>Rec</button>
       <audio id="recorded-audio" controls></audio>
       <canvas id="recorded-visualizer" width="200" height="50"></canvas>
-      <button id="stop-button">Stop Stream</button>
+      <button id="stop-button" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
     </div>
     <div id="checkbox-container">
       <input type="checkbox" id="mute-checkbox" />
-      <label for="mute-checkbox" title="Mutes the audio track by setting track.enabled=false. Affects both Microphone and Audio File sources.">Track:Mute</label>
+      <label for="mute-checkbox" data-tooltip="Mute the audio track by setting MediaStreamTrack.enabled = false without stopping hardware capture.">Track:Mute</label>
       <input type="checkbox" id="html-play-checkbox" />
-      <label for="html-play-checkbox" title="Plays the audio track directly using an HTML <audio> element. Supports output device selection (sinkId).">HTML:Play</label>
+      <label for="html-play-checkbox" data-tooltip="Play the audio track directly using an HTML <audio> element with setSinkId() output routing.">HTML:Play</label>
       <div class="webaudio-settings-group">
         <input type="checkbox" id="webaudio-play-checkbox" />
-        <label for="webaudio-play-checkbox">WebAudio:Play</label>
+        <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint and sampleRate.">WebAudio:Play</label>
         <label for="latencyHint">latencyHint:</label>
         <select id="latencyHint" class="latency-hint-select">
           <option value="undefined" selected>undefined</option>
@@ -196,7 +196,7 @@
       </div>
     </fieldset>
     <div id="snapshot-button-container">
-      <button id="save-snapshot-button">Save Snapshot</button>
+      <button id="save-snapshot-button" data-tooltip="Export current settings, track getters, and RTCPeerConnection getStats() reports to a gUM-snapshot.json file.">Save Snapshot</button>
     </div>
   </div>
   <audio id="audio-playback"></audio>

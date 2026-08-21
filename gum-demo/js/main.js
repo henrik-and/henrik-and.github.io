@@ -346,26 +346,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     return newSdpLines.join('\r\n');
   };
 
-  const peerConnectionLabel = peerConnectionCheckbox.parentElement.querySelector('label');
-  const dtxLabel = dtxCheckbox.parentElement.querySelector('label');
+  const peerConnectionLabel = document.querySelector('label[for="peerconnection-checkbox"]');
+  const dtxLabel = document.querySelector('label[for="dtx-checkbox"]');
+  const muteLabel = document.querySelector('label[for="mute-checkbox"]');
+  const htmlPlayLabel = document.querySelector('label[for="html-play-checkbox"]');
+  const webaudioPlayLabel = document.querySelector('label[for="webaudio-play-checkbox"]');
+
+  function updateActionButtonsTooltips() {
+    if (gumButton.disabled) {
+      gumButton.setAttribute('data-tooltip', "Active stream running via getUserMedia(). Click 'Stop Stream' to stop before requesting a new stream.");
+    } else {
+      gumButton.setAttribute('data-tooltip', 'Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.');
+    }
+
+    if (applyConstraintsButton.disabled) {
+      applyConstraintsButton.setAttribute('data-tooltip', 'applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first.');
+    } else {
+      applyConstraintsButton.setAttribute('data-tooltip', 'Apply new dynamic constraints (echoCancellation, autoGainControl, noiseSuppression, voiceIsolation, channelCount) to the live audio track using MediaStreamTrack.applyConstraints().');
+    }
+  }
 
   function updatePeerConnectionTooltip() {
-    if (peerConnectionCheckbox.checked) {
-      // State is ENABLED. Tooltip is removed.
-      peerConnectionLabel.title = '';
-    } else {
-      // State is DISABLED. Tooltip describes the action of checking it.
-      peerConnectionLabel.title = 'Send and receive the recorded local audio track via an RTCPeerConnection in loopback using Opus stereo as encoder and decoder';
+    if (peerConnectionLabel) {
+      peerConnectionLabel.setAttribute('data-tooltip', peerConnectionCheckbox.checked
+        ? 'RTCPeerConnection loopback (pc1 -> pc2) is active. Displaying real-time getStats() reports.'
+        : 'Send and receive the recorded local audio track via an RTCPeerConnection loopback (pc1 -> pc2) using Opus stereo.');
     }
   }
 
   function updateDtxTooltip() {
-    if (dtxCheckbox.checked) {
-      // State is ENABLED. Tooltip is removed.
-      dtxLabel.title = '';
-    } else {
-      // State is DISABLED. Tooltip describes the action of checking it.
-      dtxLabel.title = 'Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for the Opus codec in PeerConnection';
+    if (dtxLabel) {
+      dtxLabel.setAttribute('data-tooltip', dtxCheckbox.checked
+        ? 'usedtx=1 is enabled in the Opus SDP fmtp line.'
+        : 'Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.');
+    }
+  }
+
+  function updateMuteTooltip() {
+    if (muteLabel) {
+      muteLabel.setAttribute('data-tooltip', muteCheckbox.checked
+        ? 'Track is muted (MediaStreamTrack.enabled = false). Uncheck to unmute.'
+        : 'Mute the audio track by setting MediaStreamTrack.enabled = false without stopping hardware capture.');
+    }
+  }
+
+  function updateHtmlPlayTooltip() {
+    if (htmlPlayLabel) {
+      htmlPlayLabel.setAttribute('data-tooltip', htmlPlayCheckbox.checked
+        ? 'Playing via HTML <audio> element (HTMLAudioElement.srcObject = localStream).'
+        : 'Play the audio track directly using an HTML <audio> element with setSinkId() output routing.');
+    }
+  }
+
+  function updateWebAudioPlayTooltip() {
+    if (webaudioPlayLabel) {
+      webaudioPlayLabel.setAttribute('data-tooltip', webaudioPlayCheckbox.checked
+        ? 'Playing via Web Audio AudioContext destination.'
+        : 'Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint and sampleRate.');
     }
   }
 
@@ -388,8 +425,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Set the initial tooltip state on page load.
+  updateActionButtonsTooltips();
   updatePeerConnectionTooltip();
   updateDtxTooltip();
+  updateMuteTooltip();
+  updateHtmlPlayTooltip();
+  updateWebAudioPlayTooltip();
 
   const dynamicConstraintSelects = [
     echoCancellationSelect,
@@ -524,9 +565,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isRecording) {
       recordButton.classList.add('recording-active');
       recordButton.innerHTML = 'Stop';
+      recordButton.setAttribute('data-tooltip', 'Stop recording and generate playable audio blob and waveform.');
     } else {
       recordButton.classList.remove('recording-active');
       recordButton.innerHTML = '<span class="record-dot"></span>Rec';
+      recordButton.setAttribute('data-tooltip', 'Record the audio stream to an Opus WebM blob using the MediaRecorder API.');
     }
   }
 
@@ -1181,6 +1224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   gumButton.addEventListener('click', async () => {
     gumButton.disabled = true;
+    updateActionButtonsTooltips();
     copyBookmarkButton.disabled = true;
     peerConnectionCheckbox.disabled = true;
     dtxCheckbox.disabled = true;
@@ -1438,6 +1482,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         applyConstraintsButton.disabled = true;
       }
+      updateActionButtonsTooltips();
     } catch (err) {
       console.error(err);
       if (err.name === 'OverconstrainedError' && err.constraint) {
@@ -1454,6 +1499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       peerConnectionCheckbox.disabled = false;
       dtxCheckbox.disabled = false;
       setConstraintsDisabled(false);
+      updateActionButtonsTooltips();
     }
   });
 
@@ -1627,6 +1673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     copyBookmarkButton.disabled = false;
     stopButton.disabled = true;
     recordButton.disabled = true;
+    updateActionButtonsTooltips();
     setConstraintsDisabled(false);
     peerConnectionCheckbox.disabled = false;
     dtxCheckbox.disabled = false;
@@ -1638,6 +1685,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     muteCheckbox.checked = false;
     htmlPlayCheckbox.checked = false;
     webaudioPlayCheckbox.checked = false;
+    updateMuteTooltip();
+    updateHtmlPlayTooltip();
+    updateWebAudioPlayTooltip();
     trackSettingsElement.textContent = '';
     trackPropertiesElement.textContent = '';
     trackStatsElement.textContent = '';
@@ -1778,6 +1828,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   muteCheckbox.addEventListener('change', () => {
+    updateMuteTooltip();
     if (localStream) {
       const [audioTrack] = localStream.getAudioTracks();
       audioTrack.enabled = !muteCheckbox.checked;
@@ -1786,6 +1837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   htmlPlayCheckbox.addEventListener('change', async () => {
+    updateHtmlPlayTooltip();
     if (streamForPlaybackAndVisualizer) {
       if (htmlPlayCheckbox.checked) {
         const sinkId = audioOutputDeviceSelect.value;
@@ -1806,6 +1858,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           errorMessageElement.style.display = 'block';
           // Revert the UI state since we failed.
           htmlPlayCheckbox.checked = false;
+          updateHtmlPlayTooltip();
           audioOutputDeviceSelect.disabled = false;
         }
       } else {
@@ -1817,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   webaudioPlayCheckbox.addEventListener('change', async () => {
+    updateWebAudioPlayTooltip();
     if (streamForPlaybackAndVisualizer) {
       if (webaudioPlayCheckbox.checked) {
         try {
@@ -1858,6 +1912,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
           errorMessageElement.style.display = 'block';
           webaudioPlayCheckbox.checked = false;
+          updateWebAudioPlayTooltip();
           audioOutputDeviceSelect.disabled = false;
           latencyHintSelect.disabled = false;
           sampleRateSelect.disabled = false;
