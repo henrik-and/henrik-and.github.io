@@ -459,13 +459,20 @@ button:disabled {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
   transition: background-color 0.15s ease;
 }
 
 #download-recorded-audio-button:hover {
   background-color: #115E59;
+}
+
+.download-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 #recorded-visualizer {
