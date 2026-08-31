@@ -2318,6 +2318,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     logLifecycleEvent('Stream', 'Stream stopped and audio pipeline closed');
   });
 
+  let activeToastTimeout = null;
+  function showToastNotification(message, durationMs = 5000) {
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast-notification';
+      toast.className = 'toast-notification';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<span class="toast-dot"></span><span>${message}</span>`;
+    void toast.offsetHeight;
+    toast.classList.add('show');
+
+    if (activeToastTimeout) {
+      clearTimeout(activeToastTimeout);
+    }
+
+    activeToastTimeout = setTimeout(() => {
+      toast.classList.remove('show');
+    }, durationMs);
+  }
+
   function startRecording(isAuto = false) {
     if (!localStream) {
       console.error('Cannot record: No active stream.');
@@ -2326,6 +2348,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     isRecording = true;
     updateRecordButtonUI();
     logLifecycleEvent('MediaRecorder', isAuto ? 'Auto-recording started at time zero' : 'Recording started');
+    if (isAuto) {
+      showToastNotification('Auto-recording started at time zero', 5000);
+    } else {
+      showToastNotification('Recording started', 3000);
+    }
     recordedAudio.style.display = 'none';
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
@@ -2369,6 +2396,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     isRecording = false;
     updateRecordButtonUI();
     logLifecycleEvent('MediaRecorder', 'Recording stopped');
+    const toast = document.getElementById('toast-notification');
+    if (toast) {
+      toast.classList.remove('show');
+    }
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }

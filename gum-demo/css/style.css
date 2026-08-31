@@ -787,3 +787,38 @@ button:disabled {
 [data-tooltip=""]::after {
   display: none;
 }
+
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: rgba(30, 41, 59, 0.95);
+  color: #FFFFFF;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+
+.toast-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-notification .toast-dot {
+  width: 9px;
+  height: 9px;
+  background-color: #FF5252;
+  border-radius: 50%;
+  display: inline-block;
+  animation: recordPulse 1.2s infinite ease-in-out;
+}
