@@ -1164,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       rmsLabel.innerHTML = `<span class="rms-key">1s:</span>${text1s}<span class="rms-sep">|</span><span class="rms-key">10s:</span>${text10s}`;
       rmsLabel.setAttribute(
           'data-tooltip',
-          `RMS audio energy at remote receiver (pc2). 1s: ${text1s} (latest 1-second interval), 10s: ${text10s} (rolling 10-second True RMS).`
+          `RMS audio energy at remote receiver (pc2). 1s: ${text1s} (latest 1-second interval), 10s: ${text10s} (rolling 10-second True RMS). Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.`
       );
       rmsLabel.style.display = 'block';
     } else {
