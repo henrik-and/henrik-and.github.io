@@ -2401,6 +2401,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (recordedAudioContainer) {
           recordedAudioContainer.style.display = 'flex';
         }
+        const recordedLabel = document.querySelector('.recorded-label');
+        if (recordedLabel) {
+          recordedLabel.classList.remove('highlight', 'fade-out');
+          void recordedLabel.offsetWidth; // Force reflow
+          recordedLabel.classList.add('highlight');
+          setTimeout(() => {
+            recordedLabel.classList.add('fade-out');
+            setTimeout(() => {
+              recordedLabel.classList.remove('highlight', 'fade-out');
+            }, 1000);
+          }, 3600);
+        }
         const sizeKb = (recordedBlob.size / 1024).toFixed(1);
         logLifecycleEvent('MediaRecorder', `Recording completed (${sizeKb} KB, ${recordedChunks.length} chunk${recordedChunks.length === 1 ? '' : 's'})`, 'success');
       };
