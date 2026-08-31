@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       rmsLabel.innerHTML = `<span class="rms-key">RMS:</span>${text1s}`;
       rmsLabel.setAttribute(
           'data-tooltip',
-          `RMS audio energy at remote receiver (pc2) over the latest 1-second interval: ${text1s}. Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.`
+          'RMS audio energy at remote receiver (pc2) over the latest 1-second interval. Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.'
       );
       rmsLabel.style.display = 'block';
     } else {
