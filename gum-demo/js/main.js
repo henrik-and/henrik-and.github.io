@@ -1472,13 +1472,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
-          // Calculate and add summary metrics if data is available.
-          if (stats.totalPacketSendDelay && stats.packetsSent > 0) {
-            const averageDelayMs = (stats.totalPacketSendDelay / stats.packetsSent) * 1000;
-            displayStats.summary = {
-              averagePacketSendDelayMs: parseFloat(averageDelayMs.toFixed(1)),
-            };
-          }
 
           // Update previousOutboundRtpStats for the next interval's calculation.
           previousOutboundRtpStats = {
@@ -1628,24 +1621,6 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.rate = rate;
             }
 
-            const summary = {};
-            if (stats.totalProcessingDelay !== undefined && stats.totalSamplesReceived !== undefined && stats.concealedSamples !== undefined) {
-              const totalSamplesDecoded = stats.totalSamplesReceived - stats.concealedSamples;
-              if (totalSamplesDecoded > 0) {
-                const averageProcessingDelayMs = (stats.totalProcessingDelay / totalSamplesDecoded) * 1000;
-                summary.averageProcessingDelayMs = parseFloat(averageProcessingDelayMs.toFixed(1));
-              }
-            }
-
-            if (stats.jitterBufferTargetDelay !== undefined && stats.jitterBufferEmittedCount !== undefined) {
-              if (stats.jitterBufferEmittedCount > 0) {
-                const averageJitterBufferTargetDelayMs = (stats.jitterBufferTargetDelay / stats.jitterBufferEmittedCount) * 1000;
-                summary.averageJitterBufferTargetDelayMs = parseFloat(averageJitterBufferTargetDelayMs.toFixed(1));
-              }
-            }
-            if (Object.keys(summary).length > 0) {
-              displayStats.summary = summary;
-            }
 
             previousInboundRtpStats = {
               packetsDiscarded: stats.packetsDiscarded,
