@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>gum-demo</title>
-  <link rel="stylesheet" href="css/style.css?v=15">
+  <link rel="stylesheet" href="css/style.css?v=17">
 </head>
 <body>
   <h1><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">MediaDevices: getUserMedia()</a> Audio Demo</h1>
@@ -243,8 +243,12 @@
     <div id="visualizer-and-stop-container">
       <canvas id="audio-visualizer" width="100" height="34"></canvas>
       <button id="record-button" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API."><span class="record-dot"></span>Rec</button>
-      <audio id="recorded-audio" controls></audio>
-      <canvas id="recorded-visualizer" width="200" height="50"></canvas>
+      <div id="recorded-audio-container" class="recorded-audio-container" style="display: none;">
+        <span class="recorded-label">Recorded Audio:</span>
+        <audio id="recorded-audio" controls></audio>
+        <button id="download-recorded-audio-button" class="download-button" data-tooltip="Download recorded audio as WebM file">💾 Download</button>
+        <canvas id="recorded-visualizer" width="200" height="50"></canvas>
+      </div>
       <button id="stop-button" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
     </div>
     <div id="checkbox-container">
@@ -309,6 +313,6 @@
   <p id="error-message" class="error"></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=16" defer></script>
+  <script type="module" src="js/main.js?v=17" defer></script>
 </body>
 </html>

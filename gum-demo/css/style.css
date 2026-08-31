@@ -426,9 +426,46 @@ button:disabled {
   display: none;
 }
 
+.recorded-audio-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.recorded-label {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #334155;
+  white-space: nowrap;
+}
+
 #recorded-audio {
-  display: none;
-  margin-left: 10px;
+  height: 36px;
+  outline: none;
+}
+
+#download-recorded-audio-button {
+  background-color: #0F766E;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.85em;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+#download-recorded-audio-button:hover {
+  background-color: #115E59;
 }
 
 #recorded-visualizer {

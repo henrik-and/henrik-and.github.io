@@ -41,8 +41,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioInputDeviceElement = document.querySelector('#audio-input-device');
   const audioOutputInfoElement = document.querySelector('#audio-output-info');
   const audioDevicesContainer = document.querySelector('#audio-devices-container');
+  const recordedAudioContainer = document.querySelector('#recorded-audio-container');
   const recordedAudio = document.querySelector('#recorded-audio');
+  const downloadRecordedAudioButton = document.querySelector('#download-recorded-audio-button');
   const recordedVisualizer = document.querySelector('#recorded-visualizer');
+  let lastRecordedBlob = null;
+  let lastRecordedMimeType = '';
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
   const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
@@ -2298,11 +2302,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousOutboundRtpStats = null;
     previousInboundRtpStats = null;
     previousPlayoutStats = null;
-    recordedAudio.style.display = 'none';
+    if (recordedAudioContainer) {
+      recordedAudioContainer.style.display = 'none';
+    }
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
       recordedAudio.src = '';
     }
+    lastRecordedBlob = null;
+    lastRecordedMimeType = '';
     recordedVisualizer.style.display = 'none';
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
@@ -2364,11 +2372,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       showToastNotification('Recording started', 3000);
     }
-    recordedAudio.style.display = 'none';
+    if (recordedAudioContainer) {
+      recordedAudioContainer.style.display = 'none';
+    }
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
       recordedAudio.src = '';
     }
+    lastRecordedBlob = null;
+    lastRecordedMimeType = '';
     recordedVisualizer.style.display = 'none';
     recordedChunks = [];
     try {
@@ -2382,9 +2394,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       mediaRecorder.onstop = () => {
         console.log('MediaRecorder stopped.');
         const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
+        lastRecordedBlob = recordedBlob;
+        lastRecordedMimeType = mimeType || 'audio/webm';
         const audioUrl = URL.createObjectURL(recordedBlob);
         recordedAudio.src = audioUrl;
-        recordedAudio.style.display = 'block';
+        if (recordedAudioContainer) {
+          recordedAudioContainer.style.display = 'flex';
+        }
         const sizeKb = (recordedBlob.size / 1024).toFixed(1);
         logLifecycleEvent('MediaRecorder', `Recording completed (${sizeKb} KB, ${recordedChunks.length} chunk${recordedChunks.length === 1 ? '' : 's'})`, 'success');
       };
@@ -2417,6 +2433,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
+  }
+
+  if (downloadRecordedAudioButton) {
+    downloadRecordedAudioButton.addEventListener('click', () => {
+      if (!recordedAudio.src) return;
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const ext = (lastRecordedMimeType || '').includes('ogg') ? 'ogg' : 'webm';
+      const filename = `gum-recording-${timestamp}.${ext}`;
+
+      const a = document.createElement('a');
+      a.href = recordedAudio.src;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      logLifecycleEvent('MediaRecorder', `Downloaded recording file "${filename}"`, 'info');
+      showToastNotification(`Downloaded ${filename}`, 3000);
+    });
   }
 
   recordButton.addEventListener('click', () => {
