@@ -49,6 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const dtxCheckbox = document.getElementById('dtx-checkbox');
+  const autoRecordCheckbox = document.getElementById('auto-record-checkbox');
+  const autoRecordLabel = document.querySelector('label[for="auto-record-checkbox"]');
   const micSourceRadio = document.getElementById('mic-source');
   const fileSourceRadio = document.getElementById('file-source');
   const fileSelectionContainer = document.getElementById('file-selection-container');
@@ -745,6 +747,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function updateAutoRecordTooltip() {
+    if (autoRecordLabel && autoRecordCheckbox) {
+      autoRecordLabel.setAttribute('data-tooltip', autoRecordCheckbox.checked
+        ? 'Auto-record is enabled. MediaRecorder will start capturing immediately when getUserMedia acquires the stream.'
+        : 'Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().');
+    }
+  }
+
   function updateMuteTooltip() {
     if (muteLabel) {
       muteLabel.setAttribute('data-tooltip', muteCheckbox.checked
@@ -787,10 +797,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  if (autoRecordCheckbox) {
+    autoRecordCheckbox.addEventListener('change', () => {
+      updateAutoRecordTooltip();
+      if (autoRecordCheckbox.checked) {
+        console.log('Auto-record enabled');
+      } else {
+        console.log('Auto-record disabled');
+      }
+    });
+  }
+
   // Set the initial tooltip state on page load.
   updateActionButtonsTooltips();
   updatePeerConnectionTooltip();
   updateDtxTooltip();
+  updateAutoRecordTooltip();
   updateMuteTooltip();
   updateHtmlPlayTooltip();
   updateWebAudioPlayTooltip();
@@ -902,6 +924,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       dtxCheckbox.checked = true;
       // Manually trigger the change event to ensure the rest of the app state is updated.
       dtxCheckbox.dispatchEvent(new Event('change'));
+    }
+
+    if (params.has('autoRecord') && params.get('autoRecord') === 'true' && autoRecordCheckbox) {
+      autoRecordCheckbox.checked = true;
+      autoRecordCheckbox.dispatchEvent(new Event('change'));
     }
 
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
@@ -1764,6 +1791,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     copyBookmarkButton.disabled = true;
     peerConnectionCheckbox.disabled = true;
     dtxCheckbox.disabled = true;
+    if (autoRecordCheckbox) {
+      autoRecordCheckbox.disabled = true;
+    }
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
@@ -1833,6 +1863,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       localStream = stream;
+
+      // Start recording immediately at time zero if Auto-Record is enabled
+      if (autoRecordCheckbox && autoRecordCheckbox.checked) {
+        startRecording(true);
+      }
 
       streamForPlaybackAndVisualizer = localStream;
       if (peerConnectionCheckbox.checked) {
@@ -2039,6 +2074,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       copyBookmarkButton.disabled = false;
       peerConnectionCheckbox.disabled = false;
       dtxCheckbox.disabled = false;
+      if (autoRecordCheckbox) {
+        autoRecordCheckbox.disabled = false;
+      }
       setConstraintsDisabled(false);
       updateActionButtonsTooltips();
     }
@@ -2223,6 +2261,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setConstraintsDisabled(false);
     peerConnectionCheckbox.disabled = false;
     dtxCheckbox.disabled = false;
+    if (autoRecordCheckbox) {
+      autoRecordCheckbox.disabled = false;
+    }
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
     sampleRateSelect.disabled = false;
@@ -2259,6 +2300,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       recordedAudio.src = '';
     }
     recordedVisualizer.style.display = 'none';
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
     isRecording = false;
     updateRecordButtonUI();
     errorMessageElement.textContent = '';
@@ -2272,54 +2316,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     logLifecycleEvent('Stream', 'Stream stopped and audio pipeline closed');
   });
 
-  recordButton.addEventListener('click', () => {
-    isRecording = !isRecording;
+  function startRecording(isAuto = false) {
+    if (!localStream) {
+      console.error('Cannot record: No active stream.');
+      return;
+    }
+    isRecording = true;
     updateRecordButtonUI();
-    if (isRecording) {
-      if (!localStream) {
-        console.error('Cannot record: No active stream.');
-        return;
-      }
-      logLifecycleEvent('MediaRecorder', 'Recording started');
-      recordedAudio.style.display = 'none';
-      if (recordedAudio.src) {
-        URL.revokeObjectURL(recordedAudio.src);
-        recordedAudio.src = '';
-      }
-      recordedVisualizer.style.display = 'none';
-      recordedChunks = [];
-      const mimeType = findSupportedMimeType();
-      try {
-        mediaRecorder = new MediaRecorder(localStream, { mimeType });
-        mediaRecorder.onstart = () => console.log('MediaRecorder started.', 'MimeType:', mimeType);
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-          }
-        };
-        mediaRecorder.onstop = () => {
-          console.log('MediaRecorder stopped.');
-          const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
-          const audioUrl = URL.createObjectURL(recordedBlob);
-          recordedAudio.src = audioUrl;
-          recordedAudio.style.display = 'block';
-        };
-        mediaRecorder.onerror = (event) => {
-          console.error('MediaRecorder error:', event.error);
-          errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
-          errorMessageElement.style.display = 'block';
-        };
-        mediaRecorder.start();
-      } catch (err) {
-        console.error('Failed to create MediaRecorder:', err);
-        errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
+    logLifecycleEvent('MediaRecorder', isAuto ? 'Auto-recording started at time zero' : 'Recording started');
+    recordedAudio.style.display = 'none';
+    if (recordedAudio.src) {
+      URL.revokeObjectURL(recordedAudio.src);
+      recordedAudio.src = '';
+    }
+    recordedVisualizer.style.display = 'none';
+    recordedChunks = [];
+    const mimeType = findSupportedMimeType();
+    try {
+      mediaRecorder = new MediaRecorder(localStream, { mimeType });
+      mediaRecorder.onstart = () => console.log('MediaRecorder started.', 'MimeType:', mimeType, isAuto ? '(Auto-record)' : '');
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+      mediaRecorder.onstop = () => {
+        console.log('MediaRecorder stopped.');
+        const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
+        const audioUrl = URL.createObjectURL(recordedBlob);
+        recordedAudio.src = audioUrl;
+        recordedAudio.style.display = 'block';
+      };
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event.error);
+        errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
         errorMessageElement.style.display = 'block';
-      }
+      };
+      mediaRecorder.start();
+    } catch (err) {
+      console.error('Failed to create MediaRecorder:', err);
+      isRecording = false;
+      updateRecordButtonUI();
+      errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
+      errorMessageElement.style.display = 'block';
+    }
+  }
+
+  function stopRecording() {
+    if (!isRecording && (!mediaRecorder || mediaRecorder.state !== 'recording')) return;
+    isRecording = false;
+    updateRecordButtonUI();
+    logLifecycleEvent('MediaRecorder', 'Recording stopped');
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+  }
+
+  recordButton.addEventListener('click', () => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      logLifecycleEvent('MediaRecorder', 'Recording stopped');
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
+      startRecording(false);
     }
   });
 
@@ -2594,6 +2651,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (dtxCheckbox.checked) {
       params.set('dtx', 'true');
+    }
+
+    if (autoRecordCheckbox && autoRecordCheckbox.checked) {
+      params.set('autoRecord', 'true');
     }
 
     // Construct the full bookmarkable URL, only adding a '?' if there are parameters.
@@ -2986,6 +3047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const snapshot = {
       'System Diagnostics': systemDiagnostics,
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
+      'Auto-Record': autoRecordCheckbox ? autoRecordCheckbox.checked : false,
       'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,

@@ -144,7 +144,8 @@ body {
 }
 
 .peerconnection-container,
-.dtx-container {
+.dtx-container,
+.auto-record-container {
   position: absolute;
   right: 10px;
   display: flex;
@@ -159,8 +160,13 @@ body {
   top: 40px; /* Position it below the PeerConnection container */
 }
 
+.auto-record-container {
+  top: 70px; /* Position it below the DTX container */
+}
+
 #peerconnection-checkbox:checked + label,
-#dtx-checkbox:checked + label {
+#dtx-checkbox:checked + label,
+#auto-record-checkbox:checked + label {
   background-color: #E3F2FD; /* Light blue */
   padding: 2px 6px;
   border-radius: 4px;

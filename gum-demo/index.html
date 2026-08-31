@@ -43,6 +43,10 @@
             <input type="checkbox" id="dtx-checkbox">
             <label for="dtx-checkbox" data-tooltip="Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.">VAD/DTX/CNG</label>
           </div>
+          <div class="auto-record-container">
+            <input type="checkbox" id="auto-record-checkbox">
+            <label for="auto-record-checkbox" data-tooltip="Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().">Auto-Record</label>
+          </div>
           <pre>constraints = {
   audio: {</pre>
           <div class="dynamic-constraints-group">
@@ -305,6 +309,6 @@
   <p id="error-message" class="error"></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=10" defer></script>
+  <script type="module" src="js/main.js?v=11" defer></script>
 </body>
 </html>

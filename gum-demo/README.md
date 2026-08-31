@@ -27,12 +27,15 @@ audio.
         constraints.
     *   Hover over the **(i)** icon next to any constraint for details on its
         behavior.
-3.  **Optional WebRTC Loopback:**
+3.  **Optional WebRTC Loopback & Auto-Record:**
     *   **PeerConnection:** Routes audio through a local two-peer connection
         (`pc1` → `pc2`) using Opus stereo.
     *   **VAD/DTX/CNG:** Injects `usedtx=1` into Opus SDP to enable Voice
         Activity Detection, Discontinuous Transmission, and Comfort Noise
         Generation.
+    *   **Auto-Record:** Automatically initiates `MediaRecorder` at time zero as
+        soon as `getUserMedia()` acquires the track, capturing the very first
+        audio buffers without UI interaction delay.
 4.  **Start the Stream:** Click **getUserMedia** to acquire the stream.
 5.  **Dynamic Updates:** With an active microphone track, adjust constraints in
     the `// applyConstraints() scope` box and click **applyConstraints** to
@@ -55,6 +58,9 @@ audio.
 
 *   **Input Source Selection:** Switch between physical microphone and
     pre-recorded/local audio files.
+*   **Auto-Record at Time Zero:** Pre-arm recording to start immediately on
+    stream acquisition to diagnose driver initialization delays or early audio
+    loss.
 *   **Full Constraint Suite:** Test boolean, direct, `exact`, and `ideal`
     configurations for `echoCancellation`, `autoGainControl`,
     `noiseSuppression`, `voiceIsolation`, `channelCount`, `latency`,
