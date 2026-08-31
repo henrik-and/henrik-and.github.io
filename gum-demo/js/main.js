@@ -1708,11 +1708,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             let simDurationDelta = 0;
             if (simulatedGlitchMode === 'minor') {
               simEventsDelta = 1;
-              simDurationDelta = 0.050;
+              simDurationDelta = 0.010;
               setSimulatedGlitchMode('none');
             } else if (simulatedGlitchMode === 'degraded') {
               simEventsDelta = 2;
-              simDurationDelta = 0.120;
+              simDurationDelta = 0.020;
             }
 
             if (simEventsDelta > 0 || simDurationDelta > 0) {
