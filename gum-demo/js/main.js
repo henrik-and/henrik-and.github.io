@@ -132,6 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let latestRmsAudioLevel = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
+  const GLITCH_WINDOW_SIZE = 10;
+  const glitchWindow = [];
   let simulatedGlitchMode = 'none'; // 'none', 'minor', 'degraded'
   let simulatedGlitchCumulativeEvents = 0;
   let simulatedGlitchCumulativeDuration = 0;
@@ -1752,6 +1754,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 glitchy_intervals++;
                 intervalHasGlitch = true;
               }
+
+              glitchWindow.push(intervalHasGlitch);
+              if (glitchWindow.length > GLITCH_WINDOW_SIZE) {
+                glitchWindow.shift();
+              }
             }
 
             total_intervals++;
@@ -1761,7 +1768,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const glitchRatio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
 
+            const recentGlitchCount = glitchWindow.filter(Boolean).length;
+            const recentGlitchRatio = glitchWindow.length > 0 ? parseFloat((recentGlitchCount / glitchWindow.length).toFixed(2)) : 0;
+
             const summary = {
+              recentGlitchRatio: recentGlitchRatio,
               glitchyIntervals: glitchy_intervals,
               totalIntervals: total_intervals,
               glitchRatio: glitchRatio,
@@ -1793,10 +1804,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             let badgeHtml = '<span class="glitch-badge glitch-badge-clean">Clean</span>';
-            if (glitchRatio > 0.05) {
-              badgeHtml = `<span class="glitch-badge glitch-badge-error">Degraded (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
-            } else if (glitchRatio > 0) {
-              badgeHtml = `<span class="glitch-badge glitch-badge-warning">Minor (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
+            if (recentGlitchCount >= 2) {
+              badgeHtml = `<span class="glitch-badge glitch-badge-error">Degraded (${recentGlitchCount} in ${glitchWindow.length}s)</span>`;
+            } else if (recentGlitchCount === 1) {
+              badgeHtml = `<span class="glitch-badge glitch-badge-warning">Minor (1 in ${glitchWindow.length}s)</span>`;
             }
 
             let statsString = JSON.stringify(displayStats, null, 2);
@@ -1929,6 +1940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    glitchWindow.length = 0;
     simulatedGlitchCumulativeEvents = 0;
     simulatedGlitchCumulativeDuration = 0;
     errorMessageElement.textContent = '';
@@ -2428,6 +2440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    glitchWindow.length = 0;
     simulatedGlitchMode = 'none';
     simulatedGlitchCumulativeEvents = 0;
     simulatedGlitchCumulativeDuration = 0;
