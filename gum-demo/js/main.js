@@ -1161,10 +1161,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           ? Number(latestRmsAudioLevel).toFixed(5)
           : '0.00000';
       const text10s = (trueRms10s > 0) ? Number(trueRms10s).toFixed(5) : '0.00000';
-      rmsLabel.textContent = `1s: ${text1s} | 10s: ${text10s}`;
+      rmsLabel.innerHTML = `<span class="rms-key">1s:</span>${text1s}<span class="rms-sep">|</span><span class="rms-key">10s:</span>${text10s}`;
+      rmsLabel.setAttribute(
+          'data-tooltip',
+          `RMS audio energy at remote receiver (pc2). 1s: ${text1s} (latest 1-second interval), 10s: ${text10s} (rolling 10-second True RMS).`
+      );
       rmsLabel.style.display = 'block';
     } else {
       rmsLabel.textContent = '';
+      rmsLabel.removeAttribute('data-tooltip');
       rmsLabel.style.display = 'none';
     }
   }
