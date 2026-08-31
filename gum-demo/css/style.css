@@ -378,12 +378,16 @@ button:disabled {
 #visualizer-rms-label .rms-key {
   color: #666;
   font-weight: 600;
-  margin-right: 2px;
+  margin-right: 3px;
 }
 
-#visualizer-rms-label .rms-sep {
-  color: #aaa;
-  margin: 0 5px;
+#visualizer-rms-label .rms-val {
+  color: #777;
+}
+
+#visualizer-rms-label .rms-val.active {
+  color: #1b5e20;
+  font-weight: 600;
 }
 
 #record-button {
