@@ -1632,6 +1632,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             playoutStatsFound = true;
             const displayStats = {};
 
+            if (stats.kind !== undefined) {
+              displayStats.kind = stats.kind;
+            }
+            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(3));
+            displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
+            displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
+            displayStats.totalPlayoutDelay = parseFloat(stats.totalPlayoutDelay.toFixed(3));
+            displayStats.totalSamplesCount = stats.totalSamplesCount;
+
             // Calculate and add interval-specific rates.
             if (previousPlayoutStats) {
               const deltaSynthesizedSamplesDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
@@ -1641,8 +1650,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
               const interval = {};
-              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
               interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(3));
+              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
               const synthesizedSamplesPercentage = (deltaTotalSamplesDuration > 0) ? (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100 : 0;
               interval.synthesizedSamplesPercentage = parseFloat(synthesizedSamplesPercentage.toFixed(1));
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
@@ -1664,15 +1673,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             glitch_metrics.glitchy_intervals_ratio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
             displayStats.glitch_metrics = glitch_metrics;
-
-            if (stats.kind !== undefined) {
-              displayStats.kind = stats.kind;
-            }
-            displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
-            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(3));
-            displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
-            displayStats.totalPlayoutDelay = parseFloat(stats.totalPlayoutDelay.toFixed(3));
-            displayStats.totalSamplesCount = stats.totalSamplesCount;
 
             if (stats.totalSamplesCount > 0) {
               const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
