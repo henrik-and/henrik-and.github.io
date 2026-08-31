@@ -2041,8 +2041,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
       htmlPlayCheckbox.checked = false;
-      isRecording = false;
-      updateRecordButtonUI();
+      if (!autoRecordCheckbox || !autoRecordCheckbox.checked) {
+        isRecording = false;
+        updateRecordButtonUI();
+      }
 
       if (micSourceRadio.checked) {
         applyConstraintsButton.disabled = false;
