@@ -1686,14 +1686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalSamplesDuration: stats.totalSamplesDuration,
               packetsReceived: stats.packetsReceived,
             };
-            let statsString = JSON.stringify(displayStats, null, 2);
-            if (displayStats.rate && displayStats.rate.rmsAudioLevel !== undefined) {
-              statsString = statsString.replace(
-                  /"rmsAudioLevel": ([\d.]+)/,
-                  '"rmsAudioLevel": <b>$1</b>'
-              );
-            }
-            inboundRtpStatsElement.innerHTML = 'inbound-rtp (pc2):\n' + statsString;
+            inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n' + JSON.stringify(displayStats, null, 2);
           }
           if (stats.type === 'media-playout') {
             playoutStatsFound = true;
