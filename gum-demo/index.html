@@ -297,7 +297,18 @@
       </details>
     </fieldset>
     <fieldset id="rtp-stats-section-container">
-      <legend id="rtp-stats-section-title">RTCPeerConnection (getStats() Audio Reports)</legend>
+      <legend id="rtp-stats-section-title">
+        RTCPeerConnection (getStats() Audio Reports)
+        <span id="glitch-simulation-container" style="font-size: 11px; font-weight: normal; margin-left: 12px;">
+          <label for="simulate-glitch-select" style="color: #666;">Simulate Glitches:</label>
+          <select id="simulate-glitch-select" style="font-size: 11px; padding: 1px 4px; border-radius: 3px; border: 1px solid #aaa; background: #fff; cursor: pointer;">
+            <option value="none">Off (Live)</option>
+            <option value="minor">🟡 Inject 1 Glitch</option>
+            <option value="degraded">🔴 Heavy Burst (Degraded)</option>
+          </select>
+          <button id="simulate-glitch-cycle-btn" style="margin-left: 4px; font-size: 10px; padding: 1px 6px; cursor: pointer; border: 1px solid #aaa; border-radius: 3px; background: #fff;">Simulate Cycle</button>
+        </span>
+      </legend>
       <div id="rtp-stats-container">
         <pre id="outbound-rtp-stats"></pre>
         <pre id="inbound-rtp-stats"></pre>

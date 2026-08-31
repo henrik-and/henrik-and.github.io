@@ -132,6 +132,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let latestRmsAudioLevel = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
+  let simulatedGlitchMode = 'none'; // 'none', 'minor', 'degraded'
+  let simulatedGlitchCumulativeEvents = 0;
+  let simulatedGlitchCumulativeDuration = 0;
+  let glitchSimulationTimer = null;
   let currentFileSourceType = 'predefined'; // 'predefined' or 'local'
   let localFileBlobUrl = null;
   let localFileName = '';
@@ -394,6 +398,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       const factors = (state === 'serious' || state === 'critical') ? ['thermal'] : [];
       setComputePressureState(state, factors, true);
     }, 1500);
+  }
+
+  function setSimulatedGlitchMode(mode) {
+    simulatedGlitchMode = mode;
+    const select = document.getElementById('simulate-glitch-select');
+    if (select && select.value !== mode) {
+      select.value = mode;
+    }
+    if (mode === 'minor') {
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🟡 Minor (+1 event)', 'warning');
+    } else if (mode === 'degraded') {
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🔴 Degraded (heavy bursts)', 'warning');
+    } else if (mode === 'none') {
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🟢 Off (Live stats)', 'info');
+    }
+  }
+
+  function runGlitchSimulationCycle() {
+    if (glitchSimulationTimer) {
+      clearInterval(glitchSimulationTimer);
+      glitchSimulationTimer = null;
+    }
+    const btn = document.getElementById('simulate-glitch-cycle-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Simulating...';
+    }
+
+    let cycleStep = 0;
+    setSimulatedGlitchMode('none');
+
+    glitchSimulationTimer = setInterval(() => {
+      cycleStep++;
+      if (cycleStep === 3) {
+        setSimulatedGlitchMode('minor');
+      } else if (cycleStep === 6) {
+        setSimulatedGlitchMode('degraded');
+      } else if (cycleStep >= 11) {
+        setSimulatedGlitchMode('none');
+        clearInterval(glitchSimulationTimer);
+        glitchSimulationTimer = null;
+        const b = document.getElementById('simulate-glitch-cycle-btn');
+        if (b) {
+          b.disabled = false;
+          b.textContent = 'Simulate Cycle';
+        }
+      }
+    }, 1000);
   }
 
   function getComputePressureBadge(state) {
@@ -1650,11 +1702,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             playoutStatsFound = true;
             const displayStats = {};
 
+            let simEventsDelta = 0;
+            let simDurationDelta = 0;
+            if (simulatedGlitchMode === 'minor') {
+              simEventsDelta = 1;
+              simDurationDelta = 0.050;
+              setSimulatedGlitchMode('none');
+            } else if (simulatedGlitchMode === 'degraded') {
+              simEventsDelta = 2;
+              simDurationDelta = 0.120;
+            }
+
+            if (simEventsDelta > 0 || simDurationDelta > 0) {
+              simulatedGlitchCumulativeEvents += simEventsDelta;
+              simulatedGlitchCumulativeDuration += simDurationDelta;
+            }
+
+            const currentSynthesizedEvents = stats.synthesizedSamplesEvents + simulatedGlitchCumulativeEvents;
+            const currentSynthesizedDuration = parseFloat((stats.synthesizedSamplesDuration + simulatedGlitchCumulativeDuration).toFixed(3));
+
             if (stats.kind !== undefined) {
               displayStats.kind = stats.kind;
             }
-            displayStats.synthesizedSamplesDuration = parseFloat(stats.synthesizedSamplesDuration.toFixed(3));
-            displayStats.synthesizedSamplesEvents = stats.synthesizedSamplesEvents;
+            displayStats.synthesizedSamplesDuration = currentSynthesizedDuration;
+            displayStats.synthesizedSamplesEvents = currentSynthesizedEvents;
             displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
             displayStats.totalPlayoutDelay = parseFloat(stats.totalPlayoutDelay.toFixed(3));
             displayStats.totalSamplesCount = stats.totalSamplesCount;
@@ -1662,11 +1733,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             let intervalHasGlitch = false;
             // Calculate and add interval-specific rates.
             if (previousPlayoutStats) {
-              const deltaSynthesizedSamplesDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
+              const deltaSynthesizedSamplesDuration = currentSynthesizedDuration - previousPlayoutStats.synthesizedSamplesDuration;
               const deltaTotalSamplesDuration = stats.totalSamplesDuration - previousPlayoutStats.totalSamplesDuration;
               const deltaTotalPlayoutDelay = stats.totalPlayoutDelay - previousPlayoutStats.totalPlayoutDelay;
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
-              const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
+              const deltaSynthesizedSamplesEvents = currentSynthesizedEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
               const rate = {};
               rate.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(3));
@@ -1701,15 +1772,15 @@ document.addEventListener('DOMContentLoaded', async () => {
               summary.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
             }
             if (stats.totalSamplesDuration > 0) {
-              const averageSynthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
+              const averageSynthesizedPercentage = (currentSynthesizedDuration / stats.totalSamplesDuration) * 100;
               summary.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
             }
             displayStats.summary = summary;
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
-              synthesizedSamplesEvents: stats.synthesizedSamplesEvents,
-              synthesizedSamplesDuration: stats.synthesizedSamplesDuration,
+              synthesizedSamplesEvents: currentSynthesizedEvents,
+              synthesizedSamplesDuration: currentSynthesizedDuration,
               totalSamplesDuration: stats.totalSamplesDuration,
               totalPlayoutDelay: stats.totalPlayoutDelay,
               totalSamplesCount: stats.totalSamplesCount,
@@ -1858,6 +1929,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    simulatedGlitchCumulativeEvents = 0;
+    simulatedGlitchCumulativeDuration = 0;
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
@@ -2355,6 +2428,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    simulatedGlitchMode = 'none';
+    simulatedGlitchCumulativeEvents = 0;
+    simulatedGlitchCumulativeDuration = 0;
+    if (glitchSimulationTimer) {
+      clearInterval(glitchSimulationTimer);
+      glitchSimulationTimer = null;
+      const b = document.getElementById('simulate-glitch-cycle-btn');
+      if (b) {
+        b.disabled = false;
+        b.textContent = 'Simulate Cycle';
+      }
+    }
+    const glitchSelect = document.getElementById('simulate-glitch-select');
+    if (glitchSelect) {
+      glitchSelect.value = 'none';
+    }
     if (recordedAudioContainer) {
       recordedAudioContainer.style.display = 'none';
     }
@@ -3243,6 +3332,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target && e.target.id === 'simulate-pressure-cycle-btn') {
       runComputePressureCycle();
     }
+    if (e.target && e.target.id === 'simulate-glitch-cycle-btn') {
+      runGlitchSimulationCycle();
+    }
   });
 
   document.addEventListener('change', (e) => {
@@ -3252,6 +3344,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const factors = (selected === 'serious' || selected === 'critical') ? ['thermal'] : [];
         setComputePressureState(selected, factors, true);
         e.target.value = '';
+      }
+    }
+    if (e.target && e.target.id === 'simulate-glitch-select') {
+      const selected = e.target.value;
+      if (selected) {
+        setSimulatedGlitchMode(selected);
       }
     }
   });
