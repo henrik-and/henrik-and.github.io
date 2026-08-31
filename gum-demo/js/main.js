@@ -1641,6 +1641,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayStats.totalPlayoutDelay = parseFloat(stats.totalPlayoutDelay.toFixed(3));
             displayStats.totalSamplesCount = stats.totalSamplesCount;
 
+            let intervalHasGlitch = false;
             // Calculate and add interval-specific rates.
             if (previousPlayoutStats) {
               const deltaSynthesizedSamplesDuration = stats.synthesizedSamplesDuration - previousPlayoutStats.synthesizedSamplesDuration;
@@ -1658,30 +1659,34 @@ document.addEventListener('DOMContentLoaded', async () => {
               rate.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
               displayStats.rate = rate;
 
-              if (stats.synthesizedSamplesDuration > previousPlayoutStats.synthesizedSamplesDuration) {
+              if (deltaSynthesizedSamplesDuration > 0 || deltaSynthesizedSamplesEvents > 0) {
                 glitchy_intervals++;
+                intervalHasGlitch = true;
               }
             }
 
-            const glitchMetrics = {};
             total_intervals++;
-            glitchMetrics.glitchyIntervals = glitchy_intervals;
-            glitchMetrics.totalIntervals = total_intervals;
             let ratio = 0;
             if (total_intervals > 0) {
               ratio = glitchy_intervals / total_intervals;
             }
-            glitchMetrics.glitchRatio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
-            displayStats.glitchMetrics = glitchMetrics;
+            const glitchRatio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
+
+            const summary = {
+              glitchyIntervals: glitchy_intervals,
+              totalIntervals: total_intervals,
+              glitchRatio: glitchRatio,
+            };
 
             if (stats.totalSamplesCount > 0) {
               const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
-              displayStats.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
+              summary.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
             }
             if (stats.totalSamplesDuration > 0) {
               const averageSynthesizedPercentage = (stats.synthesizedSamplesDuration / stats.totalSamplesDuration) * 100;
-              displayStats.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
+              summary.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
             }
+            displayStats.summary = summary;
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
@@ -1692,10 +1697,31 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalSamplesCount: stats.totalSamplesCount,
             };
 
-            audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n' + JSON.stringify(displayStats, null, 2);
+            if (intervalHasGlitch) {
+              audioPlayoutStatsElement.classList.add('glitch-active');
+            } else {
+              audioPlayoutStatsElement.classList.remove('glitch-active');
+            }
+
+            let badgeHtml = '<span class="glitch-badge glitch-badge-clean">🟢 Clean</span>';
+            if (glitchRatio > 0.05) {
+              badgeHtml = `<span class="glitch-badge glitch-badge-error">🔴 Degraded (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
+            } else if (glitchRatio > 0) {
+              badgeHtml = `<span class="glitch-badge glitch-badge-warning">🟡 Minor (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
+            }
+
+            let statsString = JSON.stringify(displayStats, null, 2);
+            if (displayStats.rate && displayStats.rate.synthesizedSamplesEvents > 0) {
+              statsString = statsString.replace(
+                /"synthesizedSamplesEvents": (\d+)/,
+                '"synthesizedSamplesEvents": <span style="color: #D32F2F; font-weight: bold;">$1</span>'
+              );
+            }
+            audioPlayoutStatsElement.innerHTML = `audio-playout (pc2): ${badgeHtml}\n` + statsString;
           }
         }
         if (!playoutStatsFound) {
+          audioPlayoutStatsElement.classList.remove('glitch-active');
           audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
         }
         if (!inboundRtpStatsFound) {
@@ -2303,11 +2329,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     inboundRtpStatsElement.style.display = 'none';
     audioPlayoutStatsElement.textContent = '';
     audioPlayoutStatsElement.style.display = 'none';
+    audioPlayoutStatsElement.classList.remove('glitch-active');
     previousStats = null;
     previousTrackProperties = null;
     previousOutboundRtpStats = null;
     previousInboundRtpStats = null;
     previousPlayoutStats = null;
+    total_intervals = 0;
+    glitchy_intervals = 0;
     if (recordedAudioContainer) {
       recordedAudioContainer.style.display = 'none';
     }
