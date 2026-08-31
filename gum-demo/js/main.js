@@ -961,7 +961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateRecordButtonUI() {
     if (isRecording) {
       recordButton.classList.add('recording-active');
-      recordButton.innerHTML = 'Stop';
+      recordButton.innerHTML = 'Stop Rec';
       recordButton.setAttribute('data-tooltip', 'Stop recording and generate playable audio blob and waveform.');
     } else {
       recordButton.classList.remove('recording-active');

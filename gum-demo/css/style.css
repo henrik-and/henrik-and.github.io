@@ -374,6 +374,7 @@ button:disabled {
 
 #record-button.recording-active {
   background-color: #D8000C;
+  color: white;
 }
 
 #record-button.recording-active:hover {
