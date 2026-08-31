@@ -1154,17 +1154,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rmsLabel = document.getElementById('visualizer-rms-label');
     if (!rmsLabel) return;
     if (peerConnectionCheckbox.checked && rmsAudioLevels.length > 0) {
-      const last10 = rmsAudioLevels.slice(-10);
-      const sumOfSquares = last10.reduce((sum, val) => sum + val * val, 0);
-      const trueRms10s = Math.sqrt(sumOfSquares / last10.length);
       const text1s = (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0)
           ? Number(latestRmsAudioLevel).toFixed(5)
           : '0.00000';
-      const text10s = (trueRms10s > 0) ? Number(trueRms10s).toFixed(5) : '0.00000';
-      rmsLabel.innerHTML = `<span class="rms-key">1s:</span>${text1s}<span class="rms-sep">|</span><span class="rms-key">10s:</span>${text10s}`;
+      rmsLabel.innerHTML = `<span class="rms-key">RMS:</span>${text1s}`;
       rmsLabel.setAttribute(
           'data-tooltip',
-          `RMS audio energy at remote receiver (pc2). 1s: ${text1s} (latest 1-second interval), 10s: ${text10s} (rolling 10-second True RMS). Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.`
+          `RMS audio energy at remote receiver (pc2) over the latest 1-second interval: ${text1s}. Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.`
       );
       rmsLabel.style.display = 'block';
     } else {
