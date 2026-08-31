@@ -407,11 +407,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       select.value = mode;
     }
     if (mode === 'minor') {
-      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🟡 Minor (+1 event)', 'warning');
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: Minor (+1 event)', 'warning');
     } else if (mode === 'degraded') {
-      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🔴 Degraded (heavy bursts)', 'warning');
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: Degraded (heavy bursts)', 'warning');
     } else if (mode === 'none') {
-      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: 🟢 Off (Live stats)', 'info');
+      logLifecycleEvent('RTCPeerConnection', 'Audio playout glitch simulation: Off (Live stats)', 'info');
     }
   }
 
@@ -1792,11 +1792,11 @@ document.addEventListener('DOMContentLoaded', async () => {
               audioPlayoutStatsElement.classList.remove('glitch-active');
             }
 
-            let badgeHtml = '<span class="glitch-badge glitch-badge-clean">🟢 Clean</span>';
+            let badgeHtml = '<span class="glitch-badge glitch-badge-clean">Clean</span>';
             if (glitchRatio > 0.05) {
-              badgeHtml = `<span class="glitch-badge glitch-badge-error">🔴 Degraded (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
+              badgeHtml = `<span class="glitch-badge glitch-badge-error">Degraded (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
             } else if (glitchRatio > 0) {
-              badgeHtml = `<span class="glitch-badge glitch-badge-warning">🟡 Minor (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
+              badgeHtml = `<span class="glitch-badge glitch-badge-warning">Minor (${(glitchRatio * 100).toFixed(1)}% glitchy)</span>`;
             }
 
             let statsString = JSON.stringify(displayStats, null, 2);
