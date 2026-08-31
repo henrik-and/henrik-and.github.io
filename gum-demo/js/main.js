@@ -802,8 +802,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateAutoRecordTooltip();
       if (autoRecordCheckbox.checked) {
         console.log('Auto-record enabled');
+        logLifecycleEvent('Auto-Record', 'Auto-Record enabled (will capture audio at time zero)');
       } else {
         console.log('Auto-record disabled');
+        logLifecycleEvent('Auto-Record', 'Auto-Record disabled');
       }
     });
   }
@@ -2347,7 +2349,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     isRecording = true;
     updateRecordButtonUI();
-    logLifecycleEvent('MediaRecorder', isAuto ? 'Auto-recording started at time zero' : 'Recording started');
+    const mimeType = findSupportedMimeType();
+    const [audioTrack] = localStream.getAudioTracks();
+    const trackInfo = audioTrack ? `track: "${audioTrack.label || 'Audio'}"` : 'track: active';
+    logLifecycleEvent(
+      'MediaRecorder',
+      isAuto
+        ? `Auto-recording initiated at time zero (${trackInfo}, mimeType: ${mimeType || 'default'})`
+        : `Recording started manually (${trackInfo}, mimeType: ${mimeType || 'default'})`,
+      'info'
+    );
     if (isAuto) {
       showToastNotification('Auto-recording started at time zero', 5000);
     } else {
@@ -2360,7 +2371,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     recordedVisualizer.style.display = 'none';
     recordedChunks = [];
-    const mimeType = findSupportedMimeType();
     try {
       mediaRecorder = new MediaRecorder(localStream, { mimeType });
       mediaRecorder.onstart = () => console.log('MediaRecorder started.', 'MimeType:', mimeType, isAuto ? '(Auto-record)' : '');
@@ -2375,11 +2385,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const audioUrl = URL.createObjectURL(recordedBlob);
         recordedAudio.src = audioUrl;
         recordedAudio.style.display = 'block';
+        const sizeKb = (recordedBlob.size / 1024).toFixed(1);
+        logLifecycleEvent('MediaRecorder', `Recording completed (${sizeKb} KB, ${recordedChunks.length} chunk${recordedChunks.length === 1 ? '' : 's'})`, 'success');
       };
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event.error);
         errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
         errorMessageElement.style.display = 'block';
+        logLifecycleEvent('MediaRecorder Error', `${event.error.name}: ${event.error.message || 'Unknown error'}`, 'error');
       };
       mediaRecorder.start();
     } catch (err) {
@@ -2388,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateRecordButtonUI();
       errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
       errorMessageElement.style.display = 'block';
+      logLifecycleEvent('MediaRecorder Error', `Failed to start: ${err.message}`, 'error');
     }
   }
 
@@ -2395,7 +2409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isRecording && (!mediaRecorder || mediaRecorder.state !== 'recording')) return;
     isRecording = false;
     updateRecordButtonUI();
-    logLifecycleEvent('MediaRecorder', 'Recording stopped');
+    logLifecycleEvent('MediaRecorder', 'Stop recording requested');
     const toast = document.getElementById('toast-notification');
     if (toast) {
       toast.classList.remove('show');
