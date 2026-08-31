@@ -1148,30 +1148,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const barWidth = (average / 255) * visualizerCanvas.width;
     canvasCtx.fillStyle = '#00FF00';
     canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
+  }
 
-    // Draw the latest rmsAudioLevel and the rolling 10-second RMS if PeerConnection is enabled
+  function updateVisualizerRmsLabel() {
+    const rmsLabel = document.getElementById('visualizer-rms-label');
+    if (!rmsLabel) return;
     if (peerConnectionCheckbox.checked && rmsAudioLevels.length > 0) {
-      // 1. Calculate the rolling 10-second RMS from the recent history
       const last10 = rmsAudioLevels.slice(-10);
       const sumOfSquares = last10.reduce((sum, val) => sum + val * val, 0);
       const trueRms10s = Math.sqrt(sumOfSquares / last10.length);
-
-      canvasCtx.font = 'bold 12px "Lucida Console", "Courier New", monospace';
-      canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      canvasCtx.textAlign = 'left'; 
-      canvasCtx.textBaseline = 'middle';
-
-      // 2. Draw the 1-second snapshot (Increased Y-offset to 10 to avoid overlap)
-      if (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0) {
-        const text1s = `1s:  ${Number(latestRmsAudioLevel).toFixed(5)}`;
-        canvasCtx.fillText(text1s, 2, visualizerCanvas.height / 2 - 10);
-      }
-
-      // 3. Draw the rolling 10-second RMS (Increased Y-offset to 10)
-      if (trueRms10s > 0) {
-        const text10s = `10s: ${Number(trueRms10s).toFixed(5)}`;
-        canvasCtx.fillText(text10s, 2, visualizerCanvas.height / 2 + 10);
-      }
+      const text1s = (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0)
+          ? Number(latestRmsAudioLevel).toFixed(5)
+          : '0.00000';
+      const text10s = (trueRms10s > 0) ? Number(trueRms10s).toFixed(5) : '0.00000';
+      rmsLabel.textContent = `1s: ${text1s} | 10s: ${text10s}`;
+      rmsLabel.style.display = 'block';
+    } else {
+      rmsLabel.textContent = '';
+      rmsLabel.style.display = 'none';
     }
   }
 
@@ -1646,6 +1640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   rate.rmsAudioLevel = parseFloat(rms.toFixed(5));
                   latestRmsAudioLevel = rate.rmsAudioLevel;
                   rmsAudioLevels.push(rate.rmsAudioLevel);
+                  updateVisualizerRmsLabel();
                   if (rms > 0) {
                     // dBov stands for decibels relative to full scale.
                     const rmsDBov = 20 * Math.log10(rms);
@@ -1943,6 +1938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     glitchWindow.length = 0;
     simulatedGlitchCumulativeEvents = 0;
     simulatedGlitchCumulativeDuration = 0;
+    updateVisualizerRmsLabel();
     errorMessageElement.textContent = '';
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
@@ -2444,6 +2440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     simulatedGlitchMode = 'none';
     simulatedGlitchCumulativeEvents = 0;
     simulatedGlitchCumulativeDuration = 0;
+    updateVisualizerRmsLabel();
     if (glitchSimulationTimer) {
       clearInterval(glitchSimulationTimer);
       glitchSimulationTimer = null;
