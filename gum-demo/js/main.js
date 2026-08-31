@@ -1158,8 +1158,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const text1s = (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0)
           ? Number(latestRmsAudioLevel).toFixed(5)
           : '0.00000';
-      const valClass = isActive ? 'rms-val active' : 'rms-val';
-      rmsLabel.innerHTML = `<span class="rms-key">RMS:</span><span class="${valClass}">${text1s}</span>`;
+      rmsLabel.classList.toggle('active', isActive);
+      rmsLabel.innerHTML = `<span class="rms-key">RMS:</span><span class="rms-val">${text1s}</span>`;
       rmsLabel.setAttribute(
           'data-tooltip',
           'RMS audio energy at remote receiver (pc2) over the latest 1-second interval (green when active >= 0.0007). Note: Audio must be actively rendered (e.g. via HTML:Play or WebAudio:Play) for WebRTC to calculate non-zero audio energy.'
@@ -1167,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       rmsLabel.style.display = 'block';
     } else {
       rmsLabel.textContent = '';
+      rmsLabel.classList.remove('active');
       rmsLabel.removeAttribute('data-tooltip');
       rmsLabel.style.display = 'none';
     }
