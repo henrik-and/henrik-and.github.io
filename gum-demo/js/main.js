@@ -1446,7 +1446,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayStats.encoderImplementation = stats.encoderImplementation;
           }
           if (stats.trackIdentifier) {
-            displayStats.trackIdentifier = stats.trackIdentifier;
+            displayStats.trackIdentifier = stats.trackIdentifier.length > 8 ?
+                `${stats.trackIdentifier.substring(0, 8)}..` : stats.trackIdentifier;
           }
           if (stats.codecId) {
             const codec = report.get(stats.codecId);
@@ -1560,7 +1561,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.playoutId = stats.playoutId;
             }
             if (stats.trackIdentifier) {
-              displayStats.trackIdentifier = stats.trackIdentifier;
+              displayStats.trackIdentifier = stats.trackIdentifier.length > 8 ?
+                  `${stats.trackIdentifier.substring(0, 8)}..` : stats.trackIdentifier;
             }
 
             if (previousInboundRtpStats) {
