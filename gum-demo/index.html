@@ -300,13 +300,14 @@
       <legend id="rtp-stats-section-title">
         RTCPeerConnection (getStats() Audio Reports)
         <span id="glitch-simulation-container" style="font-size: 11px; font-weight: normal; margin-left: 12px;">
-          <label for="simulate-glitch-select" style="color: #666;">Simulate Glitches:</label>
-          <select id="simulate-glitch-select" style="font-size: 11px; padding: 1px 4px; border-radius: 3px; border: 1px solid #aaa; background: #fff; cursor: pointer;">
+          <label for="simulate-glitch-select" style="color: #666;" data-tooltip="Simulates playout glitch metrics in the UI without audible distortion. Injects synthesized sample events to demonstrate health states and warning indicators.">Simulate Glitches:</label>
+          <select id="simulate-glitch-select" style="font-size: 11px; padding: 1px 4px; border-radius: 3px; border: 1px solid #aaa; background: #fff; cursor: pointer;" data-tooltip="Inject simulated glitch metrics into the getStats() playout report (UI only, no audible distortion).">
             <option value="none">Off (Live)</option>
             <option value="minor">Inject 1 Glitch</option>
             <option value="degraded">Heavy Burst (Degraded)</option>
           </select>
-          <button id="simulate-glitch-cycle-btn" style="margin-left: 4px; font-size: 10px; padding: 1px 6px; cursor: pointer; border: 1px solid #aaa; border-radius: 3px; background: #fff;">Simulate Cycle</button>
+          <button id="simulate-glitch-cycle-btn" style="margin-left: 4px; font-size: 10px; padding: 1px 6px; cursor: pointer; border: 1px solid #aaa; border-radius: 3px; background: #fff;" data-tooltip="Run an automated 10-second UI simulation cycle (Clean -> Minor -> Degraded -> Clean) without audible audio disruptions.">Simulate Cycle</button>
+          <span class="info-icon" style="margin-left: 4px;" data-tooltip="Simulates audio playout glitch statistics in the UI without causing audible disruptions. Injects synthesized sample metrics to illustrate how the UI reacts to real audio underruns.">i</span>
         </span>
       </legend>
       <div id="rtp-stats-container">
