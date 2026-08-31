@@ -448,6 +448,14 @@ button:disabled {
   outline: none;
 }
 
+#recorded-audio::-webkit-media-controls-overflow-button,
+#recorded-audio::-webkit-media-controls-download-button {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 #download-recorded-audio-button {
   background-color: #0F766E;
   color: white;
