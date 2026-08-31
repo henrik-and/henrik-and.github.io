@@ -1649,30 +1649,30 @@ document.addEventListener('DOMContentLoaded', async () => {
               const deltaTotalSamplesCount = stats.totalSamplesCount - previousPlayoutStats.totalSamplesCount;
               const deltaSynthesizedSamplesEvents = stats.synthesizedSamplesEvents - previousPlayoutStats.synthesizedSamplesEvents;
 
-              const interval = {};
-              interval.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(3));
-              interval.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
+              const rate = {};
+              rate.synthesizedSamplesDuration = parseFloat(deltaSynthesizedSamplesDuration.toFixed(3));
+              rate.synthesizedSamplesEvents = deltaSynthesizedSamplesEvents;
               const synthesizedSamplesPercentage = (deltaTotalSamplesDuration > 0) ? (deltaSynthesizedSamplesDuration / deltaTotalSamplesDuration) * 100 : 0;
-              interval.synthesizedSamplesPercentage = parseFloat(synthesizedSamplesPercentage.toFixed(1));
+              rate.synthesizedSamplesPercentage = parseFloat(synthesizedSamplesPercentage.toFixed(1));
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
-              interval.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
-              displayStats.interval = interval;
+              rate.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
+              displayStats.rate = rate;
 
               if (stats.synthesizedSamplesDuration > previousPlayoutStats.synthesizedSamplesDuration) {
                 glitchy_intervals++;
               }
             }
 
-            const glitch_metrics = {};
+            const glitchMetrics = {};
             total_intervals++;
-            glitch_metrics.glitchy_intervals = glitchy_intervals;
-            glitch_metrics.total_intervals = total_intervals;
+            glitchMetrics.glitchyIntervals = glitchy_intervals;
+            glitchMetrics.totalIntervals = total_intervals;
             let ratio = 0;
             if (total_intervals > 0) {
               ratio = glitchy_intervals / total_intervals;
             }
-            glitch_metrics.glitchy_intervals_ratio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
-            displayStats.glitch_metrics = glitch_metrics;
+            glitchMetrics.glitchRatio = ratio === 0 ? 0 : parseFloat(ratio.toFixed(5));
+            displayStats.glitchMetrics = glitchMetrics;
 
             if (stats.totalSamplesCount > 0) {
               const averagePlayoutDelayMs = (stats.totalPlayoutDelay / stats.totalSamplesCount) * 1000;
