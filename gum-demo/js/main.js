@@ -1416,6 +1416,46 @@ document.addEventListener('DOMContentLoaded', async () => {
           outboundStatsFound = true;
           const displayStats = {};
 
+          if (stats.kind !== undefined) {
+            displayStats.kind = stats.kind;
+          }
+          if (stats.ssrc !== undefined) {
+            displayStats.ssrc = stats.ssrc;
+          }
+          displayStats.packetsSent = stats.packetsSent;
+          displayStats.bytesSent = stats.bytesSent;
+          if (stats.retransmittedPacketsSent !== undefined) {
+            displayStats.retransmittedPacketsSent = stats.retransmittedPacketsSent;
+          }
+          if (stats.retransmittedBytesSent !== undefined) {
+            displayStats.retransmittedBytesSent = stats.retransmittedBytesSent;
+          }
+          if (stats.targetBitrate !== undefined) {
+            displayStats.targetBitrate = stats.targetBitrate;
+          }
+          if (stats.totalPacketSendDelay !== undefined) {
+            displayStats.totalPacketSendDelay = parseFloat(stats.totalPacketSendDelay.toFixed(3));
+          }
+          if (stats.totalSamplesSent !== undefined) {
+            displayStats.totalSamplesSent = stats.totalSamplesSent;
+          }
+          if (stats.powerEfficientEncoder !== undefined) {
+            displayStats.powerEfficientEncoder = stats.powerEfficientEncoder;
+          }
+          if (stats.encoderImplementation) {
+            displayStats.encoderImplementation = stats.encoderImplementation;
+          }
+          if (stats.trackIdentifier) {
+            displayStats.trackIdentifier = stats.trackIdentifier;
+          }
+          if (stats.codecId) {
+            const codec = report.get(stats.codecId);
+            if (codec) {
+              displayStats.codec = codec.mimeType.split('/')[1];
+              displayStats.channels = codec.channels;
+            }
+          }
+
           // Calculate and add current rates (bitrate, packets per second).
           if (previousOutboundRtpStats) {
             const timeDiffSeconds = (stats.timestamp - previousOutboundRtpStats.timestamp) / 1000.0;
@@ -1432,6 +1472,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
+          // Calculate and add summary metrics if data is available.
+          if (stats.totalPacketSendDelay && stats.packetsSent > 0) {
+            const averageDelayMs = (stats.totalPacketSendDelay / stats.packetsSent) * 1000;
+            displayStats.summary = {
+              averagePacketSendDelayMs: parseFloat(averageDelayMs.toFixed(1)),
+            };
+          }
+
           // Update previousOutboundRtpStats for the next interval's calculation.
           previousOutboundRtpStats = {
             bytesSent: stats.bytesSent,
@@ -1439,49 +1487,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: stats.timestamp,
           };
 
-          displayStats.packetsSent = stats.packetsSent;
-          displayStats.bytesSent = stats.bytesSent;
-          if (stats.powerEfficientEncoder !== undefined) {
-            displayStats.powerEfficientEncoder = stats.powerEfficientEncoder;
-          }
-          if (stats.encoderImplementation) {
-            displayStats.encoderImplementation = stats.encoderImplementation;
-          }
-
-          // Calculate and add average packet send delay if data is available.
-          if (stats.totalPacketSendDelay && stats.packetsSent > 0) {
-            const averageDelayMs = (stats.totalPacketSendDelay / stats.packetsSent) * 1000;
-            displayStats.averagePacketSendDelayMs = parseFloat(averageDelayMs.toFixed(1));
-          }
-
-          // Add additional health and quality metrics.
-          // Retransmission stats are a direct indicator of packet loss.
-          if (stats.retransmittedPacketsSent !== undefined) {
-            displayStats.retransmittedPacketsSent = stats.retransmittedPacketsSent;
-          }
-          if (stats.retransmittedBytesSent !== undefined) {
-            displayStats.retransmittedBytesSent = stats.retransmittedBytesSent;
-          }
-          // The bitrate the encoder is currently aiming for.
-          if (stats.targetBitrate !== undefined) {
-            displayStats.targetBitrate = stats.targetBitrate;
-          }
-          // A cumulative count of samples sent, confirming continuous audio processing.
-          if (stats.totalSamplesSent !== undefined) {
-            displayStats.totalSamplesSent = stats.totalSamplesSent;
-          }
-          // The id of the MediaStreamTrack, for debugging.
-          if (stats.trackIdentifier) {
-            displayStats.trackIdentifier = stats.trackIdentifier;
-          }
-
-          if (stats.codecId) {
-            const codec = report.get(stats.codecId);
-            if (codec) {
-              displayStats.codec = codec.mimeType.split('/')[1];
-              displayStats.channels = codec.channels;
-            }
-          }
           outboundRtpStatsElement.textContent = 'outbound-rtp (pc1):\n' + JSON.stringify(displayStats, null, 2);
           inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n';
           audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
@@ -1509,6 +1514,62 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (stats.type === 'inbound-rtp') {
             inboundRtpStatsFound = true;
             const displayStats = {};
+
+            if (stats.kind !== undefined) {
+              displayStats.kind = stats.kind;
+            }
+            if (stats.ssrc !== undefined) {
+              displayStats.ssrc = stats.ssrc;
+            }
+            if (stats.packetsReceived !== undefined) {
+              displayStats.packetsReceived = stats.packetsReceived;
+            }
+            if (stats.packetsLost !== undefined) {
+              displayStats.packetsLost = stats.packetsLost;
+            }
+            if (stats.jitter !== undefined) {
+              displayStats.jitter = parseFloat(stats.jitter.toFixed(4));
+            }
+            if (stats.packetsDiscarded !== undefined) {
+              displayStats.packetsDiscarded = stats.packetsDiscarded;
+            }
+            if (stats.concealedSamples !== undefined) {
+              displayStats.concealedSamples = stats.concealedSamples;
+            }
+            if (stats.silentConcealedSamples !== undefined) {
+              displayStats.silentConcealedSamples = stats.silentConcealedSamples;
+            }
+            if (stats.audioLevel !== undefined) {
+              displayStats.audioLevel = parseFloat(stats.audioLevel.toFixed(2));
+            }
+            if (stats.totalAudioEnergy !== undefined) {
+              displayStats.totalAudioEnergy = parseFloat(stats.totalAudioEnergy.toFixed(1));
+            }
+            if (stats.totalSamplesReceived !== undefined) {
+              displayStats.totalSamplesReceived = stats.totalSamplesReceived;
+            }
+            if (stats.totalSamplesDuration !== undefined) {
+              displayStats.totalSamplesDuration = parseFloat(stats.totalSamplesDuration.toFixed(1));
+            }
+            if (stats.jitterBufferDelay !== undefined) {
+              displayStats.jitterBufferDelay = parseFloat(stats.jitterBufferDelay.toFixed(3));
+            }
+            if (stats.jitterBufferEmittedCount !== undefined) {
+              displayStats.jitterBufferEmittedCount = stats.jitterBufferEmittedCount;
+            }
+            if (stats.jitterBufferTargetDelay !== undefined) {
+              displayStats.jitterBufferTargetDelay = parseFloat(stats.jitterBufferTargetDelay.toFixed(3));
+            }
+            if (stats.totalProcessingDelay !== undefined) {
+              displayStats.totalProcessingDelay = parseFloat(stats.totalProcessingDelay.toFixed(3));
+            }
+            if (stats.playoutId) {
+              displayStats.playoutId = stats.playoutId;
+            }
+            if (stats.trackIdentifier) {
+              displayStats.trackIdentifier = stats.trackIdentifier;
+            }
+
             if (previousInboundRtpStats) {
               const timeDiffSeconds = (stats.timestamp - previousInboundRtpStats.timestamp) / 1000.0;
               const deltaPacketsDiscarded = stats.packetsDiscarded - previousInboundRtpStats.packetsDiscarded;
@@ -1567,43 +1628,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               displayStats.rate = rate;
             }
 
-            if (stats.ssrc !== undefined) {
-              displayStats.ssrc = stats.ssrc;
-            }
-            if (stats.packetsDiscarded !== undefined) {
-              displayStats.packetsDiscarded = stats.packetsDiscarded;
-            }
-            if (stats.concealedSamples !== undefined) {
-              displayStats.concealedSamples = stats.concealedSamples;
-            }
-            if (stats.playoutId) {
-              displayStats.playoutId = stats.playoutId;
-            }
-            if (stats.totalAudioEnergy !== undefined) {
-              displayStats.totalAudioEnergy = parseFloat(stats.totalAudioEnergy.toFixed(1));
-            }
-
-            // audioLevel is only reported when the track is actively being played out.
-            // The value is linear from 0.0 (silence) to 1.0 (0 dBov).
-            // A value of 0.5 represents approximately a 6 dBSPL change.
-            // The audioLevel is averaged over some small interval.
-            if (stats.audioLevel !== undefined) {
-              displayStats.audioLevel = parseFloat(stats.audioLevel.toFixed(2));
-            }
-
+            const summary = {};
             if (stats.totalProcessingDelay !== undefined && stats.totalSamplesReceived !== undefined && stats.concealedSamples !== undefined) {
               const totalSamplesDecoded = stats.totalSamplesReceived - stats.concealedSamples;
               if (totalSamplesDecoded > 0) {
                 const averageProcessingDelayMs = (stats.totalProcessingDelay / totalSamplesDecoded) * 1000;
-                displayStats.averageProcessingDelayMs = parseFloat(averageProcessingDelayMs.toFixed(1));
+                summary.averageProcessingDelayMs = parseFloat(averageProcessingDelayMs.toFixed(1));
               }
             }
 
             if (stats.jitterBufferTargetDelay !== undefined && stats.jitterBufferEmittedCount !== undefined) {
               if (stats.jitterBufferEmittedCount > 0) {
                 const averageJitterBufferTargetDelayMs = (stats.jitterBufferTargetDelay / stats.jitterBufferEmittedCount) * 1000;
-                displayStats.averageJitterBufferTargetDelayMs = parseFloat(averageJitterBufferTargetDelayMs.toFixed(1));
+                summary.averageJitterBufferTargetDelayMs = parseFloat(averageJitterBufferTargetDelayMs.toFixed(1));
               }
+            }
+            if (Object.keys(summary).length > 0) {
+              displayStats.summary = summary;
             }
 
             previousInboundRtpStats = {
