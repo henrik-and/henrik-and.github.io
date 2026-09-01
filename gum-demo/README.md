@@ -92,10 +92,18 @@ audio.
     Web Audio API (`AudioContext`).
 *   **Opus Recording & Visualizer:** In-browser recording with multi-MIME
     support and audio level meters.
-*   **System Diagnostics:** Header banner detecting browser, OS, secure context
-    status, microphone permissions, CPU compute pressure (`PressureObserver`),
-    live 1Hz mapped history graph (`light 25%`, `moderate 50%`, `high 75%`,
-    `heavy 100%`), state simulation cycle, API support, and raw user agent.
+*   **System Diagnostics & CPU Compute Pressure:** Header banner detecting
+    browser, OS, secure context status, microphone permissions, hardware audio
+    latency, and live CPU compute pressure via the
+    [`Compute Pressure API`](https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API)
+    (`PressureObserver`). Includes:
+    *   **Live PressureObserver & 1Hz History Graph:** Visualizes real-time CPU
+        pressure states (`nominal 25%`, `fair 50%`, `serious 75%`, `critical
+        100%`) with thermal factor tracking on a 1Hz rolling canvas graph.
+    *   **CPU Load Emulation:** Allows testing app adaptation behavior under
+        simulated processor load (manual state selection or automated 10-second
+        `nominal -> critical -> nominal` cycle) without placing physical load on
+        the host processor.
 *   **State Snapshot Export:** Single-click JSON export of all current
     configuration, system diagnostics, and performance data.
 
