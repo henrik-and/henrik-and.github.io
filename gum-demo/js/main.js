@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dtxCheckbox = document.getElementById('dtx-checkbox');
   const autoRecordCheckbox = document.getElementById('auto-record-checkbox');
   const autoRecordLabel = document.querySelector('label[for="auto-record-checkbox"]');
+  const sineToneCheckbox = document.getElementById('sine-tone-checkbox');
+  const sineToneLabel = document.querySelector('label[for="sine-tone-checkbox"]');
   const micSourceRadio = document.getElementById('mic-source');
   const fileSourceRadio = document.getElementById('file-source');
   const fileSelectionContainer = document.getElementById('file-selection-container');
@@ -111,6 +113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let streamForPlaybackAndVisualizer;
   let audioContext;
   let analyser;
+  let sineToneContext = null;
+  let sineToneOscillator = null;
+  let sineToneGain = null;
+  let sineToneDestination = null;
+  let sineToneStream = null;
   let isRecording = false;
   let mediaRecorder;
   let recordedChunks = [];
@@ -641,6 +648,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function startSineToneGenerator() {
+    if (sineToneContext && sineToneContext.state !== 'closed') {
+      return sineToneStream;
+    }
+    try {
+      sineToneContext = new (window.AudioContext || window.webkitAudioContext)();
+      sineToneOscillator = sineToneContext.createOscillator();
+      sineToneOscillator.type = 'sine';
+      sineToneOscillator.frequency.setValueAtTime(440, sineToneContext.currentTime);
+
+      sineToneGain = sineToneContext.createGain();
+      sineToneGain.gain.setValueAtTime(0.2, sineToneContext.currentTime);
+
+      sineToneDestination = sineToneContext.createMediaStreamDestination();
+      sineToneOscillator.connect(sineToneGain);
+      sineToneGain.connect(sineToneDestination);
+
+      sineToneOscillator.start();
+      sineToneStream = sineToneDestination.stream;
+      console.log('440Hz Sine tone generator started.');
+      return sineToneStream;
+    } catch (err) {
+      console.error('Failed to start 440Hz sine tone generator:', err);
+      return null;
+    }
+  }
+
+  function stopSineToneGenerator() {
+    if (sineToneOscillator) {
+      try {
+        sineToneOscillator.stop();
+        sineToneOscillator.disconnect();
+      } catch (e) {}
+      sineToneOscillator = null;
+    }
+    if (sineToneGain) {
+      try {
+        sineToneGain.disconnect();
+      } catch (e) {}
+      sineToneGain = null;
+    }
+    if (sineToneContext && sineToneContext.state !== 'closed') {
+      try {
+        sineToneContext.close();
+      } catch (e) {}
+      sineToneContext = null;
+    }
+    sineToneDestination = null;
+    sineToneStream = null;
+    console.log('440Hz Sine tone generator stopped.');
+  }
+
   /**
    * Sets up a local WebRTC loopback connection between two RTCPeerConnection objects.
    * @param {MediaStream} stream The local audio stream to send through the connection.
@@ -908,9 +967,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       constraintsPreElements.forEach(pre => pre.classList.add('disabled-setting'));
       document.querySelector('.dynamic-constraints-group')?.classList.add('disabled-setting');
       applyConstraintsButton.disabled = true;
+      if (sineToneCheckbox) {
+        sineToneCheckbox.disabled = true;
+        sineToneCheckbox.parentElement.classList.add('disabled-setting');
+      }
     } else {
       constraintsPreElements.forEach(pre => pre.classList.remove('disabled-setting'));
       document.querySelector('.dynamic-constraints-group')?.classList.remove('disabled-setting');
+      if (sineToneCheckbox && !sineToneCheckbox.dataset.locked) {
+        sineToneCheckbox.disabled = false;
+        sineToneCheckbox.parentElement.classList.remove('disabled-setting');
+      }
       if (isStreamActive) {
         dynamicConstraintSelects.forEach(select => {
           select.disabled = false;
@@ -991,6 +1058,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoRecordCheckbox.dispatchEvent(new Event('change'));
     }
 
+    if (params.has('sineTone') && params.get('sineTone') === 'true' && sineToneCheckbox) {
+      sineToneCheckbox.checked = true;
+      sineToneCheckbox.dispatchEvent(new Event('change'));
+    }
+
     console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
     console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
     console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
@@ -1012,6 +1084,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileSourceRadio.disabled = disabled;
     audioFileSelect.disabled = disabled;
     localFileInput.disabled = disabled;
+    if (sineToneCheckbox) {
+      if (disabled) {
+        sineToneCheckbox.dataset.locked = 'true';
+        sineToneCheckbox.disabled = true;
+      } else {
+        delete sineToneCheckbox.dataset.locked;
+        sineToneCheckbox.disabled = !micSourceRadio.checked;
+      }
+    }
 
     if (!disabled) {
       updateInputSourceUI();
@@ -2003,10 +2084,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         startRecording(true);
       }
 
-      streamForPlaybackAndVisualizer = localStream;
+      let streamToSendAndPlay = localStream;
+      if (micSourceRadio.checked && sineToneCheckbox && sineToneCheckbox.checked) {
+        const toneStream = startSineToneGenerator();
+        if (toneStream) {
+          streamToSendAndPlay = toneStream;
+          console.log('Replacing live mic stream with 440Hz sine tone for loopback/playback while keeping mic capture active.');
+        }
+      }
+
+      streamForPlaybackAndVisualizer = streamToSendAndPlay;
       if (peerConnectionCheckbox.checked) {
         try {
-          const remoteStream = await setupPeerConnection(localStream);
+          const remoteStream = await setupPeerConnection(streamToSendAndPlay);
           console.log('PeerConnection loopback established successfully.');
           streamForPlaybackAndVisualizer = remoteStream;
         } catch (err) {
@@ -2119,8 +2209,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
       if (selectedDevice && micSourceRadio.checked) {
+        const toneInfo = (sineToneCheckbox && sineToneCheckbox.checked) ? '\n  tone: 440 Hz Sine Wave (mic open)' : '';
         audioInputDeviceElement.textContent = `Active audio source:\n` +
-            `  type: Microphone\n` +
+            `  type: Microphone${toneInfo}\n` +
             `  kind: ${selectedDevice.kind}\n` +
             `  label: ${selectedDevice.label}\n` +
             `  deviceId: ${selectedDevice.deviceId}\n` +
@@ -2344,6 +2435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileSourceAudio.pause();
     fileSourceAudio.src = '';
     closePeerConnection();
+    stopSineToneGenerator();
     latestRmsAudioLevel = null;
     if (audioContext) {
       audioContext.close();
@@ -2792,6 +2884,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  sineToneCheckbox.addEventListener('change', async () => {
+    if (!localStream || !micSourceRadio.checked) return;
+    const [micTrack] = localStream.getAudioTracks();
+    if (!micTrack) return;
+
+    if (sineToneCheckbox.checked) {
+      const toneStream = startSineToneGenerator();
+      if (!toneStream) return;
+      const [toneTrack] = toneStream.getAudioTracks();
+      if (!toneTrack) return;
+
+      logLifecycleEvent('SineTone', 'Replaced microphone audio with 440 Hz sine tone (physical mic remains open)');
+      if (pc1) {
+        const senders = pc1.getSenders();
+        const audioSender = senders.find(s => s.track && s.track.kind === 'audio') || senders[0];
+        if (audioSender) {
+          await audioSender.replaceTrack(toneTrack);
+          console.log('RTCRtpSender.replaceTrack switched to 440Hz sine tone track.');
+        }
+      } else {
+        streamForPlaybackAndVisualizer = toneStream;
+        audioPlayback.srcObject = toneStream;
+        visualizeAudio(toneStream);
+      }
+    } else {
+      if (pc1) {
+        const senders = pc1.getSenders();
+        const audioSender = senders.find(s => s.track && s.track.kind === 'audio') || senders[0];
+        if (audioSender) {
+          await audioSender.replaceTrack(micTrack);
+          console.log('RTCRtpSender.replaceTrack switched back to live mic track.');
+        }
+      } else {
+        streamForPlaybackAndVisualizer = localStream;
+        audioPlayback.srcObject = localStream;
+        visualizeAudio(localStream);
+      }
+      stopSineToneGenerator();
+      logLifecycleEvent('SineTone', 'Restored live microphone audio');
+    }
+
+    // Refresh active audio source device info display
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === micTrack.getSettings().deviceId);
+    if (selectedDevice) {
+      const toneInfo = sineToneCheckbox.checked ? '\n  tone: 440 Hz Sine Wave (mic open)' : '';
+      audioInputDeviceElement.textContent = `Active audio source:\n` +
+          `  type: Microphone${toneInfo}\n` +
+          `  kind: ${selectedDevice.kind}\n` +
+          `  label: ${selectedDevice.label}\n` +
+          `  deviceId: ${selectedDevice.deviceId}\n` +
+          `  groupId: ${selectedDevice.groupId}`;
+      audioInputDeviceElement.style.display = 'block';
+    }
+  });
+
   audioPlayback.addEventListener('play', async () => {
     console.log('Audio playback started.');
     await updateAudioOutputInfo(audioPlayback.sinkId);
@@ -2899,6 +3047,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (autoRecordCheckbox && autoRecordCheckbox.checked) {
       params.set('autoRecord', 'true');
+    }
+
+    if (sineToneCheckbox && sineToneCheckbox.checked) {
+      params.set('sineTone', 'true');
     }
 
     // Construct the full bookmarkable URL, only adding a '?' if there are parameters.

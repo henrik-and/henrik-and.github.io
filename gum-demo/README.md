@@ -27,7 +27,7 @@ audio.
         constraints.
     *   Hover over the **(i)** icon next to any constraint for details on its
         behavior.
-3.  **Optional WebRTC Loopback & Auto-Record:**
+3.  **Optional WebRTC Loopback, Sine Tone & Auto-Record:**
     *   **PeerConnection:** Routes audio through a local two-peer connection
         (`pc1` → `pc2`) using Opus stereo.
     *   **VAD/DTX/CNG:** Injects `usedtx=1` into Opus SDP to enable Voice
@@ -36,6 +36,11 @@ audio.
     *   **Auto-Record:** Automatically initiates `MediaRecorder` at time zero as
         soon as `getUserMedia()` acquires the track, capturing the very first
         audio buffers without UI interaction delay.
+    *   **440Hz Sine:** Replaces microphone audio with a clean, continuous 440 Hz
+        sine tone via Web Audio while keeping physical microphone capture active
+        (critical for keeping Bluetooth headsets in bidirectional Headset/HFP
+        mode) to make audio glitches and buffer starvation dropouts immediately
+        audible. Can be toggled on the fly.
 4.  **Start the Stream:** Click **getUserMedia** to acquire the stream.
 5.  **Dynamic Updates:** With an active microphone track, adjust constraints in
     the `// applyConstraints() scope` box and click **applyConstraints** to
@@ -58,6 +63,11 @@ audio.
 
 *   **Input Source Selection:** Switch between physical microphone and
     pre-recorded/local audio files.
+*   **440 Hz Sine Tone Injection:** Route a clean, constant 440 Hz tone through
+    the WebRTC loopback pipeline while maintaining live microphone capture
+    (preserving bidirectional Bluetooth Headset/HFP profile), making buffer
+    starvation and glitch artifacts easily audible. Dynamically switchable on
+    the fly via RTCRtpSender track replacement.
 *   **Auto-Record at Time Zero:** Pre-arm recording to start immediately on
     stream acquisition to diagnose driver initialization delays or early audio
     loss.
