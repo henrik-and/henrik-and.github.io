@@ -55,6 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dtxCheckbox = document.getElementById('dtx-checkbox');
   const autoRecordCheckbox = document.getElementById('auto-record-checkbox');
   const autoRecordLabel = document.querySelector('label[for="auto-record-checkbox"]');
+  const autoPlayCheckbox = document.getElementById('auto-play-checkbox');
+  const autoPlayLabel = document.querySelector('label[for="auto-play-checkbox"]');
   const sineToneCheckbox = document.getElementById('sine-tone-checkbox');
   const sineToneLabel = document.querySelector('label[for="sine-tone-checkbox"]');
   const micSourceRadio = document.getElementById('mic-source');
@@ -872,6 +874,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function updateAutoPlayTooltip() {
+    if (autoPlayLabel && autoPlayCheckbox) {
+      autoPlayLabel.setAttribute('data-tooltip', autoPlayCheckbox.checked
+        ? 'Auto-play is enabled. Audio track will automatically start playing in loopback via HTML:Play as soon as the stream is acquired.'
+        : 'Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.');
+    }
+  }
+
   function updateMuteTooltip() {
     if (muteLabel) {
       muteLabel.setAttribute('data-tooltip', muteCheckbox.checked
@@ -927,11 +937,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (autoPlayCheckbox) {
+    autoPlayCheckbox.addEventListener('change', () => {
+      updateAutoPlayTooltip();
+      if (autoPlayCheckbox.checked) {
+        console.log('Auto-play enabled');
+        logLifecycleEvent('Auto-Play', 'Auto-Play enabled (will start HTML:Play from start)');
+      } else {
+        console.log('Auto-play disabled');
+        logLifecycleEvent('Auto-Play', 'Auto-Play disabled');
+      }
+    });
+  }
+
   // Set the initial tooltip state on page load.
   updateActionButtonsTooltips();
   updatePeerConnectionTooltip();
   updateDtxTooltip();
   updateAutoRecordTooltip();
+  updateAutoPlayTooltip();
   updateMuteTooltip();
   updateHtmlPlayTooltip();
   updateWebAudioPlayTooltip();
@@ -1056,6 +1080,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (params.has('autoRecord') && params.get('autoRecord') === 'true' && autoRecordCheckbox) {
       autoRecordCheckbox.checked = true;
       autoRecordCheckbox.dispatchEvent(new Event('change'));
+    }
+
+    if (params.has('autoPlay') && params.get('autoPlay') === 'true' && autoPlayCheckbox) {
+      autoPlayCheckbox.checked = true;
+      autoPlayCheckbox.dispatchEvent(new Event('change'));
     }
 
     if (params.has('sineTone') && params.get('sineTone') === 'true' && sineToneCheckbox) {
@@ -2005,6 +2034,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (autoRecordCheckbox) {
       autoRecordCheckbox.disabled = true;
     }
+    if (autoPlayCheckbox) {
+      autoPlayCheckbox.disabled = true;
+    }
     setConstraintsDisabled(true);
     previousStats = null;
     previousTrackProperties = null;
@@ -2265,7 +2297,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
-      htmlPlayCheckbox.checked = false;
+      if (autoPlayCheckbox && autoPlayCheckbox.checked) {
+        htmlPlayCheckbox.checked = true;
+        htmlPlayCheckbox.dispatchEvent(new Event('change'));
+      } else {
+        htmlPlayCheckbox.checked = false;
+      }
       if (!autoRecordCheckbox || !autoRecordCheckbox.checked) {
         isRecording = false;
         updateRecordButtonUI();
@@ -2303,6 +2340,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       dtxCheckbox.disabled = false;
       if (autoRecordCheckbox) {
         autoRecordCheckbox.disabled = false;
+      }
+      if (autoPlayCheckbox) {
+        autoPlayCheckbox.disabled = false;
       }
       setConstraintsDisabled(false);
       updateActionButtonsTooltips();
@@ -2491,6 +2531,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     dtxCheckbox.disabled = false;
     if (autoRecordCheckbox) {
       autoRecordCheckbox.disabled = false;
+    }
+    if (autoPlayCheckbox) {
+      autoPlayCheckbox.disabled = false;
     }
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
@@ -3049,6 +3092,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       params.set('autoRecord', 'true');
     }
 
+    if (autoPlayCheckbox && autoPlayCheckbox.checked) {
+      params.set('autoPlay', 'true');
+    }
+
     if (sineToneCheckbox && sineToneCheckbox.checked) {
       params.set('sineTone', 'true');
     }
@@ -3444,6 +3491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'System Diagnostics': systemDiagnostics,
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
       'Auto-Record': autoRecordCheckbox ? autoRecordCheckbox.checked : false,
+      'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
       'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,

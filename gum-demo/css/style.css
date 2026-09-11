@@ -146,6 +146,7 @@ body {
 .peerconnection-container,
 .dtx-container,
 .auto-record-container,
+.auto-play-container,
 .sine-tone-container {
   position: absolute;
   right: 10px;
@@ -165,13 +166,18 @@ body {
   top: 70px; /* Position it below the DTX container */
 }
 
-.sine-tone-container {
+.auto-play-container {
   top: 100px; /* Position it below the Auto-Record container */
+}
+
+.sine-tone-container {
+  top: 130px; /* Position it below the Auto-Play container */
 }
 
 #peerconnection-checkbox:checked + label,
 #dtx-checkbox:checked + label,
 #auto-record-checkbox:checked + label,
+#auto-play-checkbox:checked + label,
 #sine-tone-checkbox:checked + label {
   background-color: #E3F2FD; /* Light blue */
   padding: 2px 6px;

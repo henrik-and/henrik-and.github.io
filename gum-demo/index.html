@@ -47,6 +47,10 @@
             <input type="checkbox" id="auto-record-checkbox">
             <label for="auto-record-checkbox" data-tooltip="Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().">Auto-Record</label>
           </div>
+          <div class="auto-play-container">
+            <input type="checkbox" id="auto-play-checkbox">
+            <label for="auto-play-checkbox" data-tooltip="Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.">Auto-Play</label>
+          </div>
           <div class="sine-tone-container">
             <input type="checkbox" id="sine-tone-checkbox">
             <label for="sine-tone-checkbox" data-tooltip="Replace live mic input with a continuous 440 Hz sine wave tone while keeping physical microphone capture active.">440Hz Sine</label>
@@ -332,6 +336,6 @@
   <p id="error-message" class="error"></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=31" defer></script>
+  <script type="module" src="js/main.js?v=32" defer></script>
 </body>
 </html>
