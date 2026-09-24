@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const trackConstraintsElement = document.querySelector('#track-constraints');
   const audioInputDeviceElement = document.querySelector('#audio-input-device');
   const audioOutputInfoElement = document.querySelector('#audio-output-info');
+  const webaudioContextInfoElement = document.querySelector('#webaudio-context-info');
   const audioDevicesContainer = document.querySelector('#audio-devices-container');
   const recordedAudioContainer = document.querySelector('#recorded-audio-container');
   const recordedAudio = document.querySelector('#recorded-audio');
@@ -2523,6 +2524,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     snapshotButtonContainer.style.display = 'none';
     audioOutputInfoElement.style.display = 'none';
     audioOutputInfoElement.textContent = '';
+    if (webaudioContextInfoElement) {
+      webaudioContextInfoElement.style.display = 'none';
+      webaudioContextInfoElement.textContent = '';
+    }
     gumButton.disabled = false;
     applyConstraintsButton.disabled = true;
     copyBookmarkButton.disabled = false;
@@ -2924,7 +2929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await webAudioContext.resume();
           }
           await updateAudioOutputInfo(webAudioContext.sinkId);
-          if (webAudioContext) {
+          if (webAudioContext && webaudioContextInfoElement) {
             const qSize = webAudioContext.renderQuantumSize;
             const quantumDisplay = qSize !== undefined
                 ? `${qSize} samples (${((qSize / webAudioContext.sampleRate) * 1000).toFixed(2)} ms)`
@@ -2932,10 +2937,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hintDisplay = contextOptions.renderSizeHint !== undefined
                 ? ` (renderSizeHint: ${contextOptions.renderSizeHint})`
                 : ' (renderSizeHint: default)';
-            audioOutputInfoElement.textContent += `\n\nWebAudio Context:\n` +
+            webaudioContextInfoElement.textContent = `WebAudio Context:\n` +
                 `  sampleRate: ${webAudioContext.sampleRate} Hz\n` +
                 `  baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)} ms\n` +
                 `  renderQuantumSize: ${quantumDisplay}${hintDisplay}`;
+            webaudioContextInfoElement.style.display = 'block';
           }
           audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
@@ -2983,6 +2989,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             webaudioQuantumBadge.style.display = 'none';
             webaudioQuantumBadge.textContent = '';
           }
+          if (webaudioContextInfoElement) {
+            webaudioContextInfoElement.style.display = 'none';
+            webaudioContextInfoElement.textContent = '';
+          }
           if (webAudioContext) {
             webAudioContext.close();
             webAudioContext = null;
@@ -2996,6 +3006,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           webAudioSource = null;
         }
         audioOutputInfoElement.style.display = 'none';
+        if (webaudioContextInfoElement) {
+          webaudioContextInfoElement.style.display = 'none';
+          webaudioContextInfoElement.textContent = '';
+        }
         audioOutputDeviceSelect.disabled = false;
         latencyHintSelect.disabled = false;
         sampleRateSelect.disabled = false;

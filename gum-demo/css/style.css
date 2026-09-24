@@ -559,7 +559,8 @@ button:disabled {
   border-radius: 8px;
 }
 
-#audio-output-info {
+#audio-output-info,
+#webaudio-context-info {
   display: none;
 }
 
@@ -732,8 +733,23 @@ button:disabled {
 #track-properties:empty,
 #track-stats:empty,
 #audio-input-device:empty,
-#audio-output-info:empty {
+#audio-output-info:empty,
+#webaudio-context-info:empty {
   display: none;
+}
+
+#webaudio-context-info {
+  background-color: #E8F5E9; /* Pale emerald green */
+  border: 1px solid #81C784;
+  border-left: 4px solid #2E7D32;
+  border-radius: 8px;
+  padding: 10px 12px 6px 12px;
+  font-size: 12px;
+  font-family: "Lucida Console", "Courier New", monospace;
+  white-space: pre-wrap;
+  text-align: left;
+  margin: 0;
+  color: #1B5E20;
 }
 
 #outbound-rtp-stats,
