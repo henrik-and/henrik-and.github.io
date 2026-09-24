@@ -38,11 +38,11 @@ audio.
         audio buffers without UI interaction delay.
     *   **Auto-Play:** Automatically renders the audio track in loopback using
         HTML:Play (`<audio>` element) as soon as the stream is acquired.
-    *   **440Hz Sine:** Replaces microphone audio with a clean, continuous 440 Hz
-        sine tone via Web Audio while keeping physical microphone capture active
-        (critical for keeping Bluetooth headsets in bidirectional Headset/HFP
-        mode) to make audio glitches and buffer starvation dropouts immediately
-        audible. Can be toggled on the fly.
+    *   **440Hz Sine:** Replaces microphone audio with a clean, continuous 440
+        Hz sine tone via Web Audio while keeping physical microphone capture
+        active (critical for keeping Bluetooth headsets in bidirectional
+        Headset/HFP mode) to make audio glitches and buffer starvation dropouts
+        immediately audible. Can be toggled on the fly.
 4.  **Start the Stream:** Click **getUserMedia** to acquire the stream.
 5.  **Dynamic Updates:** With an active microphone track, adjust constraints in
     the `// applyConstraints() scope` box and click **applyConstraints** to
@@ -53,11 +53,15 @@ audio.
     *   **HTML:Play:** Plays stream via an HTML `<audio>` tag with `sinkId`
         output device routing.
     *   **WebAudio:Play:** Routes stream through Web Audio API (`AudioContext`)
-        with custom `latencyHint` and `sampleRate`.
+        with custom `latencyHint`, `sampleRate`, and W3C **Configurable Render
+        Quantum** (`renderSizeHint`). Displays negotiated
+        `audioContext.renderQuantumSize` (samples and ms duration), sample rate,
+        and base latency in a dedicated status card and interactive badge.
     *   **Rec / Stop:** Records an Opus WebM snippet using `MediaRecorder` with
         waveform visualization.
     *   **Save Snapshot:** Downloads a structured `gUM-snapshot.json` file
-        capturing active settings, getters, and WebRTC statistics.
+        capturing active settings, device selections, WebAudio quantum
+        parameters, track getters, and WebRTC statistics.
     *   **Copy Bookmark:** Copies a shareable URL containing your selected
         constraints.
 
@@ -73,8 +77,8 @@ audio.
 *   **Auto-Record at Time Zero:** Pre-arm recording to start immediately on
     stream acquisition to diagnose driver initialization delays or early audio
     loss.
-*   **Auto-Play from Start:** Automatically begins rendering audio in loopback via
-    HTML:Play upon stream acquisition.
+*   **Auto-Play from Start:** Automatically begins rendering audio in loopback
+    via HTML:Play upon stream acquisition.
 *   **Full Constraint Suite:** Test boolean, direct, `exact`, and `ideal`
     configurations for `echoCancellation`, `autoGainControl`,
     `noiseSuppression`, `voiceIsolation`, `channelCount`, `latency`,
@@ -102,8 +106,17 @@ audio.
         buffer delay, and audio levels (RMS / dBov).
     *   `audio-playout (pc2):` Playout delay, synthesized/concealed glitch
         metrics, and glitch ratios.
-*   **Dual Playback Modes:** Compare native `<audio>` element playback against
-    Web Audio API (`AudioContext`).
+*   **Dual Playback Modes & Configurable Render Quantum:** Compare native
+    `<audio>` element playback against Web Audio API (`AudioContext`). Features
+    full support for the W3C **Configurable Render Quantum** specification:
+    *   **`renderSizeHint` selection:** Test exact integer quantum frame sizes
+        (e.g. `64`, `128`, `256`, `480` for 10ms at 48kHz, `512`, `960`, `1024`,
+        `2048`, or arbitrary integers), `"hardware"` OS buffer negotiation, and
+        `"default"` (128 frames).
+    *   **Runtime quantum readout:** Inspect negotiated
+        `audioContext.renderQuantumSize` in real time with millisecond duration
+        conversion in a dedicated status card, an interactive quantum badge,
+        lifecycle logs, and `gUM-snapshot.json`.
 *   **Opus Recording & Visualizer:** In-browser recording with multi-MIME
     support and audio level meters.
 *   **System Diagnostics & CPU Compute Pressure:** Header banner detecting

@@ -3610,6 +3610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
       'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
+      'Active WebAudio Context': webaudioContextInfoElement ? parseDeviceInfo(webaudioContextInfoElement.textContent) : null,
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
       'WebAudio renderSizeHint': renderSizeHintSelect ? (renderSizeHintSelect.value === 'custom' ? renderSizeHintCustomInput.value : renderSizeHintSelect.value) : undefined,
