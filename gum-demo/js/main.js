@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
   const latencyHintSelect = document.querySelector('#latencyHint');
   const sampleRateSelect = document.querySelector('#sampleRate');
+  const renderSizeHintSelect = document.querySelector('#renderSizeHint');
+  const renderSizeHintCustomInput = document.querySelector('#renderSizeHintCustom');
+  const webaudioQuantumBadge = document.querySelector('#webaudio-quantum-badge');
   
   const visualizerCanvas = document.querySelector('#audio-visualizer');
   const canvasCtx = visualizerCanvas.getContext('2d');
@@ -902,7 +905,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (webaudioPlayLabel) {
       webaudioPlayLabel.setAttribute('data-tooltip', webaudioPlayCheckbox.checked
         ? 'Playing via Web Audio AudioContext destination.'
-        : 'Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint and sampleRate.');
+        : 'Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint, sampleRate, and renderSizeHint.');
     }
   }
 
@@ -2538,6 +2541,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
     sampleRateSelect.disabled = false;
+    if (renderSizeHintSelect) {
+      renderSizeHintSelect.disabled = false;
+    }
+    if (renderSizeHintCustomInput) {
+      renderSizeHintCustomInput.disabled = false;
+    }
+    if (webaudioQuantumBadge) {
+      webaudioQuantumBadge.style.display = 'none';
+      webaudioQuantumBadge.textContent = '';
+    }
     audioPlayback.pause();
     audioPlayback.srcObject = null;
     muteCheckbox.checked = false;
@@ -2863,19 +2876,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (streamForPlaybackAndVisualizer) {
       if (webaudioPlayCheckbox.checked) {
         try {
+          let contextOptions = {};
           if (!webAudioContext || webAudioContext.state === 'closed') {
             const latencyHint = latencyHintSelect.value;
             const sampleRate = sampleRateSelect.value;
-            const contextOptions = {};
+            const renderSizeHintVal = renderSizeHintSelect ? renderSizeHintSelect.value : 'undefined';
+            contextOptions = {};
             if (latencyHint !== 'undefined') {
               contextOptions.latencyHint = latencyHint;
             }
             if (sampleRate !== 'undefined') {
               contextOptions.sampleRate = parseInt(sampleRate, 10);
             }
+            if (renderSizeHintVal !== 'undefined') {
+              if (renderSizeHintVal === 'custom') {
+                const customVal = parseInt(renderSizeHintCustomInput.value, 10);
+                if (!isNaN(customVal)) {
+                  contextOptions.renderSizeHint = customVal;
+                }
+              } else if (renderSizeHintVal === 'hardware' || renderSizeHintVal === 'default') {
+                contextOptions.renderSizeHint = renderSizeHintVal;
+              } else {
+                const intVal = parseInt(renderSizeHintVal, 10);
+                if (!isNaN(intVal)) {
+                  contextOptions.renderSizeHint = intVal;
+                }
+              }
+            }
             console.log('AudioContext contextOptions:', contextOptions);
             webAudioContext = new AudioContext(contextOptions);
             console.log('AudioContext base latency:', webAudioContext.baseLatency);
+            console.log('AudioContext renderQuantumSize:', webAudioContext.renderQuantumSize);
+            console.log(webAudioContext.renderQuantumSize);
           }
 
           const sinkId = audioOutputDeviceSelect.value;
@@ -2892,20 +2924,65 @@ document.addEventListener('DOMContentLoaded', async () => {
             await webAudioContext.resume();
           }
           await updateAudioOutputInfo(webAudioContext.sinkId);
+          if (webAudioContext) {
+            const qSize = webAudioContext.renderQuantumSize;
+            const quantumDisplay = qSize !== undefined
+                ? `${qSize} samples (${((qSize / webAudioContext.sampleRate) * 1000).toFixed(2)} ms)`
+                : '128 (default/legacy)';
+            const hintDisplay = contextOptions.renderSizeHint !== undefined
+                ? ` (renderSizeHint: ${contextOptions.renderSizeHint})`
+                : ' (renderSizeHint: default)';
+            audioOutputInfoElement.textContent += `\n\nWebAudio Context:\n` +
+                `  sampleRate: ${webAudioContext.sampleRate} Hz\n` +
+                `  baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)} ms\n` +
+                `  renderQuantumSize: ${quantumDisplay}${hintDisplay}`;
+          }
           audioOutputInfoElement.style.display = 'block';
           audioOutputDeviceSelect.disabled = true;
           latencyHintSelect.disabled = true;
           sampleRateSelect.disabled = true;
-          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms)`);
+          if (renderSizeHintSelect) renderSizeHintSelect.disabled = true;
+          if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = true;
+
+          if (webaudioQuantumBadge) {
+            const qSize = webAudioContext.renderQuantumSize;
+            if (qSize !== undefined) {
+              const ms = ((qSize / webAudioContext.sampleRate) * 1000).toFixed(2);
+              webaudioQuantumBadge.textContent = `quantum: ${qSize}`;
+              webaudioQuantumBadge.setAttribute(
+                  'data-tooltip',
+                  `Negotiated audioContext.renderQuantumSize: ${qSize} samples (${ms} ms at ${webAudioContext.sampleRate} Hz).`
+              );
+              webaudioQuantumBadge.style.display = 'inline-block';
+            } else {
+              webaudioQuantumBadge.textContent = 'quantum: 128 (legacy)';
+              webaudioQuantumBadge.setAttribute('data-tooltip', 'renderQuantumSize not supported in this browser; running at standard 128-sample quantum.');
+              webaudioQuantumBadge.style.display = 'inline-block';
+            }
+          }
+
+          const quantumLog = webAudioContext.renderQuantumSize !== undefined
+              ? `, renderQuantumSize: ${webAudioContext.renderQuantumSize}`
+              : '';
+          const hintLog = contextOptions.renderSizeHint !== undefined
+              ? `, renderSizeHint: ${contextOptions.renderSizeHint}`
+              : '';
+          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${quantumLog}${hintLog})`);
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
-          errorMessageElement.textContent = `WebAudio Error: ${err.message}`;
+          errorMessageElement.textContent = `WebAudio Error: ${err.name} - ${err.message}`;
           errorMessageElement.style.display = 'block';
           webaudioPlayCheckbox.checked = false;
           updateWebAudioPlayTooltip();
           audioOutputDeviceSelect.disabled = false;
           latencyHintSelect.disabled = false;
           sampleRateSelect.disabled = false;
+          if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
+          if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
+          if (webaudioQuantumBadge) {
+            webaudioQuantumBadge.style.display = 'none';
+            webaudioQuantumBadge.textContent = '';
+          }
           if (webAudioContext) {
             webAudioContext.close();
             webAudioContext = null;
@@ -2922,10 +2999,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         audioOutputDeviceSelect.disabled = false;
         latencyHintSelect.disabled = false;
         sampleRateSelect.disabled = false;
+        if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
+        if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
+        if (webaudioQuantumBadge) {
+          webaudioQuantumBadge.style.display = 'none';
+          webaudioQuantumBadge.textContent = '';
+        }
         logLifecycleEvent('WebAudio:Play', 'AudioContext playback stopped');
       }
     }
   });
+
+  if (renderSizeHintSelect) {
+    renderSizeHintSelect.addEventListener('change', () => {
+      if (renderSizeHintSelect.value === 'custom') {
+        renderSizeHintCustomInput.style.display = 'inline-block';
+        renderSizeHintCustomInput.focus();
+      } else {
+        renderSizeHintCustomInput.style.display = 'none';
+      }
+    });
+  }
 
   sineToneCheckbox.addEventListener('change', async () => {
     if (!localStream || !micSourceRadio.checked) return;
@@ -3214,6 +3308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let hwSampleRate = 'N/A';
     let hwBaseLatency = 'N/A';
     let hwOutputLatency = 'N/A';
+    let hwRenderQuantum = 'N/A';
     if (audioContextSupported) {
       try {
         const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3223,6 +3318,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (typeof probeCtx.outputLatency === 'number') {
           hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
+        }
+        if (typeof probeCtx.renderQuantumSize === 'number') {
+          hwRenderQuantum = `${probeCtx.renderQuantumSize} samples`;
         }
         probeCtx.close();
       } catch (e) {
@@ -3279,13 +3377,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       `sampleSize:${supConstraints.sampleSize ? '✅' : '❌'}`,
     ].join(', ');
 
+    const quantumSupported = typeof AudioContext !== 'undefined' && ('renderQuantumSize' in AudioContext.prototype);
+
     infoDiv.innerHTML = `
       <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
       <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (getUserMedia will fail)</span>'}<br>
       <strong>Microphone Permission:</strong> <span style="color: ${permissionColor}; font-weight:bold;">${permissionStatus}</span><br>
       <strong>Origin:</strong> ${protocol}//${host}<br>
       <strong>System Resources:</strong> ${systemResources}<br>
-      <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}<br>
+      <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}, Render Quantum: ${hwRenderQuantum}<br>
       <strong>Detected Devices:</strong> ${displayedInputs}, ${displayedOutputs}<br>
       <strong>Compute Pressure (CPU):</strong> <span id="compute-pressure-status">${formatComputePressureHtml(latestComputePressure)}</span> <button id="simulate-pressure-cycle-btn" style="margin-left: 8px; font-size: 10px; padding: 1px 6px; cursor: pointer; border: 1px solid #aaa; border-radius: 3px; background: #fff;" data-tooltip="Run an automated ~10-second simulation cycle (nominal -> fair -> serious -> critical -> serious -> fair -> nominal) to test app adaptation to CPU pressure.">Simulate Cycle</button> <select id="simulate-pressure-select" style="margin-left: 4px; font-size: 10px; padding: 1px 2px; border-radius: 3px; border: 1px solid #aaa; background: #fff; cursor: pointer;" data-tooltip="Manually inject a simulated Compute Pressure state into the observer pipeline without placing real load on your physical processor."><option value="" disabled selected>Set State...</option><option value="nominal">nominal (25% load)</option><option value="fair">fair (50% load)</option><option value="serious">serious (75% load)</option><option value="critical">critical (100% load)</option></select> <span class="info-icon" style="margin-left: 4px;" data-tooltip="Simulates Compute Pressure API (PressureObserver) CPU load states without placing actual load on your physical processor. Injects nominal, fair, serious, and critical states to test how WebRTC applications adapt (e.g. lowering video quality or disabling heavy audio processing) under varying system thermal and workload conditions.">i</span><br>
       <div id="compute-pressure-graph-container" style="margin: 6px 0; padding: 6px 8px; background: #ffffff; border: 1px solid #d0d5dd; border-radius: 4px; width: 100%; box-sizing: border-box;">
@@ -3300,7 +3400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
         <canvas id="compute-pressure-canvas" height="85" style="width: 100%; height: 85px; display: block; border: 1px solid #eee; border-radius: 2px;"></canvas>
       </div>
-      <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}, Compute Pressure:${computePressureSupported ? '✅' : '❌'}<br>
+      <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Render Quantum:${quantumSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}, Compute Pressure:${computePressureSupported ? '✅' : '❌'}<br>
       <strong>Supported Constraints:</strong> ${constraintsSummary}<br>
       <details style="margin-top: 4px; cursor: pointer;">
         <summary style="font-size: 10px; color: #666;">Raw User Agent</summary>
@@ -3453,6 +3553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'Native Sample Rate': hwSampleRate,
         'Base Latency': hwBaseLatency,
         'Output Latency': hwOutputLatency,
+        'Render Quantum': (probeCtx && typeof probeCtx.renderQuantumSize === 'number') ? `${probeCtx.renderQuantumSize} samples` : '128 (default/legacy)',
       },
       'Detected Devices': {
         'Audio Inputs (mics)': audioInputsCount,
@@ -3478,6 +3579,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'RTCPeerConnection': typeof RTCPeerConnection !== 'undefined',
         'MediaRecorder': typeof MediaRecorder !== 'undefined',
         'Web Audio': !!(window.AudioContext || window.webkitAudioContext),
+        'Configurable Render Quantum': typeof AudioContext !== 'undefined' && ('renderQuantumSize' in AudioContext.prototype),
         'Track Stats API': typeof MediaStreamTrack !== 'undefined' && ('stats' in MediaStreamTrack.prototype),
         'captureStream': typeof HTMLMediaElement !== 'undefined' && ('captureStream' in HTMLMediaElement.prototype || 'mozCaptureStream' in HTMLMediaElement.prototype),
         'Compute Pressure (PressureObserver)': typeof PressureObserver !== 'undefined',
@@ -3496,6 +3598,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
+      'WebAudio renderSizeHint': renderSizeHintSelect ? (renderSizeHintSelect.value === 'custom' ? renderSizeHintCustomInput.value : renderSizeHintSelect.value) : undefined,
+      'WebAudio renderQuantumSize': webAudioContext ? webAudioContext.renderQuantumSize : undefined,
       'Audio output sinkId': audioOutputDeviceSelect.value,
       'MediaStreamTrack (Audio) Getters & Properties': trackSection,
       'RTCPeerConnection (getStats() Audio Reports)': rtpStatsSection,

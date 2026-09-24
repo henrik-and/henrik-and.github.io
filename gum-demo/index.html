@@ -269,7 +269,7 @@
       <label for="html-play-checkbox" data-tooltip="Play the audio track directly using an HTML <audio> element with setSinkId() output routing.">HTML:Play</label>
       <div class="webaudio-settings-group">
         <input type="checkbox" id="webaudio-play-checkbox" />
-        <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint and sampleRate.">WebAudio:Play</label>
+        <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint, sampleRate, and renderSizeHint.">WebAudio:Play</label>
         <label for="latencyHint">latencyHint:</label>
         <select id="latencyHint" class="latency-hint-select">
           <option value="undefined" selected>undefined</option>
@@ -287,6 +287,26 @@
           <option value="96000">96000</option>
         </select>
         <span class="info-icon" data-tooltip="AudioContext hardware/processing sample rate in Hz (e.g. 44100, 48000, 96000).">i</span>
+        <label for="renderSizeHint" style="margin-left: 10px;">renderSizeHint:</label>
+        <select id="renderSizeHint" class="render-size-hint-select">
+          <option value="undefined" selected>undefined</option>
+          <option value="default">default (128)</option>
+          <option value="hardware">hardware</option>
+          <optgroup label="Integers (Samples)">
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="480">480 (10ms @ 48kHz)</option>
+            <option value="512">512</option>
+            <option value="960">960 (20ms @ 48kHz)</option>
+            <option value="1024">1024</option>
+            <option value="2048">2048</option>
+            <option value="custom">custom integer...</option>
+          </optgroup>
+        </select>
+        <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" style="display: none; width: 60px; margin-left: 4px; font-size: 11px; padding: 1px 3px;" />
+        <span class="info-icon" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
+        <span id="webaudio-quantum-badge" style="display: none;" data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
       </div>
       <label for="audioOutputDevice">sinkId:</label>
       <select id="audioOutputDevice">
