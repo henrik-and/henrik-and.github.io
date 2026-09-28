@@ -874,6 +874,25 @@ button:disabled {
   transition: all 1s ease-in-out;
 }
 
+/* Text cue next to the colour, so the result does not depend on telling red
+   from green. Removed together with the colour when the highlight fades. */
+.highlight-green::after {
+  content: " \2713  applied";
+  font-weight: normal;
+  color: #1b5e20;
+}
+
+.highlight-red::after {
+  content: " \2717  not applied";
+  font-weight: normal;
+  color: #b71c1c;
+}
+
+.highlight-red.fade-out::after,
+.highlight-green.fade-out::after {
+  content: none;
+}
+
 .highlight.fade-out,
 .highlight-red.fade-out,
 .highlight-green.fade-out {
