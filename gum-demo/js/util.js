@@ -20,3 +20,22 @@ export function escapeHtml(value) {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 }
+
+/**
+ * Creates an AudioContext that does not open a physical output device.
+ * Used for internal-only graphs (level meter, sine-tone generator) so they
+ * do not add extra output streams that would skew latency, render quantum,
+ * or glitch measurements of the context under test. Falls back to a regular
+ * AudioContext on browsers without AudioContext sinkId support.
+ */
+export function createSilentAudioContext() {
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype) {
+    try {
+      return new Ctor({ sinkId: { type: 'none' } });
+    } catch (e) {
+      console.warn('Silent-sink AudioContext not supported, using default output:', e);
+    }
+  }
+  return new Ctor();
+}

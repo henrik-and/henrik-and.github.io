@@ -1,6 +1,6 @@
 'use strict';
 
-import { debugLog, escapeHtml } from './util.js';
+import { createSilentAudioContext, debugLog, escapeHtml } from './util.js';
 import { insertStereoSupportForOpus, insertDtxSupportForOpus } from './sdp.js';
 import { getAudioFileMetadata } from './wav.js';
 import {
@@ -9,6 +9,23 @@ import {
   getOSInfo,
   invalidateAudioHardwareInfo,
 } from './sysinfo.js';
+import { lifecycleEvents, logLifecycleEvent } from './lifecycle-log.js';
+import {
+  computePressureHistory,
+  formatComputePressureHtml,
+  getComputePressureValue,
+  initComputePressureObserver,
+  latestComputePressure,
+  renderComputePressureGraph,
+  runComputePressureCycle,
+  setComputePressureState,
+} from './compute-pressure.js';
+import {
+  hideAudioLevelLabel,
+  showAudioLevelLabel,
+  stopVisualizer,
+  visualizeAudio,
+} from './visualizer.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
@@ -127,8 +144,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let localStream;
   let streamForPlaybackAndVisualizer;
-  let audioContext;
-  let analyser;
   let sineToneContext = null;
   let sineToneOscillator = null;
   let sineToneGain = null;
@@ -170,7 +185,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let audioOutputsHighlightExpiry = 0;
   let audioInputsFadeTimer = null;
   let audioOutputsFadeTimer = null;
-  const lifecycleEvents = [];
 
   // Source of truth for the Save Snapshot export. Every place that renders one
   // of the info/stat boxes also stores the underlying data here, so the JSON
@@ -188,258 +202,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioPlayout: null,
   };
 
-  let computePressureObserver = null;
-  let latestComputePressure = { state: 'Unknown', factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
-  let simulationTimer = null;
-  const computePressureHistory = [];
-  const MAX_PRESSURE_HISTORY_POINTS = 30;
-
-  function getComputePressureValue(state) {
-    switch (state) {
-      case 'nominal': return 25;
-      case 'fair': return 50;
-      case 'serious': return 75;
-      case 'critical': return 100;
-      default: return 25;
-    }
-  }
-
-  function getComputePressureColor(state) {
-    switch (state) {
-      case 'nominal': return '#2E7D32'; // Green (light)
-      case 'fair': return '#F57F17';    // Yellow/Amber (moderate)
-      case 'serious': return '#E65100'; // Orange (high)
-      case 'critical': return '#C62828';// Red (heavy)
-      default: return '#757575';
-    }
-  }
-
-  function addComputePressureHistoryPoint(state, factors = [], isSimulated = false) {
-    const val = getComputePressureValue(state);
-    computePressureHistory.push({
-      time: Date.now(),
-      state: state,
-      value: val,
-      factors: factors || [],
-      isSimulated: isSimulated
-    });
-    if (computePressureHistory.length > MAX_PRESSURE_HISTORY_POINTS) {
-      computePressureHistory.shift();
-    }
-    renderComputePressureGraph();
-  }
-
-  function renderComputePressureGraph() {
-    const canvas = document.getElementById('compute-pressure-canvas');
-    if (!canvas) return;
-    const container = document.getElementById('compute-pressure-graph-container');
-    if (container) {
-      const containerW = Math.floor(container.clientWidth - 18);
-      if (containerW > 100 && canvas.width !== containerW) {
-        canvas.width = containerW;
-      }
-    }
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Background
-    ctx.fillStyle = '#fafbfc';
-    ctx.fillRect(0, 0, width, height);
-
-    // Padding for axes
-    const padLeft = 82;
-    const padRight = 14;
-    const padTop = 10;
-    const padBottom = 16;
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
-
-    // Levels mapping according to Google Meet Web design
-    const levels = [
-      { label: 'heavy (100%)', val: 100, color: '#C62828' },
-      { label: 'high (75%)', val: 75, color: '#E65100' },
-      { label: 'moderate (50%)', val: 50, color: '#F57F17' },
-      { label: 'light (25%)', val: 25, color: '#2E7D32' },
-    ];
-
-    // Draw horizontal grid lines and level labels
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.font = '9px "Lucida Console", monospace';
-
-    levels.forEach(lvl => {
-      // Linear mapping: 20% to 105% onto plot area
-      const y = padTop + plotH - ((lvl.val - 20) / 85) * plotH;
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(padLeft, y);
-      ctx.lineTo(padLeft + plotW, y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = lvl.color;
-      ctx.fillText(lvl.label, padLeft - 6, y);
-    });
-
-    // Time axis marks
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#888';
-    ctx.fillText('-30s', padLeft, padTop + plotH + 3);
-    ctx.fillText('-15s', padLeft + plotW / 2, padTop + plotH + 3);
-    ctx.fillText('now', padLeft + plotW, padTop + plotH + 3);
-
-    if (computePressureHistory.length === 0) return;
-
-    // Prepare point coordinates
-    const n = computePressureHistory.length;
-    const stepX = plotW / (MAX_PRESSURE_HISTORY_POINTS - 1);
-    const startX = padLeft + (MAX_PRESSURE_HISTORY_POINTS - n) * stepX;
-
-    const points = computePressureHistory.map((pt, i) => {
-      const x = startX + i * stepX;
-      const y = padTop + plotH - ((pt.value - 20) / 85) * plotH;
-      return { x, y, state: pt.state, val: pt.value, color: getComputePressureColor(pt.state) };
-    });
-
-    if (points.length === 1) {
-      ctx.fillStyle = points[0].color;
-      ctx.beginPath();
-      ctx.arc(points[0].x, points[0].y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      return;
-    }
-
-    // Step-line path for area and stroke (preserving discrete state shifts)
-    const stepPoints = [];
-    stepPoints.push({ x: points[0].x, y: points[0].y, color: points[0].color });
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      stepPoints.push({ x: curr.x, y: prev.y, color: prev.color });
-      stepPoints.push({ x: curr.x, y: curr.y, color: curr.color });
-    }
-
-    // Draw shaded area under curve
-    ctx.beginPath();
-    ctx.moveTo(stepPoints[0].x, padTop + plotH);
-    for (let i = 0; i < stepPoints.length; i++) {
-      ctx.lineTo(stepPoints[i].x, stepPoints[i].y);
-    }
-    ctx.lineTo(stepPoints[stepPoints.length - 1].x, padTop + plotH);
-    ctx.closePath();
-
-    const lastPt = points[points.length - 1];
-    const grad = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
-    grad.addColorStop(0, `${lastPt.color}33`);
-    grad.addColorStop(1, `${lastPt.color}05`);
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Draw step line segments
-    for (let i = 0; i < stepPoints.length - 1; i++) {
-      const p1 = stepPoints[i];
-      const p2 = stepPoints[i + 1];
-      ctx.strokeStyle = p2.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
-    }
-
-    // Draw markers at actual samples
-    points.forEach((p, idx) => {
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      const isLatest = (idx === points.length - 1);
-      ctx.arc(p.x, p.y, isLatest ? 4 : 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      if (isLatest) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-    });
-  }
-
   // 1Hz timeline update timer to keep the history graph rolling smoothly
   setInterval(() => {
     if (latestComputePressure.state !== 'Unknown') {
       addComputePressureHistoryPoint(latestComputePressure.state, latestComputePressure.factors, latestComputePressure.isSimulated);
     }
   }, 1000);
-
-  function setComputePressureState(newState, factors = [], isSimulated = false) {
-    const prevState = latestComputePressure.state;
-    const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0];
-
-    latestComputePressure = {
-      state: newState,
-      factors: factors || [],
-      sampleCount: (latestComputePressure.sampleCount || 0) + 1,
-      lastSampleTime: timeStr,
-      time: now.toISOString(),
-      isSimulated: isSimulated
-    };
-
-    addComputePressureHistoryPoint(newState, factors, isSimulated);
-
-    const factorText = factors && factors.length > 0 ? ` (factors: ${factors.join(', ')})` : '';
-    const simText = isSimulated ? ' [simulated]' : '';
-
-    if (prevState === 'Unknown') {
-      logLifecycleEvent('ComputePressure', `Observer active (initial state: ${newState}${factorText})${simText}`, 'info');
-    } else if (prevState !== newState) {
-      let level = 'info';
-      if (newState === 'critical') level = 'error';
-      else if (newState === 'serious') level = 'warning';
-      else if (newState === 'nominal') level = 'success';
-
-      logLifecycleEvent('ComputePressure', `CPU pressure transitioned: ${prevState} -> ${newState}${factorText}${simText}`, level);
-    }
-
-    updateComputePressureUI();
-  }
-
-  function runComputePressureCycle() {
-    if (simulationTimer) {
-      clearInterval(simulationTimer);
-      simulationTimer = null;
-    }
-    const states = ['nominal', 'fair', 'serious', 'critical', 'serious', 'fair', 'nominal'];
-    let idx = 0;
-    const btn = document.getElementById('simulate-pressure-cycle-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = 'Simulating Cycle...';
-    }
-
-    setComputePressureState(states[idx], idx >= 3 ? ['thermal'] : [], true);
-
-    simulationTimer = setInterval(() => {
-      idx++;
-      if (idx >= states.length) {
-        clearInterval(simulationTimer);
-        simulationTimer = null;
-        const b = document.getElementById('simulate-pressure-cycle-btn');
-        if (b) {
-          b.disabled = false;
-          b.textContent = 'Simulate Cycle';
-        }
-        return;
-      }
-      const state = states[idx];
-      const factors = (state === 'serious' || state === 'critical') ? ['thermal'] : [];
-      setComputePressureState(state, factors, true);
-    }, 1500);
-  }
 
   function setSimulatedGlitchMode(mode) {
     simulatedGlitchMode = mode;
@@ -487,109 +255,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
     }, 1000);
-  }
-
-  function getComputePressureBadge(state) {
-    switch (state) {
-      case 'nominal':
-        return '<span class="cp-state cp-nominal">🟢 Nominal (Light load)</span>';
-      case 'fair':
-        return '<span class="cp-state cp-fair">🟡 Fair (Moderate load)</span>';
-      case 'serious':
-        return '<span class="cp-state cp-serious">🟠 Serious (High load)</span>';
-      case 'critical':
-        return '<span class="cp-state cp-critical">🔴 Critical (Heavy load)</span>';
-      default:
-        return `<span class="cp-unknown">${escapeHtml(state)}</span>`;
-    }
-  }
-
-  function formatComputePressureHtml(pressure) {
-    const isSupported = typeof PressureObserver !== 'undefined';
-    const stateBadge = getComputePressureBadge(pressure ? pressure.state : 'Unknown');
-    const factorsText = (pressure && pressure.factors && pressure.factors.length > 0)
-      ? ` <small class="cp-factors">[factors: ${escapeHtml(pressure.factors.join(', '))}]</small>`
-      : '';
-    const sampleMeta = (pressure && pressure.lastSampleTime)
-      ? ` <small class="cp-sample-meta">(last: ${pressure.lastSampleTime}, count: ${pressure.sampleCount}${pressure.isSimulated ? ', simulated' : ''})</small>`
-      : '';
-
-    return `${stateBadge}${factorsText}${sampleMeta}`;
-  }
-
-  function updateComputePressureUI() {
-    const el = document.getElementById('compute-pressure-status');
-    if (el) {
-      el.innerHTML = formatComputePressureHtml(latestComputePressure);
-    }
-    const summaryBadge = document.getElementById('summary-compute-pressure-badge');
-    if (summaryBadge) {
-      if (typeof PressureObserver === 'undefined' && !latestComputePressure.isSimulated) {
-        summaryBadge.textContent = '[CPU: N/A]';
-        summaryBadge.classList.add('na');
-      } else if (latestComputePressure.state !== 'Unknown') {
-        let icon = '🟢';
-        if (latestComputePressure.state === 'fair') icon = '🟡';
-        else if (latestComputePressure.state === 'serious') icon = '🟠';
-        else if (latestComputePressure.state === 'critical') icon = '🔴';
-        summaryBadge.textContent = `[CPU: ${icon} ${latestComputePressure.state.toUpperCase()}${latestComputePressure.isSimulated ? ' (sim)' : ''}]`;
-        summaryBadge.classList.remove('na');
-      }
-    }
-    renderComputePressureGraph();
-  }
-
-  async function initComputePressureObserver() {
-    if (typeof PressureObserver === 'undefined') {
-      debugLog('Compute Pressure API (PressureObserver) not supported in this browser.');
-      latestComputePressure = { state: 'nominal', factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
-      updateComputePressureUI();
-      return;
-    }
-    try {
-      computePressureObserver = new PressureObserver((records) => {
-        if (!records || records.length === 0) return;
-        if (simulationTimer) return; // Do not overwrite active simulated cycle
-        const latest = records[records.length - 1];
-        setComputePressureState(latest.state, latest.factors || [], false);
-      });
-
-      await computePressureObserver.observe('cpu', { sampleInterval: 1000 });
-      debugLog('Compute Pressure API observer initialized on source "cpu".');
-    } catch (err) {
-      console.warn('Failed to start PressureObserver:', err);
-      latestComputePressure = { state: `Error: ${err.message}`, factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
-      updateComputePressureUI();
-    }
-  }
-
-  function logLifecycleEvent(category, message, level = 'info') {
-    const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
-    const entry = { time: timeStr, category, message, level };
-    lifecycleEvents.push(entry);
-
-    const logContainer = document.getElementById('lifecycle-events-log');
-    const countSpan = document.getElementById('lifecycle-events-count');
-
-    if (countSpan) {
-      countSpan.textContent = `${lifecycleEvents.length} event${lifecycleEvents.length !== 1 ? 's' : ''}`;
-    }
-
-    if (logContainer) {
-      const line = document.createElement('div');
-      line.className = `lifecycle-event-line event-${level}`;
-
-      let marker = '';
-      if (level === 'error') marker = '<span class="event-marker">⛔</span>';
-      else if (level === 'warning') marker = '<span class="event-marker">⚠️</span>';
-      else if (level === 'success') marker = '<span class="event-marker">✅</span>';
-
-      line.innerHTML = `${marker}<span class="event-timestamp">[${timeStr}]</span> <strong>${escapeHtml(category)}:</strong> ${escapeHtml(message)}`;
-      logContainer.appendChild(line);
-      logContainer.scrollTop = logContainer.scrollHeight;
-    }
-    debugLog(`[Lifecycle] [${level.toUpperCase()}] ${timeStr} [${category}] ${message}`);
   }
 
   function updateAudioFileProgress() {
@@ -1135,135 +800,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     debugLog(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
   }
 
-  /**
-   * Creates an AudioContext that does not open a physical output device.
-   * Used for internal-only graphs (level meter, sine-tone generator) so they
-   * do not add extra output streams that would skew latency, render quantum,
-   * or glitch measurements of the context under test. Falls back to a regular
-   * AudioContext on browsers without AudioContext sinkId support.
-   */
-  function createSilentAudioContext() {
-    const Ctor = window.AudioContext || window.webkitAudioContext;
-    if (typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype) {
-      try {
-        return new Ctor({ sinkId: { type: 'none' } });
-      } catch (e) {
-        console.warn('Silent-sink AudioContext not supported, using default output:', e);
-      }
-    }
-    return new Ctor();
-  }
-
-  let visualizerFrameRequest = null;
-  let visualizerDataArray = null;
-  const visualizerDbLabel = document.getElementById('visualizer-db-label');
-  // The dBFS readout is averaged over this window so it is readable for speech.
-  const VISUALIZER_DB_LABEL_INTERVAL_MS = 250;
-  let visualizerDbSumSquares = 0;
-  let visualizerDbSampleCount = 0;
-  let visualizerDbLastUpdate = 0;
-
-  function stopVisualizer() {
-    if (visualizerFrameRequest !== null) {
-      cancelAnimationFrame(visualizerFrameRequest);
-      visualizerFrameRequest = null;
-    }
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-    analyser = null;
-    canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    visualizerDbSumSquares = 0;
-    visualizerDbSampleCount = 0;
-    visualizerDbLastUpdate = 0;
-    if (visualizerDbLabel) {
-      visualizerDbLabel.textContent = '';
-      visualizerDbLabel.classList.remove('active');
-      visualizerDbLabel.hidden = true;
-    }
-  }
-
-  // Level meter range in dBFS. The bar is empty at or below the floor and full at 0 dBFS.
-  const VISUALIZER_DB_FLOOR = -60;
-
-  function visualizeAudio(stream) {
-    stopVisualizer();
-    audioContext = createSilentAudioContext();
-    const source = audioContext.createMediaStreamSource(stream);
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 1024;
-    visualizerDataArray = new Float32Array(analyser.fftSize);
-    source.connect(analyser);
-    drawVisualizer();
-  }
-
-  function updateVisualizerDbLabel(now) {
-    if (!visualizerDbLabel || visualizerDbSampleCount === 0) return;
-    if (now - visualizerDbLastUpdate < VISUALIZER_DB_LABEL_INTERVAL_MS) return;
-    const rms = Math.sqrt(visualizerDbSumSquares / visualizerDbSampleCount);
-    const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
-    const text = db > -100 ? db.toFixed(1) : '-∞';
-    visualizerDbLabel.innerHTML = `<span class="rms-key">Level:</span><span class="rms-val">${text} dBFS</span>`;
-    visualizerDbLabel.classList.toggle('active', db > VISUALIZER_DB_FLOOR);
-    visualizerDbLabel.hidden = false;
-    visualizerDbSumSquares = 0;
-    visualizerDbSampleCount = 0;
-    visualizerDbLastUpdate = now;
-  }
-
-  function drawVisualizer(now = performance.now()) {
-    if (!audioContext || audioContext.state === 'closed' || !analyser) {
-      visualizerFrameRequest = null;
-      canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-      return;
-    }
-    visualizerFrameRequest = requestAnimationFrame(drawVisualizer);
-    // Use the RMS of the time-domain signal. Averaging frequency bins (the old
-    // approach) shows almost nothing for narrowband signals like a pure tone,
-    // because only one or two bins carry energy.
-    analyser.getFloatTimeDomainData(visualizerDataArray);
-    let sumSquares = 0;
-    for (let i = 0; i < visualizerDataArray.length; i++) {
-      sumSquares += visualizerDataArray[i] * visualizerDataArray[i];
-    }
-    visualizerDbSumSquares += sumSquares;
-    visualizerDbSampleCount += visualizerDataArray.length;
-    updateVisualizerDbLabel(now);
-    const rms = Math.sqrt(sumSquares / visualizerDataArray.length);
-    const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
-    const level = Math.min(1, Math.max(0, (db - VISUALIZER_DB_FLOOR) / -VISUALIZER_DB_FLOOR));
-    canvasCtx.fillStyle = 'rgb(250, 250, 250)';
-    canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    const barWidth = level * visualizerCanvas.width;
-    canvasCtx.fillStyle = '#00FF00';
-    canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
-  }
-
   function updateVisualizerRmsLabel() {
-    const rmsLabel = document.getElementById('visualizer-rms-label');
-    if (!rmsLabel) return;
     if (peerConnectionCheckbox.checked && rmsAudioLevels.length > 0) {
-      const isActive = (latestRmsAudioLevel !== null && latestRmsAudioLevel >= 0.0007);
-      const text1s = (latestRmsAudioLevel !== null && latestRmsAudioLevel > 0)
-          ? Number(latestRmsAudioLevel).toFixed(5)
-          : '0.00000';
-      rmsLabel.classList.toggle('active', isActive);
-      rmsLabel.innerHTML = `<span class="rms-key">audioLevel:</span><span class="rms-val">${text1s}</span>`;
-      rmsLabel.setAttribute(
-          'data-tooltip',
-          'Received audio level at pc2 over the latest 1-second stats interval, from the inbound-rtp getStats() report: ' +
-          'sqrt(ΔtotalAudioEnergy / ΔtotalSamplesDuration). Linear scale, 0 to 1. ' +
-          'libwebrtc computes audioLevel from the peak sample value, so this is an energy average of peak levels, not the RMS of the signal. ' +
-          'Example: a sine with peak 0.2 shows 0.2 here, but -17.0 dBFS (RMS 0.141) on the level meter above. ' +
-          'Green when >= 0.0007. Audio must be rendered (HTML:Play or WebAudio:Play) for pc2 to report non-zero values.'
-      );
-      rmsLabel.hidden = false;
+      showAudioLevelLabel(latestRmsAudioLevel);
     } else {
-      rmsLabel.textContent = '';
-      rmsLabel.classList.remove('active');
-      rmsLabel.removeAttribute('data-tooltip');
-      rmsLabel.hidden = true;
+      hideAudioLevelLabel();
     }
   }
 
