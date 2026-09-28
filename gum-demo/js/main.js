@@ -26,6 +26,7 @@ import {
   stopVisualizer,
   visualizeAudio,
 } from './visualizer.js';
+import { initTooltipA11y, labelInfoIcons } from './a11y.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
@@ -2949,7 +2950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <strong>System Resources:</strong> ${systemResources}<br>
       <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}, Render Quantum: ${hwRenderQuantum}<br>
       <strong>Detected Devices:</strong> ${displayedInputs}, ${displayedOutputs}<br>
-      <strong>Compute Pressure (CPU):</strong> <span id="compute-pressure-status">${formatComputePressureHtml(latestComputePressure)}</span> <button id="simulate-pressure-cycle-btn" data-tooltip="Run an automated ~10-second simulation cycle (nominal -> fair -> serious -> critical -> serious -> fair -> nominal) to test app adaptation to CPU pressure.">Simulate Cycle</button> <select id="simulate-pressure-select" data-tooltip="Manually inject a simulated Compute Pressure state into the observer pipeline without placing real load on your physical processor."><option value="" disabled selected>Set State...</option><option value="nominal">nominal (25% load)</option><option value="fair">fair (50% load)</option><option value="serious">serious (75% load)</option><option value="critical">critical (100% load)</option></select> <span class="info-icon" data-tooltip="Simulates Compute Pressure API (PressureObserver) CPU load states without placing actual load on your physical processor. Injects nominal, fair, serious, and critical states to test how WebRTC applications adapt (e.g. lowering video quality or disabling heavy audio processing) under varying system thermal and workload conditions.">i</span><br>
+      <strong>Compute Pressure (CPU):</strong> <span id="compute-pressure-status">${formatComputePressureHtml(latestComputePressure)}</span> <button id="simulate-pressure-cycle-btn" data-tooltip="Run an automated ~10-second simulation cycle (nominal -> fair -> serious -> critical -> serious -> fair -> nominal) to test app adaptation to CPU pressure.">Simulate Cycle</button> <select id="simulate-pressure-select" data-tooltip="Manually inject a simulated Compute Pressure state into the observer pipeline without placing real load on your physical processor."><option value="" disabled selected>Set State...</option><option value="nominal">nominal (25% load)</option><option value="fair">fair (50% load)</option><option value="serious">serious (75% load)</option><option value="critical">critical (100% load)</option></select> <span class="info-icon" tabindex="0" role="img" data-tooltip="Simulates Compute Pressure API (PressureObserver) CPU load states without placing actual load on your physical processor. Injects nominal, fair, serious, and critical states to test how WebRTC applications adapt (e.g. lowering video quality or disabling heavy audio processing) under varying system thermal and workload conditions.">i</span><br>
       <div id="compute-pressure-graph-container">
         <div class="cp-graph-header">
           <span class="cp-graph-title" data-tooltip="Real-time 1Hz rolling history mapping Compute Pressure CPU states to normalized load values (nominal=25%, fair=50%, serious=75%, critical=100%).">Compute Pressure History (1Hz Mapped States)</span>
@@ -2969,6 +2970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <pre>${escapeHtml(navigator.userAgent)}</pre>
       </details>
     `;
+    labelInfoIcons(infoDiv);
 
     renderComputePressureGraph();
 
@@ -3193,6 +3195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Initialize the application by populating system info, devices, compute pressure, and then applying URL parameters.
+  initTooltipA11y();
   await initComputePressureObserver();
   populateSystemInfo();
   await populateAudioInputDevices();

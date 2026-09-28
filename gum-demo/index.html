@@ -9,10 +9,11 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=1f131408">
+  <link rel="stylesheet" href="css/style.css?v=2912a38c">
   <script type="importmap">
   {
     "imports": {
+      "./js/a11y.js": "./js/a11y.js?v=b5de2807",
       "./js/compute-pressure.js": "./js/compute-pressure.js?v=8dafbfea",
       "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=a859f835",
       "./js/sdp.js": "./js/sdp.js?v=137dc73c",
@@ -96,7 +97,7 @@
                   <option value="ideal:remote-only">remote-only</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Acoustic Echo Cancellation (AEC) removes speaker feedback from microphone input. Supports boolean, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Acoustic Echo Cancellation (AEC) removes speaker feedback from microphone input. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="autoGainControl">autoGainControl:</label>
@@ -115,7 +116,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Automatic Gain Control (AGC) adjusts microphone input sensitivity. Supports boolean, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Automatic Gain Control (AGC) adjusts microphone input sensitivity. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="noiseSuppression">noiseSuppression:</label>
@@ -134,7 +135,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Noise Suppression (NS) filters background ambient noise. Supports boolean, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Noise Suppression (NS) filters background ambient noise. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting" id="voiceIsolation-container" hidden>
               <label for="voiceIsolation">voiceIsolation:</label>
@@ -153,7 +154,7 @@
                   <option value="ideal:false">false</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Voice Isolation uses deep learning to isolate voice from background sound. Supports boolean, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Voice Isolation uses deep learning to isolate voice from background sound. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="channelCount">channelCount:</label>
@@ -172,7 +173,7 @@
                   <option value="ideal:2">ideal: 2</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture. Supports direct, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture. Supports direct, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="latencyConstraint">latency:</label>
@@ -196,7 +197,7 @@
                   <option value="ideal:0.05">ideal: 0.05</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Target audio capture hardware latency in seconds (e.g. 0.01 for 10ms, 0.02 for 20ms). Supports direct, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Target audio capture hardware latency in seconds (e.g. 0.01 for 10ms, 0.02 for 20ms). Supports direct, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="sampleRateConstraint">sampleRate:</label>
@@ -223,7 +224,7 @@
                   <option value="ideal:96000">ideal: 96000</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Audio capture sampling rate in Hz (e.g. 16000, 44100, 48000, 96000). Supports direct, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Audio capture sampling rate in Hz (e.g. 16000, 44100, 48000, 96000). Supports direct, exact, and ideal constraints.">i</span>
             </div>
             <div class="setting">
               <label for="sampleSizeConstraint">sampleSize:</label>
@@ -245,7 +246,7 @@
                   <option value="ideal:32">ideal: 32</option>
                 </optgroup>
               </select>
-              <span class="info-icon" data-tooltip="Linear PCM sample resolution in bits per sample (e.g. 16, 24, 32). Supports direct, exact, and ideal constraints.">i</span>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Linear PCM sample resolution in bits per sample (e.g. 16, 24, 32). Supports direct, exact, and ideal constraints.">i</span>
             </div>
           </div>
           <div class="setting">
@@ -253,7 +254,7 @@
             <select id="audioDevice">
               <option value="undefined" selected>undefined</option>
             </select>
-            <span class="info-icon" data-tooltip="Requests audio capture from a specific input device matching the selected deviceId.">i</span>
+            <span class="info-icon" tabindex="0" role="img" data-tooltip="Requests audio capture from a specific input device matching the selected deviceId.">i</span>
           </div>
           <pre>  },
   video: false
@@ -299,7 +300,7 @@
           <option value="balanced">balanced</option>
           <option value="playback">playback</option>
         </select>
-        <span class="info-icon" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback).">i</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback).">i</span>
         <label for="sampleRate">sampleRate:</label>
         <select id="sampleRate" class="sample-rate-select">
           <option value="undefined" selected>undefined</option>
@@ -308,7 +309,7 @@
           <option value="88200">88200</option>
           <option value="96000">96000</option>
         </select>
-        <span class="info-icon" data-tooltip="AudioContext hardware/processing sample rate in Hz (e.g. 44100, 48000, 96000).">i</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext hardware/processing sample rate in Hz (e.g. 44100, 48000, 96000).">i</span>
         <label for="renderSizeHint">renderSizeHint:</label>
         <select id="renderSizeHint" class="render-size-hint-select">
           <option value="undefined" selected>undefined</option>
@@ -327,14 +328,14 @@
           </optgroup>
         </select>
         <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" hidden />
-        <span class="info-icon" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
         <span id="webaudio-quantum-badge" hidden data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
       </div>
       <label for="audioOutputDevice">sinkId:</label>
       <select id="audioOutputDevice">
         <option value="undefined" selected>undefined</option>
       </select>
-      <span class="info-icon" data-tooltip="Routes audio playback to a specific physical output speaker via setSinkId().">i</span>
+      <span class="info-icon" tabindex="0" role="img" data-tooltip="Routes audio playback to a specific physical output speaker via setSinkId().">i</span>
     </div>
     <fieldset id="track-section-container">
       <legend id="track-section-title">MediaStreamTrack (Audio) Getters & Properties</legend>
@@ -360,7 +361,7 @@
             <option value="degraded">Heavy Burst (Degraded)</option>
           </select>
           <button id="simulate-glitch-cycle-btn" data-tooltip="Run an automated 10-second UI simulation cycle (Clean -> Minor -> Degraded -> Clean) without audible audio disruptions.">Simulate Cycle</button>
-          <span class="info-icon" data-tooltip="Simulates audio playout glitch statistics in the UI without causing audible disruptions. Injects synthesized sample metrics to illustrate how the UI reacts to real audio underruns.">i</span>
+          <span class="info-icon" tabindex="0" role="img" data-tooltip="Simulates audio playout glitch statistics in the UI without causing audible disruptions. Injects synthesized sample metrics to illustrate how the UI reacts to real audio underruns.">i</span>
         </span>
       </legend>
       <div id="rtp-stats-container">
@@ -378,6 +379,6 @@
   <p id="error-message" class="error" hidden></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=0df8cca9" defer></script>
+  <script type="module" src="js/main.js?v=3bd6da4f" defer></script>
 </body>
 </html>

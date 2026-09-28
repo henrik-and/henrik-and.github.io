@@ -33,7 +33,6 @@ body {
   font-size: 11px;
   font-weight: bold;
   text-align: left;
-  outline: none;
 }
 
 #system-info-container[open] {
@@ -520,7 +519,6 @@ button:disabled {
 
 #recorded-audio {
   height: 36px;
-  outline: none;
 }
 
 #recorded-audio::-webkit-media-controls-overflow-button,
@@ -618,7 +616,6 @@ button:disabled {
   font-size: 11px;
   font-weight: bold;
   color: #2E7D32;
-  outline: none;
 }
 
 #lifecycle-events-log {
@@ -944,7 +941,11 @@ button:disabled {
 }
 
 [data-tooltip]:not([data-tooltip=""]):hover::before,
-[data-tooltip]:not([data-tooltip=""]):hover::after {
+[data-tooltip]:not([data-tooltip=""]):hover::after,
+[data-tooltip]:not([data-tooltip=""]):focus-visible::before,
+[data-tooltip]:not([data-tooltip=""]):focus-visible::after,
+input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::before,
+input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
@@ -953,6 +954,20 @@ button:disabled {
 [data-tooltip=""]::before,
 [data-tooltip=""]::after {
   display: none;
+}
+
+/* Esc hides the open tooltip until the pointer or focus moves (a11y.js). */
+.tooltips-dismissed [data-tooltip]::before,
+.tooltips-dismissed [data-tooltip]::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* One visible focus ring for keyboard users. Mouse clicks do not trigger
+   :focus-visible on buttons, so this does not show on click. */
+:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
 }
 
 .toast-notification {
