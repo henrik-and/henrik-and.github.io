@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return sineToneStream;
     }
     try {
-      sineToneContext = new (window.AudioContext || window.webkitAudioContext)();
+      sineToneContext = createSilentAudioContext();
       sineToneOscillator = sineToneContext.createOscillator();
       sineToneOscillator.type = 'sine';
       sineToneOscillator.frequency.setValueAtTime(440, sineToneContext.currentTime);
@@ -1234,29 +1234,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
   }
 
-  function visualizeAudio(stream) {
+  /**
+   * Creates an AudioContext that does not open a physical output device.
+   * Used for internal-only graphs (level meter, sine-tone generator) so they
+   * do not add extra output streams that would skew latency, render quantum,
+   * or glitch measurements of the context under test. Falls back to a regular
+   * AudioContext on browsers without AudioContext sinkId support.
+   */
+  function createSilentAudioContext() {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype) {
+      try {
+        return new Ctor({ sinkId: { type: 'none' } });
+      } catch (e) {
+        console.warn('Silent-sink AudioContext not supported, using default output:', e);
+      }
+    }
+    return new Ctor();
+  }
+
+  let visualizerFrameRequest = null;
+  let visualizerDataArray = null;
+
+  function stopVisualizer() {
+    if (visualizerFrameRequest !== null) {
+      cancelAnimationFrame(visualizerFrameRequest);
+      visualizerFrameRequest = null;
+    }
     if (audioContext) {
       audioContext.close();
+      audioContext = null;
     }
-    audioContext = new AudioContext();
+    analyser = null;
+    canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+  }
+
+  function visualizeAudio(stream) {
+    stopVisualizer();
+    audioContext = createSilentAudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
+    visualizerDataArray = new Uint8Array(analyser.frequencyBinCount);
     source.connect(analyser);
     drawVisualizer();
   }
 
   function drawVisualizer() {
-    if (!audioContext || audioContext.state === 'closed') {
+    if (!audioContext || audioContext.state === 'closed' || !analyser) {
+      visualizerFrameRequest = null;
       canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
       return;
     }
-    requestAnimationFrame(drawVisualizer);
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteFrequencyData(dataArray);
-    let sum = dataArray.reduce((a, b) => a + b, 0);
-    let average = sum / bufferLength;
+    visualizerFrameRequest = requestAnimationFrame(drawVisualizer);
+    const bufferLength = visualizerDataArray.length;
+    analyser.getByteFrequencyData(visualizerDataArray);
+    let sum = 0;
+    for (let i = 0; i < bufferLength; i++) sum += visualizerDataArray[i];
+    const average = sum / bufferLength;
     canvasCtx.fillStyle = 'rgb(250, 250, 250)';
     canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     const barWidth = (average / 255) * visualizerCanvas.width;
@@ -2481,10 +2516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     closePeerConnection();
     stopSineToneGenerator();
     latestRmsAudioLevel = null;
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
+    stopVisualizer();
     if (webAudioContext) {
       webAudioContext.close();
       webAudioContext = null;
@@ -2807,7 +2839,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       recordedAnalyser.fftSize = 2048;
       recordedSourceNode.connect(recordedAnalyser);
       recordedAnalyser.connect(recordedAudioContext.destination);
-      
+
+      if (recordedAudioContext.state === 'suspended') {
+        recordedAudioContext.resume();
+      }
+
+      stopRecordedVisualization();
       drawRecordedVisualizer();
     } catch (err) {
       console.error('Error visualizing recorded audio:', err);
@@ -2820,14 +2857,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
   }
 
+  // Suspend the playback context while idle so it does not keep an output
+  // stream open in the background and skew other audio measurements.
+  function suspendRecordedAudioContext() {
+    if (recordedAudioContext && recordedAudioContext.state === 'running') {
+      recordedAudioContext.suspend();
+    }
+  }
+
   recordedAudio.addEventListener('pause', () => {
     console.log('Recorded audio playback paused.');
     stopRecordedVisualization();
+    suspendRecordedAudioContext();
   });
 
   recordedAudio.addEventListener('ended', () => {
     console.log('Recorded audio playback ended.');
     stopRecordedVisualization();
+    suspendRecordedAudioContext();
   });
 
   muteCheckbox.addEventListener('change', () => {
@@ -3103,6 +3150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   navigator.mediaDevices.addEventListener('devicechange', async () => {
     console.log('--- navigator.mediaDevices "devicechange" event received ---');
+    cachedAudioHardwareInfo = null;
 
     // Check if the currently active microphone device was disconnected
     if (localStream && micSourceRadio.checked) {
@@ -3240,6 +3288,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   let lastPermissionStatus = 'Unknown';
+  let micPermissionStatusObject = null;
+
+  // Cached result of a single default-options AudioContext probe. Creating a
+  // context opens an output stream, so we probe once and only re-probe after a
+  // devicechange (the default output device may have changed).
+  let cachedAudioHardwareInfo = null;
+
+  function getAudioHardwareInfo() {
+    if (cachedAudioHardwareInfo) return cachedAudioHardwareInfo;
+    const info = {
+      hwSampleRate: 'N/A',
+      hwBaseLatency: 'N/A',
+      hwOutputLatency: 'N/A',
+      hwRenderQuantum: 'N/A',
+    };
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return info;
+    try {
+      const probeCtx = new Ctor();
+      info.hwSampleRate = `${probeCtx.sampleRate} Hz`;
+      if (typeof probeCtx.baseLatency === 'number') {
+        info.hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
+      }
+      if (typeof probeCtx.outputLatency === 'number') {
+        info.hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
+      }
+      info.hwRenderQuantum = (typeof probeCtx.renderQuantumSize === 'number')
+          ? `${probeCtx.renderQuantumSize} samples`
+          : '128 (default/legacy)';
+      probeCtx.close();
+      cachedAudioHardwareInfo = info;
+    } catch (e) {
+      console.warn('Probe AudioContext error:', e);
+    }
+    return info;
+  }
 
   function getBrowserInfo() {
     const ua = navigator.userAgent;
@@ -3298,11 +3382,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         permissionStatus = status.state; // 'granted', 'prompt', 'denied'
         lastPermissionStatus = permissionStatus;
 
-        // Auto-refresh when user updates permissions
-        status.onchange = () => {
-          populateSystemInfo();
-          populateAudioInputDevices();
-        };
+        // Auto-refresh when user updates permissions. Only attach once; each
+        // query() returns a new PermissionStatus object, and attaching to every
+        // one would multiply refreshes on a single permission change.
+        if (!micPermissionStatusObject) {
+          micPermissionStatusObject = status;
+          status.addEventListener('change', () => {
+            populateSystemInfo();
+            populateAudioInputDevices();
+          });
+        }
       } catch (e) {
         permissionStatus = `Error: ${e.message}`;
         lastPermissionStatus = permissionStatus;
@@ -3324,22 +3413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let hwOutputLatency = 'N/A';
     let hwRenderQuantum = 'N/A';
     if (audioContextSupported) {
-      try {
-        const probeCtx = new (window.AudioContext || window.webkitAudioContext)();
-        hwSampleRate = `${probeCtx.sampleRate} Hz`;
-        if (typeof probeCtx.baseLatency === 'number') {
-          hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
-        }
-        if (typeof probeCtx.outputLatency === 'number') {
-          hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
-        }
-        if (typeof probeCtx.renderQuantumSize === 'number') {
-          hwRenderQuantum = `${probeCtx.renderQuantumSize} samples`;
-        }
-        probeCtx.close();
-      } catch (e) {
-        console.warn('Probe AudioContext error:', e);
-      }
+      ({ hwSampleRate, hwBaseLatency, hwOutputLatency, hwRenderQuantum } = getAudioHardwareInfo());
     }
 
     // 3. Detected Audio Devices
@@ -3521,26 +3595,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const browser = getBrowserInfo();
     const os = getOSInfo();
-    let probeCtx = null;
-    let hwSampleRate = 'N/A';
-    let hwBaseLatency = 'N/A';
-    let hwOutputLatency = 'N/A';
-    try {
-      probeCtx = (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') ?
-        new (window.AudioContext || window.webkitAudioContext)() : null;
-      if (probeCtx) {
-        hwSampleRate = `${probeCtx.sampleRate} Hz`;
-        if (typeof probeCtx.baseLatency === 'number') {
-          hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
-        }
-        if (typeof probeCtx.outputLatency === 'number') {
-          hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
-        }
-        probeCtx.close();
-      }
-    } catch (e) {
-      console.warn('Probe AudioContext in snapshot error:', e);
-    }
+    const hwInfo = (window.AudioContext || window.webkitAudioContext)
+        ? getAudioHardwareInfo()
+        : { hwSampleRate: 'N/A', hwBaseLatency: 'N/A', hwOutputLatency: 'N/A', hwRenderQuantum: 'N/A' };
 
     let audioInputsCount = 0;
     let audioOutputsCount = 0;
@@ -3564,10 +3621,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         'Device Memory (GB)': navigator.deviceMemory || 'N/A',
       },
       'Hardware Audio': {
-        'Native Sample Rate': hwSampleRate,
-        'Base Latency': hwBaseLatency,
-        'Output Latency': hwOutputLatency,
-        'Render Quantum': (probeCtx && typeof probeCtx.renderQuantumSize === 'number') ? `${probeCtx.renderQuantumSize} samples` : '128 (default/legacy)',
+        'Native Sample Rate': hwInfo.hwSampleRate,
+        'Base Latency': hwInfo.hwBaseLatency,
+        'Output Latency': hwInfo.hwOutputLatency,
+        'Render Quantum': hwInfo.hwRenderQuantum,
       },
       'Detected Devices': {
         'Audio Inputs (mics)': audioInputsCount,
