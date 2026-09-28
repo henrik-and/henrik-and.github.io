@@ -150,6 +150,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let sineToneGain = null;
   let sineToneDestination = null;
   let sineToneStream = null;
+  // True while MediaRecorder records the sine tone track instead of the mic.
+  let recordingSineTone = false;
   let isRecording = false;
   let mediaRecorder;
   let recordedChunks = [];
@@ -700,7 +702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       recordButton.classList.remove('recording-active');
       recordButton.innerHTML = '<span class="record-dot"></span>Rec';
-      recordButton.setAttribute('data-tooltip', 'Record the audio stream to an Opus WebM blob using the MediaRecorder API.');
+      recordButton.setAttribute('data-tooltip', 'Record the audio stream to an Opus WebM blob using the MediaRecorder API. If 440Hz Sine is on when recording starts, the tone is recorded; otherwise the microphone (or audio file). Switching the tone during a recording does not change the recorded source.');
     }
   }
 
@@ -1643,11 +1645,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       localStream = stream;
 
-      // Start recording immediately at time zero if Auto-Record is enabled
-      if (autoRecordCheckbox && autoRecordCheckbox.checked) {
-        startRecording(true);
-      }
-
       let streamToSendAndPlay = localStream;
       if (micSourceRadio.checked && sineToneCheckbox && sineToneCheckbox.checked) {
         const toneStream = startSineToneGenerator();
@@ -1655,6 +1652,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           streamToSendAndPlay = toneStream;
           debugLog('Replacing live mic stream with 440Hz sine tone for loopback/playback while keeping mic capture active.');
         }
+      }
+
+      // Start recording immediately at time zero if Auto-Record is enabled.
+      // Runs after the sine tone setup so the recorder picks the right source.
+      if (autoRecordCheckbox && autoRecordCheckbox.checked) {
+        startRecording(true);
       }
 
       streamForPlaybackAndVisualizer = streamToSendAndPlay;
@@ -2254,7 +2257,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     recordedVisualizer.hidden = true;
     recordedChunks = [];
     try {
-      mediaRecorder = new MediaRecorder(localStream, { mimeType });
+      // Record what is sent and played: the sine tone if it is on when
+      // recording starts, otherwise the capture stream. A MediaRecorder cannot
+      // switch tracks, so toggling the tone later does not change the source.
+      recordingSineTone = !!(micSourceRadio.checked && sineToneCheckbox.checked && sineToneStream);
+      const recordStream = recordingSineTone ? sineToneStream : localStream;
+      logLifecycleEvent('MediaRecorder', `Recording source: ${recordingSineTone ? '440 Hz sine tone' : (micSourceRadio.checked ? 'microphone' : 'audio file')}`);
+      mediaRecorder = new MediaRecorder(recordStream, { mimeType });
       mediaRecorder.onstart = () => debugLog('MediaRecorder started.', 'MimeType:', mimeType, isAuto ? '(Auto-record)' : '');
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -2263,6 +2272,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
       mediaRecorder.onstop = () => {
         debugLog('MediaRecorder stopped.');
+        if (recordingSineTone) {
+          recordingSineTone = false;
+          // The tone was switched off during the recording; stop it now.
+          if (!sineToneCheckbox.checked) stopSineToneGenerator();
+        }
         const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
         lastRecordedBlob = recordedBlob;
         lastRecordedMimeType = mimeType || 'audio/webm';
@@ -2666,7 +2680,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         audioPlayback.srcObject = localStream;
         visualizeAudio(localStream);
       }
-      stopSineToneGenerator();
+      // Keep the tone running while MediaRecorder records it (see startRecording).
+      if (!(recordingSineTone && mediaRecorder && mediaRecorder.state === 'recording')) {
+        stopSineToneGenerator();
+      }
       logLifecycleEvent('SineTone', 'Restored live microphone audio');
     }
 
