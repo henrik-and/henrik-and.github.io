@@ -162,6 +162,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   let audioOutputsFadeTimer = null;
   const lifecycleEvents = [];
 
+  // Source of truth for the Save Snapshot export. Every place that renders one
+  // of the info/stat boxes also stores the underlying data here, so the JSON
+  // export no longer depends on parsing the rendered <pre> text.
+  const snapshotState = {
+    audioSource: null,
+    audioOutput: null,
+    webAudioContext: null,
+    trackConstraints: null,
+    trackSettings: null,
+    trackProperties: null,
+    trackStats: null,
+    outboundRtp: null,
+    inboundRtp: null,
+    audioPlayout: null,
+  };
+
   let computePressureObserver = null;
   let latestComputePressure = { state: 'Unknown', factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
   let simulationTimer = null;
@@ -535,6 +551,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  /**
+   * Escapes text for safe insertion into HTML. Use for any value that does not
+   * originate from this page (device/track labels, file names, error messages).
+   */
+  function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+  }
+
   function logLifecycleEvent(category, message, level = 'info') {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
@@ -557,7 +586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       else if (level === 'warning') marker = '<span class="event-marker">⚠️</span>';
       else if (level === 'success') marker = '<span class="event-marker">✅</span>';
 
-      line.innerHTML = `${marker}<span class="event-timestamp">[${timeStr}]</span> <strong>${category}:</strong> ${message}`;
+      line.innerHTML = `${marker}<span class="event-timestamp">[${timeStr}]</span> <strong>${escapeHtml(category)}:</strong> ${escapeHtml(message)}`;
       logContainer.appendChild(line);
       logContainer.scrollTop = logContainer.scrollHeight;
     }
@@ -1352,6 +1381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
     };
     console.log('MediaStreamTrack properties:', currentProperties);
+    snapshotState.trackProperties = currentProperties;
 
     // Build the HTML string for the properties display.
     const header = 'properties:\n';
@@ -1364,7 +1394,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isLast = index === entries.length - 1;
       const valueStr = typeof value === 'string' ? `"${value}"` : value;
       const leadingSpaces = '  ';
-      const textContent = `"${key}": ${valueStr}${isLast ? '' : ','}`;
+      const textContent = escapeHtml(`"${key}": ${valueStr}${isLast ? '' : ','}`);
       // Compare the current property value with the previous one.
       // If it has changed, wrap the line in a span with the 'highlight' class.
       if (previousTrackProperties && previousTrackProperties[key] !== value) {
@@ -1404,6 +1434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   function updateTrackConstraints(audioTrack, highlightedKeys = []) {
     if (!micSourceRadio.checked || !audioTrack) {
+      snapshotState.trackConstraints = null;
       trackConstraintsElement.innerHTML = '';
       trackConstraintsElement.style.display = 'none';
       return;
@@ -1418,6 +1449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayConstraints.deviceId.exact = `${id.substring(0, 8)}..${id.substring(id.length - 8)}`;
       }
     }
+    snapshotState.trackConstraints = displayConstraints;
 
     const header = 'getConstraints():\n';
     const entries = Object.entries(displayConstraints);
@@ -1435,7 +1467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
         : jsonVal;
       const leadingSpaces = '  ';
-      const textContent = `"${key}": ${indentedVal}${isLast ? '' : ','}`;
+      const textContent = escapeHtml(`"${key}": ${indentedVal}${isLast ? '' : ','}`);
       if (highlightedKeys.includes(key)) {
         content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
       } else {
@@ -1502,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   function updateTrackSettings(audioTrack, statusMap = {}) {
     if (!audioTrack) {
+      snapshotState.trackSettings = null;
       trackSettingsElement.innerHTML = '';
       return;
     }
@@ -1513,6 +1546,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (displaySettings.deviceId && typeof displaySettings.deviceId === 'string' && displaySettings.deviceId !== 'default') {
       displaySettings.deviceId = `${displaySettings.deviceId.substring(0, 8)}..${displaySettings.deviceId.substring(displaySettings.deviceId.length - 8)}`;
     }
+    snapshotState.trackSettings = displaySettings;
 
     const header = 'getSettings():\n';
     const entries = Object.entries(displaySettings);
@@ -1529,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
         : jsonVal;
       const leadingSpaces = '  ';
-      const textContent = `"${key}": ${indentedVal}${isLast ? '' : ','}`;
+      const textContent = escapeHtml(`"${key}": ${indentedVal}${isLast ? '' : ','}`);
       const status = statusMap[key];
       if (status === 'applied') {
         content += `${leadingSpaces}<span class="highlight-green">${textContent}</span>\n`;
@@ -1553,6 +1587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateTrackStats(audioTrack) {
     if (!audioTrack || audioTrack.readyState === 'ended') {
+      snapshotState.trackStats = null;
       trackStatsElement.textContent = '';
       previousStats = null;
       return;
@@ -1577,6 +1612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       extendedStats.droppedFrames = currentStats.totalFrames - currentStats.deliveredFrames;
       extendedStats.averageLatency = currentStats.averageLatency.toFixed(1);
 
+      snapshotState.trackStats = extendedStats;
       trackStatsElement.textContent = 'stats:\n' + JSON.stringify(extendedStats, null, 2);
 
       // Update previousStats for the next call, storing only the necessary fields.
@@ -1586,6 +1622,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         droppedFrames: extendedStats.droppedFrames,
       };
     } else {
+      snapshotState.trackStats = 'Not supported';
       trackStatsElement.textContent = 'stats:\nNot supported';
       previousStats = null;
     }
@@ -1682,6 +1719,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: stats.timestamp,
           };
 
+          snapshotState.outboundRtp = displayStats;
+          snapshotState.inboundRtp = null;
+          snapshotState.audioPlayout = null;
           outboundRtpStatsElement.textContent = 'outbound-rtp (pc1):\n' + JSON.stringify(displayStats, null, 2);
           inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n';
           audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
@@ -1839,6 +1879,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               totalSamplesDuration: stats.totalSamplesDuration,
               packetsReceived: stats.packetsReceived,
             };
+            snapshotState.inboundRtp = displayStats;
             inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n' + JSON.stringify(displayStats, null, 2);
           }
           if (stats.type === 'media-playout') {
@@ -1958,14 +1999,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 '"synthesizedSamplesEvents": <span style="color: #D32F2F; font-weight: bold;">$1</span>'
               );
             }
+            snapshotState.audioPlayout = displayStats;
             audioPlayoutStatsElement.innerHTML = `audio-playout (pc2): ${badgeHtml}\n` + statsString;
           }
         }
         if (!playoutStatsFound) {
+          snapshotState.audioPlayout = null;
           audioPlayoutStatsElement.classList.remove('glitch-active');
           audioPlayoutStatsElement.textContent = 'audio-playout (pc2):\n';
         }
         if (!inboundRtpStatsFound) {
+          snapshotState.inboundRtp = null;
           inboundRtpStatsElement.textContent = 'inbound-rtp (pc2):\n';
         }
       } catch (err) {
@@ -2280,23 +2324,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
       if (selectedDevice && micSourceRadio.checked) {
-        const toneInfo = (sineToneCheckbox && sineToneCheckbox.checked) ? '\n  tone: 440 Hz Sine Wave (mic open)' : '';
-        audioInputDeviceElement.textContent = `Active audio source:\n` +
-            `  type: Microphone${toneInfo}\n` +
-            `  kind: ${selectedDevice.kind}\n` +
-            `  label: ${selectedDevice.label}\n` +
-            `  deviceId: ${selectedDevice.deviceId}\n` +
-            `  groupId: ${selectedDevice.groupId}`;
-        audioInputDeviceElement.style.display = 'block';
+        renderMicSourceInfo(selectedDevice, sineToneCheckbox && sineToneCheckbox.checked);
       } else if (!micSourceRadio.checked) {
         const filename = (currentFileSourceType === 'predefined') ? audioFileSelect.value : (localFileName || 'Local File');
         const duration = fileSourceAudio.duration ? fileSourceAudio.duration.toFixed(2) + 's' : 'Unknown';
         const loop = fileSourceAudio.loop;
         const playbackRate = fileSourceAudio.playbackRate;
-        
+
+        const fileSourceInfo = {
+          type: 'Audio File',
+          label: filename,
+          duration,
+          loop: String(loop),
+          playbackRate: String(playbackRate),
+          sampleRate: 'Loading...',
+          channels: 'Loading...',
+        };
+        snapshotState.audioSource = fileSourceInfo;
+
         audioInputDeviceElement.innerHTML = `Active audio source:\n` +
             `  type: Audio File\n` +
-            `  label: ${filename}\n` +
+            `  label: ${escapeHtml(filename)}\n` +
             `  duration: ${duration}\n` +
             `  loop: ${loop}\n` +
             `  playbackRate: ${playbackRate}\n` +
@@ -2317,21 +2365,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (metadata) {
                 if (sampleRateEl) sampleRateEl.textContent = metadata.sampleRate;
                 if (channelsEl) channelsEl.textContent = metadata.numberOfChannels;
-                
+                fileSourceInfo.sampleRate = String(metadata.sampleRate);
+                fileSourceInfo.channels = String(metadata.numberOfChannels);
+
                 // Only show extra details if they were parsed (typically from WAV header)
                 if (metadata.audioFormat && extraEl) {
-                    extraEl.innerHTML = `  sampleSize: ${metadata.bitsPerSample}\n` +
-                                        `  format: ${metadata.audioFormat}\n` +
-                                        `  byteRate: ${metadata.byteRate}\n` +
-                                        `  blockAlign: ${metadata.blockAlign}\n`;
+                    extraEl.textContent = `  sampleSize: ${metadata.bitsPerSample}\n` +
+                                          `  format: ${metadata.audioFormat}\n` +
+                                          `  byteRate: ${metadata.byteRate}\n` +
+                                          `  blockAlign: ${metadata.blockAlign}\n`;
+                    fileSourceInfo.sampleSize = String(metadata.bitsPerSample);
+                    fileSourceInfo.format = String(metadata.audioFormat);
+                    fileSourceInfo.byteRate = String(metadata.byteRate);
+                    fileSourceInfo.blockAlign = String(metadata.blockAlign);
                 }
             } else {
                 if (sampleRateEl) sampleRateEl.textContent = 'Unknown';
                 if (channelsEl) channelsEl.textContent = 'Unknown';
+                fileSourceInfo.sampleRate = 'Unknown';
+                fileSourceInfo.channels = 'Unknown';
             }
         });
 
       } else {
+        snapshotState.audioSource = null;
         audioInputDeviceElement.style.display = 'none';
       }
 
@@ -2463,6 +2520,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   /**
+   * Renders the 'Active audio source' box for a microphone and stores the same
+   * data in snapshotState for the snapshot export.
+   * @param {MediaDeviceInfo} device The active audio input device.
+   * @param {boolean} toneOn True when the 440 Hz sine tone replaces the mic audio.
+   */
+  function renderMicSourceInfo(device, toneOn) {
+    const info = { type: 'Microphone' };
+    if (toneOn) {
+      info.tone = '440 Hz Sine Wave (mic open)';
+    }
+    info.kind = device.kind;
+    info.label = device.label;
+    info.deviceId = device.deviceId;
+    info.groupId = device.groupId;
+    snapshotState.audioSource = info;
+
+    const toneInfo = toneOn ? `\n  tone: ${info.tone}` : '';
+    audioInputDeviceElement.textContent = `Active audio source:\n` +
+        `  type: Microphone${toneInfo}\n` +
+        `  kind: ${device.kind}\n` +
+        `  label: ${device.label}\n` +
+        `  deviceId: ${device.deviceId}\n` +
+        `  groupId: ${device.groupId}`;
+    audioInputDeviceElement.style.display = 'block';
+  }
+
+  /**
    * Displays information about the active audio output device.
    * This function finds the full device details from the enumerated device list
    * using the provided sinkId. This ensures the displayed information accurately
@@ -2470,6 +2554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    * @param {string} sinkId The sinkId of the audio output device.
    */
   async function updateAudioOutputInfo(sinkId) {
+    snapshotState.audioOutput = null;
     try {
       if (!('setSinkId' in HTMLMediaElement.prototype)) {
         audioOutputInfoElement.textContent = 'Audio output device selection not supported.';
@@ -2488,6 +2573,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       if (outputDevice) {
+        snapshotState.audioOutput = {
+          kind: outputDevice.kind,
+          label: outputDevice.label,
+          deviceId: outputDevice.deviceId,
+          groupId: outputDevice.groupId,
+        };
         audioOutputInfoElement.textContent = `Active audio output device:\n` +
             `  kind: ${outputDevice.kind}\n` +
             `  label: ${outputDevice.label}\n` +
@@ -2601,6 +2692,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackStatsElement.textContent = '';
     trackConstraintsElement.textContent = '';
     audioInputDeviceElement.textContent = '';
+    for (const key of Object.keys(snapshotState)) {
+      snapshotState[key] = null;
+    }
     if (rtpStatsSectionContainer) {
       rtpStatsSectionContainer.style.display = 'none';
     }
@@ -2671,7 +2765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       toast.className = 'toast-notification';
       document.body.appendChild(toast);
     }
-    toast.innerHTML = `<span class="toast-dot"></span><span>${message}</span>`;
+    toast.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
     void toast.offsetHeight;
     toast.classList.add('show');
 
@@ -2984,9 +3078,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hintDisplay = contextOptions.renderSizeHint !== undefined
                 ? ` (renderSizeHint: ${contextOptions.renderSizeHint})`
                 : ' (renderSizeHint: default)';
+            const baseLatencyDisplay = `${(webAudioContext.baseLatency * 1000).toFixed(1)} ms`;
+            snapshotState.webAudioContext = {
+              sampleRate: `${webAudioContext.sampleRate} Hz`,
+              baseLatency: baseLatencyDisplay,
+              renderQuantumSize: quantumDisplay,
+              renderSizeHint: contextOptions.renderSizeHint !== undefined
+                  ? String(contextOptions.renderSizeHint)
+                  : 'default',
+            };
             webaudioContextInfoElement.textContent = `WebAudio Context:\n` +
                 `  sampleRate: ${webAudioContext.sampleRate} Hz\n` +
-                `  baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)} ms\n` +
+                `  baseLatency: ${baseLatencyDisplay}\n` +
                 `  renderQuantumSize: ${quantumDisplay}${hintDisplay}`;
             webaudioContextInfoElement.style.display = 'block';
           }
@@ -3036,6 +3139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             webaudioQuantumBadge.style.display = 'none';
             webaudioQuantumBadge.textContent = '';
           }
+          snapshotState.webAudioContext = null;
           if (webaudioContextInfoElement) {
             webaudioContextInfoElement.style.display = 'none';
             webaudioContextInfoElement.textContent = '';
@@ -3053,6 +3157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           webAudioSource = null;
         }
         audioOutputInfoElement.style.display = 'none';
+        snapshotState.webAudioContext = null;
         if (webaudioContextInfoElement) {
           webaudioContextInfoElement.style.display = 'none';
           webaudioContextInfoElement.textContent = '';
@@ -3127,14 +3232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === micTrack.getSettings().deviceId);
     if (selectedDevice) {
-      const toneInfo = sineToneCheckbox.checked ? '\n  tone: 440 Hz Sine Wave (mic open)' : '';
-      audioInputDeviceElement.textContent = `Active audio source:\n` +
-          `  type: Microphone${toneInfo}\n` +
-          `  kind: ${selectedDevice.kind}\n` +
-          `  label: ${selectedDevice.label}\n` +
-          `  deviceId: ${selectedDevice.deviceId}\n` +
-          `  groupId: ${selectedDevice.groupId}`;
-      audioInputDeviceElement.style.display = 'block';
+      renderMicSourceInfo(selectedDevice, sineToneCheckbox.checked);
     }
   });
 
@@ -3523,55 +3621,12 @@ document.addEventListener('DOMContentLoaded', async () => {
    * for the user.
    */
   async function handleSaveSnapshot() {
-    /**
-     * Parses the text content of a <pre> element that is expected to contain a title line
-     * followed by a JSON string.
-     * @param {string} text - The text content from the <pre> element.
-     * @returns {object|string|null} A parsed JavaScript object, the original text on failure, or null.
-     */
-    const parseJsonContent = (text) => {
-      if (!text) return null;
-      // Find the first newline to separate the title from the JSON content.
-      const firstNewlineIndex = text.indexOf('\n');
-      if (firstNewlineIndex === -1) return text; // No newline found, return as is.
-      // Extract the JSON string part.
-      const jsonString = text.substring(firstNewlineIndex + 1);
-      try {
-        // Attempt to parse the extracted string as JSON.
-        return JSON.parse(jsonString);
-      } catch (e) {
-        console.error('Failed to parse JSON content:', { content: jsonString, error: e });
-        return text; // Fallback to original text if parsing fails.
-      }
-    };
-
-    /**
-     * Parses the text content of a <pre> element that displays device information in a
-     * 'key: value' format.
-     * @param {string} text - The text content from the <pre> element.
-     * @returns {object|null} An object with key-value pairs or null if input is empty.
-     */
-    const parseDeviceInfo = (text) => {
-      if (!text) return null;
-      // Split the text into lines and skip the first line (the title).
-      const lines = text.split('\n').slice(1);
-      const deviceInfo = {};
-      // Process each line to extract key-value pairs.
-      lines.forEach(line => {
-        const parts = line.trim().split(': ');
-        if (parts.length === 2) {
-          deviceInfo[parts[0]] = parts[1];
-        }
-      });
-      return deviceInfo;
-    };
-
     // Build the MediaStreamTrack getters and properties sub-object.
     const trackSection = {
-      'getConstraints()': parseJsonContent(trackConstraintsElement.textContent),
-      'getSettings()': parseJsonContent(trackSettingsElement.textContent),
-      'properties': parseJsonContent(trackPropertiesElement.textContent),
-      'stats': parseJsonContent(trackStatsElement.textContent),
+      'getConstraints()': snapshotState.trackConstraints,
+      'getSettings()': snapshotState.trackSettings,
+      'properties': snapshotState.trackProperties,
+      'stats': snapshotState.trackStats,
     };
     for (const key in trackSection) {
       const value = trackSection[key];
@@ -3582,15 +3637,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Build the RTCPeerConnection audio reports sub-object.
     const rtpStatsSection = {
-      'outbound-rtp (pc1)': parseJsonContent(outboundRtpStatsElement.textContent),
-      'inbound-rtp (pc2)': parseJsonContent(inboundRtpStatsElement.textContent),
-      'audio-playout (pc2)': parseJsonContent(audioPlayoutStatsElement.textContent),
+      'outbound-rtp (pc1)': snapshotState.outboundRtp,
+      'inbound-rtp (pc2)': snapshotState.inboundRtp,
+      'audio-playout (pc2)': snapshotState.audioPlayout,
     };
     for (const key in rtpStatsSection) {
       const value = rtpStatsSection[key];
       if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
         delete rtpStatsSection[key];
       }
+    }
+
+    // For audio file sources, add the current playback position at snapshot time.
+    let activeAudioSource = snapshotState.audioSource;
+    if (activeAudioSource && activeAudioSource.type === 'Audio File' && fileSourceAudio.duration) {
+      activeAudioSource = {
+        ...activeAudioSource,
+        time: `${fileSourceAudio.currentTime.toFixed(2)}s / ${fileSourceAudio.duration.toFixed(2)}s`,
+      };
     }
 
     const browser = getBrowserInfo();
@@ -3665,9 +3729,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
       'Auto-Record': autoRecordCheckbox ? autoRecordCheckbox.checked : false,
       'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
-      'Active audio source': parseDeviceInfo(audioInputDeviceElement.textContent),
-      'Active audio output device': parseDeviceInfo(audioOutputInfoElement.textContent),
-      'Active WebAudio Context': webaudioContextInfoElement ? parseDeviceInfo(webaudioContextInfoElement.textContent) : null,
+      'Active audio source': activeAudioSource,
+      'Active audio output device': snapshotState.audioOutput,
+      'Active WebAudio Context': snapshotState.webAudioContext,
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
       'WebAudio renderSizeHint': renderSizeHintSelect ? (renderSizeHintSelect.value === 'custom' ? renderSizeHintCustomInput.value : renderSizeHintSelect.value) : undefined,
