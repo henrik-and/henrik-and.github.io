@@ -1,12 +1,14 @@
 'use strict';
 
-// Verbose logging is off by default. Add ?debug (or ?debug=1) to the URL to
-// turn it on. console.warn and console.error are always shown.
-const DEBUG = (() => {
-  const params = new URLSearchParams(window.location.search);
-  return params.has('debug') && params.get('debug') !== '0';
-})();
-const debugLog = DEBUG ? console.log.bind(console) : () => {};
+import { debugLog, escapeHtml } from './util.js';
+import { insertStereoSupportForOpus, insertDtxSupportForOpus } from './sdp.js';
+import { getAudioFileMetadata } from './wav.js';
+import {
+  getAudioHardwareInfo,
+  getBrowserInfo,
+  getOSInfo,
+  invalidateAudioHardwareInfo,
+} from './sysinfo.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
@@ -561,19 +563,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  /**
-   * Escapes text for safe insertion into HTML. Use for any value that does not
-   * originate from this page (device/track labels, file names, error messages).
-   */
-  function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-  }
-
   function logLifecycleEvent(category, message, level = 'info') {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
@@ -613,83 +602,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         timeDisplay.textContent = `time: ${fileSourceAudio.currentTime.toFixed(2)}s / ${fileSourceAudio.duration.toFixed(2)}s`;
       }
       fileProgressFrameRequest = requestAnimationFrame(updateAudioFileProgress);
-    }
-  }
-
-  function parseWavHeader(arrayBuffer) {
-    try {
-      const view = new DataView(arrayBuffer);
-      // Check for "RIFF"
-      if (view.getUint32(0, false) !== 0x52494646) return null; 
-      // Check for "WAVE"
-      if (view.getUint32(8, false) !== 0x57415645) return null; 
-      
-      // Search for "fmt " chunk
-      let offset = 12;
-      while (offset < view.byteLength) {
-        const chunkId = view.getUint32(offset, false);
-        const chunkSize = view.getUint32(offset + 4, true);
-        
-        if (chunkId === 0x666d7420) { // "fmt "
-          const audioFormat = view.getUint16(offset + 8, true);
-          const numChannels = view.getUint16(offset + 10, true);
-          const sampleRate = view.getUint32(offset + 12, true);
-          const byteRate = view.getUint32(offset + 16, true);
-          const blockAlign = view.getUint16(offset + 20, true);
-          const bitsPerSample = view.getUint16(offset + 22, true);
-          
-          let formatString = 'Unknown';
-          switch (audioFormat) {
-            case 1: formatString = 'PCM'; break;
-            case 3: formatString = 'IEEE Float'; break;
-            case 6: formatString = 'A-Law'; break;
-            case 7: formatString = 'Mu-Law'; break;
-            case 0xFFFE: formatString = 'Extensible'; break;
-            default: formatString = `Format ${audioFormat}`;
-          }
-
-          return { 
-            audioFormat: formatString,
-            sampleRate, 
-            numberOfChannels: numChannels, 
-            byteRate,
-            blockAlign,
-            bitsPerSample 
-          };
-        }
-        
-        offset += 8 + chunkSize;
-      }
-    } catch (e) {
-      console.error('Error parsing WAV header:', e);
-    }
-    return null;
-  }
-
-  async function getAudioFileMetadata(source) {
-    try {
-      const response = await fetch(source);
-      const arrayBuffer = await response.arrayBuffer();
-      
-      // Try to parse WAV header first for accurate sample rate
-      const wavData = parseWavHeader(arrayBuffer);
-      if (wavData) {
-        debugLog('Got metadata from WAV header:', wavData);
-        return wavData;
-      }
-
-      // Fallback to decodeAudioData (might be resampled)
-      // Use OfflineAudioContext to decode without affecting main audio context
-      const tempCtx = new OfflineAudioContext(1, 1, 44100);
-      const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
-      return {
-        sampleRate: audioBuffer.sampleRate + ' (resampled)',
-        numberOfChannels: audioBuffer.numberOfChannels,
-        bitsPerSample: 'Unknown (float32)'
-      };
-    } catch (e) {
-      console.error('Error getting file metadata:', e);
-      return null;
     }
   }
 
@@ -822,56 +734,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
-
-  /**
-   * Modifies an SDP string to add stereo support for the Opus codec.
-   * @param {string} sdp The original SDP string.
-   * @returns {string} The modified SDP string with stereo support for Opus.
-   */
-  const insertStereoSupportForOpus = (sdp) => {
-    // Early exit if Opus codec (rtpmap:111) is not present.
-    if (!sdp.includes('a=rtpmap:111 opus/48000')) {
-      console.warn('Opus codec (111) not found in SDP. Stereo support not added.');
-      return sdp;
-    }
-
-    // Find the format parameter line for Opus and add stereo=1 if it's not already there.
-    const lines = sdp.split('\r\n');
-    const newSdpLines = lines.map((line) => {
-      if (line.startsWith('a=fmtp:111') && !line.includes('stereo=1')) {
-        debugLog('Adding stereo=1 to Opus fmtp line.');
-        return `${line};stereo=1`;
-      }
-      return line;
-    });
-
-    return newSdpLines.join('\r\n');
-  };
-
-  /**
-   * Modifies an SDP string to enable Discontinuous Transmission (DTX) for the Opus codec.
-   * @param {string} sdp The original SDP string.
-   * @returns {string} The modified SDP string with DTX enabled for Opus.
-   */
-  const insertDtxSupportForOpus = (sdp) => {
-    // Early exit if Opus codec (rtpmap:111) is not present.
-    if (!sdp.includes('a=rtpmap:111 opus/48000')) {
-      console.warn('Opus codec (111) not found in SDP. DTX support not added.');
-      return sdp;
-    }
-
-    // Find the format parameter line for Opus and add usedtx=1 if it's not already there.
-    const lines = sdp.split('\r\n');
-    const newSdpLines = lines.map((line) => {
-      if (line.startsWith('a=fmtp:111') && !line.includes('usedtx=1')) {
-        debugLog('Adding usedtx=1 to Opus fmtp line.');
-        return `${line};usedtx=1`;
-      }
-      return line;
-    });
-
-    return newSdpLines.join('\r\n');
-  };
 
   const peerConnectionLabel = document.querySelector('label[for="peerconnection-checkbox"]');
   const dtxLabel = document.querySelector('label[for="dtx-checkbox"]');
@@ -3292,7 +3154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   navigator.mediaDevices.addEventListener('devicechange', async () => {
     debugLog('--- navigator.mediaDevices "devicechange" event received ---');
-    cachedAudioHardwareInfo = null;
+    invalidateAudioHardwareInfo();
 
     // Check if the currently active microphone device was disconnected
     if (localStream && micSourceRadio.checked) {
@@ -3432,70 +3294,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let lastPermissionStatus = 'Unknown';
   let micPermissionStatusObject = null;
 
-  // Cached result of a single default-options AudioContext probe. Creating a
-  // context opens an output stream, so we probe once and only re-probe after a
-  // devicechange (the default output device may have changed).
-  let cachedAudioHardwareInfo = null;
-
-  function getAudioHardwareInfo() {
-    if (cachedAudioHardwareInfo) return cachedAudioHardwareInfo;
-    const info = {
-      hwSampleRate: 'N/A',
-      hwBaseLatency: 'N/A',
-      hwOutputLatency: 'N/A',
-      hwRenderQuantum: 'N/A',
-    };
-    const Ctor = window.AudioContext || window.webkitAudioContext;
-    if (!Ctor) return info;
-    try {
-      const probeCtx = new Ctor();
-      info.hwSampleRate = `${probeCtx.sampleRate} Hz`;
-      if (typeof probeCtx.baseLatency === 'number') {
-        info.hwBaseLatency = `${(probeCtx.baseLatency * 1000).toFixed(1)} ms`;
-      }
-      if (typeof probeCtx.outputLatency === 'number') {
-        info.hwOutputLatency = `${(probeCtx.outputLatency * 1000).toFixed(1)} ms`;
-      }
-      info.hwRenderQuantum = (typeof probeCtx.renderQuantumSize === 'number')
-          ? `${probeCtx.renderQuantumSize} samples`
-          : '128 (default/legacy)';
-      probeCtx.close();
-      cachedAudioHardwareInfo = info;
-    } catch (e) {
-      console.warn('Probe AudioContext error:', e);
-    }
-    return info;
-  }
-
-  function getBrowserInfo() {
-    const ua = navigator.userAgent;
-    let tem;
-    let M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-    if (/trident/i.test(M[1])) {
-      tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
-      return { name: 'IE', version: (tem[1] || '') };
-    }
-    if (M[1] === 'Chrome') {
-      tem = ua.match(/\b(OPR|Edg)\/(\d+)/);
-      if (tem != null) return { name: tem[1].replace('OPR', 'Opera'), version: tem[2] };
-    }
-    M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
-    if ((tem = ua.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
-    return {
-      name: M[0],
-      version: M[1]
-    };
-  }
-
-  function getOSInfo() {
-    const ua = navigator.userAgent;
-    if (ua.indexOf("Win") !== -1) return "Windows";
-    if (ua.indexOf("Mac") !== -1) return "MacOS";
-    if (ua.indexOf("Linux") !== -1) return "Linux";
-    if (ua.indexOf("Android") !== -1) return "Android";
-    if (ua.indexOf("like Mac") !== -1) return "iOS";
-    return "Unknown OS";
-  }
 
   async function populateSystemInfo() {
     const infoDiv = document.getElementById('system-info-details');
