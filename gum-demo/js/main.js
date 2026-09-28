@@ -2204,9 +2204,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       toast = document.createElement('div');
       toast.id = 'toast-notification';
       toast.className = 'toast-notification';
+      toast.setAttribute('role', 'status');
       document.body.appendChild(toast);
     }
-    toast.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
+    toast.innerHTML = `<span class="toast-dot" aria-hidden="true"></span><span>${escapeHtml(message)}</span>`;
     void toast.offsetHeight;
     toast.classList.add('show');
 

@@ -376,9 +376,11 @@
   </div>
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
-  <p id="error-message" class="error" hidden></p>
+  <p id="error-message" class="error" role="alert" hidden></p>
+  <!-- Created up front so screen readers treat it as a live region before the first toast. -->
+  <div id="toast-notification" class="toast-notification" role="status"></div>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
-  <script type="module" src="js/main.js?v=3bd6da4f" defer></script>
+  <script type="module" src="js/main.js?v=667c99ac" defer></script>
 </body>
 </html>
