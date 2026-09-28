@@ -64,6 +64,8 @@ audio.
         parameters, track getters, and WebRTC statistics.
     *   **Copy Bookmark:** Copies a shareable URL containing your selected
         constraints.
+    *   **Debug logging:** Add `?debug=1` to the URL to show verbose
+        `console.log` output in DevTools. Warnings and errors are always shown.
 
 ## Key Features
 

@@ -1,8 +1,16 @@
 'use strict';
 
+// Verbose logging is off by default. Add ?debug (or ?debug=1) to the URL to
+// turn it on. console.warn and console.error are always shown.
+const DEBUG = (() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('debug') && params.get('debug') !== '0';
+})();
+const debugLog = DEBUG ? console.log.bind(console) : () => {};
+
 document.addEventListener('DOMContentLoaded', async () => {
   const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
-  console.log('Supported constraints:', supportedConstraints);
+  debugLog('Supported constraints:', supportedConstraints);
   const isVoiceIsolationSupported = !!supportedConstraints.voiceIsolation;
   const gumButton = document.getElementById('gum-button');
   const applyConstraintsButton = document.getElementById('apply-constraints-button');
@@ -529,7 +537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function initComputePressureObserver() {
     if (typeof PressureObserver === 'undefined') {
-      console.log('Compute Pressure API (PressureObserver) not supported in this browser.');
+      debugLog('Compute Pressure API (PressureObserver) not supported in this browser.');
       latestComputePressure = { state: 'nominal', factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
       updateComputePressureUI();
       return;
@@ -543,7 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       await computePressureObserver.observe('cpu', { sampleInterval: 1000 });
-      console.log('Compute Pressure API observer initialized on source "cpu".');
+      debugLog('Compute Pressure API observer initialized on source "cpu".');
     } catch (err) {
       console.warn('Failed to start PressureObserver:', err);
       latestComputePressure = { state: `Error: ${err.message}`, factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };
@@ -590,7 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       logContainer.appendChild(line);
       logContainer.scrollTop = logContainer.scrollHeight;
     }
-    console.log(`[Lifecycle] [${level.toUpperCase()}] ${timeStr} [${category}] ${message}`);
+    debugLog(`[Lifecycle] [${level.toUpperCase()}] ${timeStr} [${category}] ${message}`);
   }
 
   function updateAudioFileProgress() {
@@ -664,7 +672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Try to parse WAV header first for accurate sample rate
       const wavData = parseWavHeader(arrayBuffer);
       if (wavData) {
-        console.log('Got metadata from WAV header:', wavData);
+        debugLog('Got metadata from WAV header:', wavData);
         return wavData;
       }
 
@@ -702,7 +710,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       sineToneOscillator.start();
       sineToneStream = sineToneDestination.stream;
-      console.log('440Hz Sine tone generator started.');
+      debugLog('440Hz Sine tone generator started.');
       return sineToneStream;
     } catch (err) {
       console.error('Failed to start 440Hz sine tone generator:', err);
@@ -732,7 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     sineToneDestination = null;
     sineToneStream = null;
-    console.log('440Hz Sine tone generator stopped.');
+    debugLog('440Hz Sine tone generator stopped.');
   }
 
   /**
@@ -741,7 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    * @returns {Promise<MediaStream>} A promise that resolves with the remote stream.
    */
   async function setupPeerConnection(stream) {
-    console.log('Setting up PeerConnection.');
+    debugLog('Setting up PeerConnection.');
     pc1 = new RTCPeerConnection();
     pc2 = new RTCPeerConnection();
 
@@ -750,32 +758,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const remoteStreamPromise = new Promise((resolve) => {
       pc2.ontrack = (event) => {
-        console.log('pc2 received remote track.');
+        debugLog('pc2 received remote track.');
         resolve(event.streams[0]);
       };
     });
 
     exchangeIceCandidates(pc1, pc2);
 
-    pc1.oniceconnectionstatechange = () => console.log(`pc1 ICE state: ${pc1.iceConnectionState}`);
-    pc2.oniceconnectionstatechange = () => console.log(`pc2 ICE state: ${pc2.iceConnectionState}`);
+    pc1.oniceconnectionstatechange = () => debugLog(`pc1 ICE state: ${pc1.iceConnectionState}`);
+    pc2.oniceconnectionstatechange = () => debugLog(`pc2 ICE state: ${pc2.iceConnectionState}`);
 
     try {
       const offer = await pc1.createOffer();
-      console.log('pc1 offer SDP:\n', offer.sdp);
+      debugLog('pc1 offer SDP:\n', offer.sdp);
       await pc1.setLocalDescription(offer);
       await pc2.setRemoteDescription(offer);
 
       const answer = await pc2.createAnswer();
-      console.log('pc2 original answer SDP:\n', answer.sdp);
+      debugLog('pc2 original answer SDP:\n', answer.sdp);
       answer.sdp = insertStereoSupportForOpus(answer.sdp);
       if (dtxCheckbox.checked) {
         answer.sdp = insertDtxSupportForOpus(answer.sdp);
       }
-      console.log('pc2 modified answer SDP:\n', answer.sdp);
+      debugLog('pc2 modified answer SDP:\n', answer.sdp);
       await pc2.setLocalDescription(answer);
       await pc1.setRemoteDescription(answer);
-      console.log('PeerConnection offer-answer exchange complete.');
+      debugLog('PeerConnection offer-answer exchange complete.');
     } catch (err) {
       console.error('Error during offer/answer exchange:', err);
       throw err; // Propagate error to the caller
@@ -791,12 +799,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pc1) {
       pc1.close();
       pc1 = null;
-      console.log('pc1 closed.');
+      debugLog('pc1 closed.');
     }
     if (pc2) {
       pc2.close();
       pc2 = null;
-      console.log('pc2 closed.');
+      debugLog('pc2 closed.');
     }
   }
 
@@ -829,7 +837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lines = sdp.split('\r\n');
     const newSdpLines = lines.map((line) => {
       if (line.startsWith('a=fmtp:111') && !line.includes('stereo=1')) {
-        console.log('Adding stereo=1 to Opus fmtp line.');
+        debugLog('Adding stereo=1 to Opus fmtp line.');
         return `${line};stereo=1`;
       }
       return line;
@@ -854,7 +862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lines = sdp.split('\r\n');
     const newSdpLines = lines.map((line) => {
       if (line.startsWith('a=fmtp:111') && !line.includes('usedtx=1')) {
-        console.log('Adding usedtx=1 to Opus fmtp line.');
+        debugLog('Adding usedtx=1 to Opus fmtp line.');
         return `${line};usedtx=1`;
       }
       return line;
@@ -942,18 +950,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   peerConnectionCheckbox.addEventListener('change', () => {
     updatePeerConnectionTooltip();
     if (peerConnectionCheckbox.checked) {
-      console.log('PeerConnection enabled');
+      debugLog('PeerConnection enabled');
     } else {
-      console.log('PeerConnection disabled');
+      debugLog('PeerConnection disabled');
     }
   });
 
   dtxCheckbox.addEventListener('change', () => {
     updateDtxTooltip();
     if (dtxCheckbox.checked) {
-      console.log('VAD/DTX/CNG enabled');
+      debugLog('VAD/DTX/CNG enabled');
     } else {
-      console.log('VAD/DTX/CNG disabled');
+      debugLog('VAD/DTX/CNG disabled');
     }
   });
 
@@ -961,10 +969,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoRecordCheckbox.addEventListener('change', () => {
       updateAutoRecordTooltip();
       if (autoRecordCheckbox.checked) {
-        console.log('Auto-record enabled');
+        debugLog('Auto-record enabled');
         logLifecycleEvent('Auto-Record', 'Auto-Record enabled (will capture audio at time zero)');
       } else {
-        console.log('Auto-record disabled');
+        debugLog('Auto-record disabled');
         logLifecycleEvent('Auto-Record', 'Auto-Record disabled');
       }
     });
@@ -974,10 +982,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoPlayCheckbox.addEventListener('change', () => {
       updateAutoPlayTooltip();
       if (autoPlayCheckbox.checked) {
-        console.log('Auto-play enabled');
+        debugLog('Auto-play enabled');
         logLifecycleEvent('Auto-Play', 'Auto-Play enabled (will start HTML:Play from start)');
       } else {
-        console.log('Auto-play disabled');
+        debugLog('Auto-play disabled');
         logLifecycleEvent('Auto-Play', 'Auto-Play disabled');
       }
     });
@@ -1125,17 +1133,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       sineToneCheckbox.dispatchEvent(new Event('change'));
     }
 
-    console.log(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
-    console.log(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
-    console.log(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
+    debugLog(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
+    debugLog(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
+    debugLog(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
     if (isVoiceIsolationSupported) {
-      console.log(`applyUrlParameters: voiceIsolation from URL is "${params.get('voiceIsolation')}"`);
+      debugLog(`applyUrlParameters: voiceIsolation from URL is "${params.get('voiceIsolation')}"`);
     }
-    console.log(`applyUrlParameters: channelCount from URL is "${params.get('channelCount')}"`);
-    console.log(`applyUrlParameters: latency from URL is "${params.get('latency')}"`);
-    console.log(`applyUrlParameters: sampleRate from URL is "${params.get('sampleRate')}"`);
-    console.log(`applyUrlParameters: sampleSize from URL is "${params.get('sampleSize')}"`);
-    console.log(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
+    debugLog(`applyUrlParameters: channelCount from URL is "${params.get('channelCount')}"`);
+    debugLog(`applyUrlParameters: latency from URL is "${params.get('latency')}"`);
+    debugLog(`applyUrlParameters: sampleRate from URL is "${params.get('sampleRate')}"`);
+    debugLog(`applyUrlParameters: sampleSize from URL is "${params.get('sampleSize')}"`);
+    debugLog(`applyUrlParameters: deviceId from URL is "${params.get('deviceId')}"`);
   }
 
   function setConstraintsDisabled(disabled) {
@@ -1183,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ];
     for (const mimeType of mimeTypes) {
       if (MediaRecorder.isTypeSupported(mimeType)) {
-        console.log(`Using supported mimeType: ${mimeType}`);
+        debugLog(`Using supported mimeType: ${mimeType}`);
         return mimeType;
       }
     }
@@ -1192,7 +1200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateAudioInputDevices() {
-    console.log('Populating audio input devices...');
+    debugLog('Populating audio input devices...');
     
     let devices = await navigator.mediaDevices.enumerateDevices();
     const hasPermissions = devices.every(device => device.label);
@@ -1212,7 +1220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const selectedDeviceId = audioDeviceSelect.value;
-    console.log(`populateAudioInputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
+    debugLog(`populateAudioInputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
     audioDeviceSelect.innerHTML = '';
 
     // Add the static "undefined" option first.
@@ -1230,7 +1238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
-    console.log(`populateAudioInputDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
+    debugLog(`populateAudioInputDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
   }
 
   async function populateAudioOutputDevices() {
@@ -1239,10 +1247,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       audioOutputDeviceSelect.title = 'Audio output device selection is not supported by this browser.';
       return;
     }
-    console.log('Populating audio output devices...');
+    debugLog('Populating audio output devices...');
     const devices = await navigator.mediaDevices.enumerateDevices();
     const selectedDeviceId = audioOutputDeviceSelect.value;
-    console.log(`populateAudioOutputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
+    debugLog(`populateAudioOutputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
     audioOutputDeviceSelect.innerHTML = '';
 
     // Add the static "undefined" option first.
@@ -1260,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         option.value === selectedDeviceId)) {
       audioOutputDeviceSelect.value = selectedDeviceId;
     }
-    console.log(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
+    debugLog(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
   }
 
   /**
@@ -1424,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
       enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
     };
-    console.log('MediaStreamTrack properties:', currentProperties);
+    debugLog('MediaStreamTrack properties:', currentProperties);
     snapshotState.trackProperties = currentProperties;
 
     // Build the HTML string for the properties display.
@@ -2065,7 +2073,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function buildAudioConstraints() {
     const audioConstraints = {};
     const echoCancellation = echoCancellationSelect.value;
-    console.log('Selected echoCancellation value:', echoCancellation);
+    debugLog('Selected echoCancellation value:', echoCancellation);
     if (echoCancellation !== 'undefined') {
       if (echoCancellation.startsWith('ideal:')) {
         audioConstraints.echoCancellation = { ideal: echoCancellation.substring(6) };
@@ -2192,14 +2200,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       audio: Object.keys(audioConstraints).length === 0 ? true : audioConstraints,
       video: false
     };
-    console.log('--- getUserMedia() START ---');
-    console.log('Supplied constraints to getUserMedia():', JSON.stringify(constraints, null, 2));
+    debugLog('--- getUserMedia() START ---');
+    debugLog('Supplied constraints to getUserMedia():', JSON.stringify(constraints, null, 2));
 
     try {
       let stream;
       if (micSourceRadio.checked) {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('navigator.mediaDevices.getUserMedia() succeeded.');
+        debugLog('navigator.mediaDevices.getUserMedia() succeeded.');
       } else {
         if (currentFileSourceType === 'predefined') {
           const selectedFile = audioFileSelect.value;
@@ -2233,7 +2241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fileSourceAudio.play();
         // captureStream() might take an optional frameRate, but for audio it's usually just captureStream()
         stream = fileSourceAudio.captureStream ? fileSourceAudio.captureStream() : fileSourceAudio.mozCaptureStream();
-        console.log('audioElement.captureStream() successful');
+        debugLog('audioElement.captureStream() successful');
       }
       
       localStream = stream;
@@ -2248,7 +2256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const toneStream = startSineToneGenerator();
         if (toneStream) {
           streamToSendAndPlay = toneStream;
-          console.log('Replacing live mic stream with 440Hz sine tone for loopback/playback while keeping mic capture active.');
+          debugLog('Replacing live mic stream with 440Hz sine tone for loopback/playback while keeping mic capture active.');
         }
       }
 
@@ -2256,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (peerConnectionCheckbox.checked) {
         try {
           const remoteStream = await setupPeerConnection(streamToSendAndPlay);
-          console.log('PeerConnection loopback established successfully.');
+          debugLog('PeerConnection loopback established successfully.');
           streamForPlaybackAndVisualizer = remoteStream;
         } catch (err) {
           console.error('PeerConnection setup failed:', err);
@@ -2269,10 +2277,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const [audioTrack] = stream.getAudioTracks();
-      console.log('Created audioTrack:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
-      console.log('audioTrack.getConstraints() returns:', audioTrack.getConstraints ? audioTrack.getConstraints() : 'N/A');
-      console.log('audioTrack.getSettings() returns:', audioTrack.getSettings());
-      console.log('--- getUserMedia() END ---');
+      debugLog('Created audioTrack:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
+      debugLog('audioTrack.getConstraints() returns:', audioTrack.getConstraints ? audioTrack.getConstraints() : 'N/A');
+      debugLog('audioTrack.getSettings() returns:', audioTrack.getSettings());
+      debugLog('--- getUserMedia() END ---');
       logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia' : 'captureStream', `Acquired audio track "${audioTrack.label || 'Audio track'}" (id: ${audioTrack.id.substring(0, 8)}..)`, 'success');
       const requestedKeys = micSourceRadio.checked ? Object.keys(audioConstraints) : [];
       const statusMap = micSourceRadio.checked
@@ -2288,7 +2296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateRtpStats();
       }, 1000);
       audioTrack.onmute = (event) => {
-        console.log('Audio track muted:', event);
+        debugLog('Audio track muted:', event);
         logLifecycleEvent('track.onmute', `Warning: Audio track muted - ${event.type}`, 'warning');
         errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
         errorMessageElement.style.display = 'block';
@@ -2298,7 +2306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateTrackProperties(audioTrack);
       };
       audioTrack.onunmute = (event) => {
-        console.log('Audio track unmuted:', event);
+        debugLog('Audio track unmuted:', event);
         logLifecycleEvent('track.onunmute', 'Audio track unmuted - capture resumed', 'success');
         errorMessageElement.textContent = '';
         errorMessageElement.style.display = 'none';
@@ -2319,22 +2327,22 @@ document.addEventListener('DOMContentLoaded', async () => {
           const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
           
           if (trimmedLevels.length > 0) {
-            console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
+            debugLog('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
             
             // 1. Calculate True RMS for the complete duration
             const totalSumOfSquares = trimmedLevels.reduce((sum, level) => sum + level * level, 0);
             const totalTrueRms = Math.sqrt(totalSumOfSquares / trimmedLevels.length);
-            console.log('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
+            debugLog('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
 
             // 2. Calculate True RMS per 10-second interval
-            console.log('10-second Interval True RMS values:');
+            debugLog('10-second Interval True RMS values:');
             for (let i = 0; i < trimmedLevels.length; i += 10) {
               const chunk = trimmedLevels.slice(i, i + 10);
               const chunkSumOfSquares = chunk.reduce((sum, level) => sum + level * level, 0);
               const chunkRms = Math.sqrt(chunkSumOfSquares / chunk.length);
               
               // This is the exact value the DataPointAggregator will output for this interval
-              console.log(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
+              debugLog(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
             }
           }
         }
@@ -2497,11 +2505,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Build the track-level constraints object from the UI dropdowns (echoCancellation,
     // autoGainControl, noiseSuppression, voiceIsolation, channelCount).
     const audioConstraints = buildAudioConstraints();
-    console.log('--- applyConstraints() START ---');
-    console.log('Target track:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
-    console.log('Before applyConstraints -> audioTrack.getConstraints() was:', audioTrack.getConstraints());
-    console.log('Before applyConstraints -> audioTrack.getSettings() was:', audioTrack.getSettings());
-    console.log('Supplied constraints payload to applyConstraints():', JSON.stringify(audioConstraints, null, 2));
+    debugLog('--- applyConstraints() START ---');
+    debugLog('Target track:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
+    debugLog('Before applyConstraints -> audioTrack.getConstraints() was:', audioTrack.getConstraints());
+    debugLog('Before applyConstraints -> audioTrack.getSettings() was:', audioTrack.getSettings());
+    debugLog('Supplied constraints payload to applyConstraints():', JSON.stringify(audioConstraints, null, 2));
 
     try {
       // Call standard MediaStreamTrack.applyConstraints().
@@ -2511,10 +2519,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Consequently, track.getSettings() reflects the active pipeline settings (which remain
       // unchanged), while track.getConstraints() reflects the newly requested constraint dictionary.
       await audioTrack.applyConstraints(audioConstraints);
-      console.log('audioTrack.applyConstraints() promise resolved successfully.');
-      console.log('After applyConstraints -> audioTrack.getConstraints() now returns:', audioTrack.getConstraints());
-      console.log('After applyConstraints -> audioTrack.getSettings() now returns:', audioTrack.getSettings());
-      console.log('--- applyConstraints() END ---');
+      debugLog('audioTrack.applyConstraints() promise resolved successfully.');
+      debugLog('After applyConstraints -> audioTrack.getConstraints() now returns:', audioTrack.getConstraints());
+      debugLog('After applyConstraints -> audioTrack.getSettings() now returns:', audioTrack.getSettings());
+      debugLog('--- applyConstraints() END ---');
 
       errorMessageElement.textContent = '';
       errorMessageElement.style.display = 'none';
@@ -2548,7 +2556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 1500);
     } catch (err) {
       console.error('audioTrack.applyConstraints() promise rejected:', err);
-      console.log('--- applyConstraints() FAILED ---');
+      debugLog('--- applyConstraints() FAILED ---');
       let errorMsg = '';
       if (err.name === 'OverconstrainedError' && err.constraint) {
         errorMsg = `applyConstraints OverconstrainedError: constraint "${err.constraint}"`;
@@ -2663,22 +2671,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const trimmedLevels = firstNonZeroIndex === -1 ? [] : rmsAudioLevels.slice(firstNonZeroIndex);
       
       if (trimmedLevels.length > 0) {
-        console.log('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
+        debugLog('rmsAudioLevels (trimmed) = ' + JSON.stringify(trimmedLevels));
         
         // 1. Calculate True RMS for the complete duration
         const totalSumOfSquares = trimmedLevels.reduce((sum, level) => sum + level * level, 0);
         const totalTrueRms = Math.sqrt(totalSumOfSquares / trimmedLevels.length);
-        console.log('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
+        debugLog('Total True RMS audio level = ' + totalTrueRms.toFixed(5));
 
         // 2. Calculate True RMS per 10-second interval
-        console.log('10-second Interval True RMS values:');
+        debugLog('10-second Interval True RMS values:');
         for (let i = 0; i < trimmedLevels.length; i += 10) {
           const chunk = trimmedLevels.slice(i, i + 10);
           const chunkSumOfSquares = chunk.reduce((sum, level) => sum + level * level, 0);
           const chunkRms = Math.sqrt(chunkSumOfSquares / chunk.length);
           
           // This is the exact value the DataPointAggregator will output for this interval
-          console.log(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
+          debugLog(`  Interval ${Math.floor(i/10) + 1} (${chunk.length}s): ${chunkRms.toFixed(5)}`);
         }
       }
     }
@@ -2796,7 +2804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     errorMessageElement.style.color = '';
     errorMessageElement.style.backgroundColor = '';
     errorMessageElement.style.borderColor = '';
-    console.log('Stream stopped and visualizer cleared.');
+    debugLog('Stream stopped and visualizer cleared.');
     logLifecycleEvent('Stream', 'Stream stopped and audio pipeline closed');
   });
 
@@ -2857,14 +2865,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     recordedChunks = [];
     try {
       mediaRecorder = new MediaRecorder(localStream, { mimeType });
-      mediaRecorder.onstart = () => console.log('MediaRecorder started.', 'MimeType:', mimeType, isAuto ? '(Auto-record)' : '');
+      mediaRecorder.onstart = () => debugLog('MediaRecorder started.', 'MimeType:', mimeType, isAuto ? '(Auto-record)' : '');
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunks.push(event.data);
         }
       };
       mediaRecorder.onstop = () => {
-        console.log('MediaRecorder stopped.');
+        debugLog('MediaRecorder stopped.');
         const recordedBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
         lastRecordedBlob = recordedBlob;
         lastRecordedMimeType = mimeType || 'audio/webm';
@@ -2949,18 +2957,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   recordedAudio.addEventListener('play', () => {
     try {
-      console.log('Recorded audio playback started.');
+      debugLog('Recorded audio playback started.');
       recordedVisualizer.style.display = 'block';
       
       // Create the context and source node only once.
       if (!recordedAudioContext) {
-        console.log('Creating new (and final) recorded audio context.');
+        debugLog('Creating new (and final) recorded audio context.');
         recordedAudioContext = new AudioContext();
-        console.log('AudioContext sample rate:', recordedAudioContext.sampleRate);
+        debugLog('AudioContext sample rate:', recordedAudioContext.sampleRate);
       }
       
       if (!recordedSourceNode) {
-        console.log('Creating new (and final) media element source node.');
+        debugLog('Creating new (and final) media element source node.');
         recordedSourceNode = recordedAudioContext.createMediaElementSource(recordedAudio);
       }
 
@@ -3004,13 +3012,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   recordedAudio.addEventListener('pause', () => {
-    console.log('Recorded audio playback paused.');
+    debugLog('Recorded audio playback paused.');
     stopRecordedVisualization();
     suspendRecordedAudioContext();
   });
 
   recordedAudio.addEventListener('ended', () => {
-    console.log('Recorded audio playback ended.');
+    debugLog('Recorded audio playback ended.');
     stopRecordedVisualization();
     suspendRecordedAudioContext();
   });
@@ -3035,7 +3043,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // An empty string sets the output to the user-agent default device.
             const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
             await audioPlayback.setSinkId(deviceIdToSet);
-            console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+            debugLog(`Audio output device set to: ${deviceIdToSet || 'default'}`);
           }
           await audioPlayback.play();
           await updateAudioOutputInfo(audioPlayback.sinkId);
@@ -3093,18 +3101,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
               }
             }
-            console.log('AudioContext contextOptions:', contextOptions);
+            debugLog('AudioContext contextOptions:', contextOptions);
             webAudioContext = new AudioContext(contextOptions);
-            console.log('AudioContext base latency:', webAudioContext.baseLatency);
-            console.log('AudioContext renderQuantumSize:', webAudioContext.renderQuantumSize);
-            console.log(webAudioContext.renderQuantumSize);
+            debugLog('AudioContext base latency:', webAudioContext.baseLatency);
+            debugLog('AudioContext renderQuantumSize:', webAudioContext.renderQuantumSize);
+            debugLog(webAudioContext.renderQuantumSize);
           }
 
           const sinkId = audioOutputDeviceSelect.value;
           if ('setSinkId' in webAudioContext) {
             const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
             await webAudioContext.setSinkId(deviceIdToSet);
-            console.log(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+            debugLog(`Audio output device set to: ${deviceIdToSet || 'default'}`);
           }
 
           webAudioSource = webAudioContext.createMediaStreamSource(streamForPlaybackAndVisualizer);
@@ -3248,7 +3256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const audioSender = senders.find(s => s.track && s.track.kind === 'audio') || senders[0];
         if (audioSender) {
           await audioSender.replaceTrack(toneTrack);
-          console.log('RTCRtpSender.replaceTrack switched to 440Hz sine tone track.');
+          debugLog('RTCRtpSender.replaceTrack switched to 440Hz sine tone track.');
         }
       } else {
         streamForPlaybackAndVisualizer = toneStream;
@@ -3261,7 +3269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const audioSender = senders.find(s => s.track && s.track.kind === 'audio') || senders[0];
         if (audioSender) {
           await audioSender.replaceTrack(micTrack);
-          console.log('RTCRtpSender.replaceTrack switched back to live mic track.');
+          debugLog('RTCRtpSender.replaceTrack switched back to live mic track.');
         }
       } else {
         streamForPlaybackAndVisualizer = localStream;
@@ -3281,17 +3289,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   audioPlayback.addEventListener('play', async () => {
-    console.log('Audio playback started.');
+    debugLog('Audio playback started.');
     await updateAudioOutputInfo(audioPlayback.sinkId);
     audioOutputInfoElement.style.display = 'block';
   });
 
   audioPlayback.addEventListener('pause', () => {
-    console.log('Audio playback paused.');
+    debugLog('Audio playback paused.');
   });
 
   navigator.mediaDevices.addEventListener('devicechange', async () => {
-    console.log('--- navigator.mediaDevices "devicechange" event received ---');
+    debugLog('--- navigator.mediaDevices "devicechange" event received ---');
     cachedAudioHardwareInfo = null;
 
     // Check if the currently active microphone device was disconnected
@@ -3300,7 +3308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (audioTrack) {
         const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
         const activeDeviceId = settings.deviceId;
-        console.log('devicechange: inspecting active audio track:', {
+        debugLog('devicechange: inspecting active audio track:', {
           label: audioTrack.label,
           activeDeviceId: activeDeviceId || 'undefined/default',
           readyState: audioTrack.readyState
@@ -3327,7 +3335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             errorMessageElement.textContent = `Warning: Active audio input device disconnected (${label}). Stream stopped.`;
             errorMessageElement.style.display = 'block';
           } else {
-            console.log(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is still connected.`);
+            debugLog(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is still connected.`);
           }
         } catch (e) {
           console.warn('Error checking device disconnection on devicechange:', e);
@@ -3338,7 +3346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await populateAudioInputDevices();
     await populateAudioOutputDevices();
     await populateSystemInfo();
-    console.log('devicechange: device lists and System Diagnostics updated.');
+    debugLog('devicechange: device lists and System Diagnostics updated.');
     logLifecycleEvent('devicechange', `Device lists and system diagnostics refreshed`);
   });
 
@@ -3403,7 +3411,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookmarkUrl = queryString
       ? `${window.location.origin}${window.location.pathname}?${queryString}`
       : `${window.location.origin}${window.location.pathname}`;
-    console.log('Bookmark URL:', bookmarkUrl);
+    debugLog('Bookmark URL:', bookmarkUrl);
     
     // Use the Clipboard API to copy the URL to the user's clipboard.
     navigator.clipboard.writeText(bookmarkUrl).then(() => {
@@ -3801,7 +3809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Convert the final snapshot object to a nicely formatted JSON string.
     const snapshotJson = JSON.stringify(snapshot, null, 2);
-    console.log('snapshotJson:', snapshotJson);
+    debugLog('snapshotJson:', snapshotJson);
     // Create a Blob to hold the JSON data.
     const blob = new Blob([snapshotJson], { type: 'application/json' });
     // Create a temporary URL for the Blob.
