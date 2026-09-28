@@ -301,6 +301,12 @@ export function updateComputePressureUI() {
 }
 
 export async function initComputePressureObserver() {
+  // 1Hz timeline update timer to keep the history graph rolling smoothly.
+  setInterval(() => {
+    if (latestComputePressure.state !== 'Unknown') {
+      addComputePressureHistoryPoint(latestComputePressure.state, latestComputePressure.factors, latestComputePressure.isSimulated);
+    }
+  }, 1000);
   if (typeof PressureObserver === 'undefined') {
     debugLog('Compute Pressure API (PressureObserver) not supported in this browser.');
     latestComputePressure = { state: 'nominal', factors: [], sampleCount: 0, lastSampleTime: null, isSimulated: false };

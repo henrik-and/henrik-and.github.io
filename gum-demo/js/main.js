@@ -202,13 +202,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     audioPlayout: null,
   };
 
-  // 1Hz timeline update timer to keep the history graph rolling smoothly
-  setInterval(() => {
-    if (latestComputePressure.state !== 'Unknown') {
-      addComputePressureHistoryPoint(latestComputePressure.state, latestComputePressure.factors, latestComputePressure.isSimulated);
-    }
-  }, 1000);
-
   function setSimulatedGlitchMode(mode) {
     simulatedGlitchMode = mode;
     const select = document.getElementById('simulate-glitch-select');
