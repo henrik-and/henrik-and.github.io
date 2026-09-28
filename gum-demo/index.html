@@ -23,7 +23,7 @@
         <input type="radio" id="file-source" name="input-source" value="file">
         <label for="file-source" data-tooltip="Simulate a MediaStreamTrack from an audio file using HTMLMediaElement.captureStream() without microphone permissions.">Audio File</label>
       </div>
-      <div id="file-selection-container" class="file-settings-container" style="display: none;">
+      <div id="file-selection-container" class="file-settings-container" hidden>
         <label for="audioFile">Audio File:</label>
         <select id="audioFile">
           <!-- Populated by JS -->
@@ -118,7 +118,7 @@
               </select>
               <span class="info-icon" data-tooltip="Noise Suppression (NS) filters background ambient noise. Supports boolean, exact, and ideal constraints.">i</span>
             </div>
-            <div class="setting" id="voiceIsolation-container" style="display: none;">
+            <div class="setting" id="voiceIsolation-container" hidden>
               <label for="voiceIsolation">voiceIsolation:</label>
               <select id="voiceIsolation">
                 <option value="undefined" selected>undefined</option>
@@ -245,24 +245,24 @@
       </div>
     </div>
   </div>
-  <div id="audio-devices-container">
+  <div id="audio-devices-container" hidden>
     <pre id="audio-input-device"></pre>
-    <pre id="audio-output-info"></pre>
-    <pre id="webaudio-context-info"></pre>
+    <pre id="audio-output-info" hidden></pre>
+    <pre id="webaudio-context-info" hidden></pre>
   </div>
-  <div id="stream-controls-container">
+  <div id="stream-controls-container" hidden>
     <div id="visualizer-and-stop-container">
       <div id="visualizer-container">
         <canvas id="audio-visualizer" width="100" height="34"></canvas>
-        <div id="visualizer-db-label" style="display: none;" data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The green bar goes from -60 dBFS (empty) to 0 dBFS (full). When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS."></div>
-        <div id="visualizer-rms-label" style="display: none;"></div>
+        <div id="visualizer-db-label" hidden data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The green bar goes from -60 dBFS (empty) to 0 dBFS (full). When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS."></div>
+        <div id="visualizer-rms-label" hidden></div>
       </div>
       <button id="record-button" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API."><span class="record-dot"></span>Rec</button>
-      <div id="recorded-audio-container" class="recorded-audio-container" style="display: none;">
+      <div id="recorded-audio-container" class="recorded-audio-container" hidden>
         <span class="recorded-label">Recorded Audio:</span>
         <audio id="recorded-audio" controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
         <button id="download-recorded-audio-button" class="download-button" data-tooltip="Download recorded audio as WebM file"><svg class="download-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download</span></button>
-        <canvas id="recorded-visualizer" width="200" height="50"></canvas>
+        <canvas id="recorded-visualizer" hidden width="200" height="50"></canvas>
       </div>
       <button id="stop-button" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
     </div>
@@ -308,9 +308,9 @@
             <option value="custom">custom integer...</option>
           </optgroup>
         </select>
-        <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" style="display: none;" />
+        <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" hidden />
         <span class="info-icon" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
-        <span id="webaudio-quantum-badge" style="display: none;" data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
+        <span id="webaudio-quantum-badge" hidden data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
       </div>
       <label for="audioOutputDevice">sinkId:</label>
       <select id="audioOutputDevice">
@@ -331,7 +331,7 @@
         <div id="lifecycle-events-log"></div>
       </details>
     </fieldset>
-    <fieldset id="rtp-stats-section-container">
+    <fieldset id="rtp-stats-section-container" hidden>
       <legend id="rtp-stats-section-title">
         RTCPeerConnection (getStats() Audio Reports)
         <span id="glitch-simulation-container">
@@ -346,18 +346,18 @@
         </span>
       </legend>
       <div id="rtp-stats-container">
-        <pre id="outbound-rtp-stats"></pre>
-        <pre id="inbound-rtp-stats"></pre>
-        <pre id="audio-playout-stats"></pre>
+        <pre id="outbound-rtp-stats" hidden></pre>
+        <pre id="inbound-rtp-stats" hidden></pre>
+        <pre id="audio-playout-stats" hidden></pre>
       </div>
     </fieldset>
-    <div id="snapshot-button-container">
+    <div id="snapshot-button-container" hidden>
       <button id="save-snapshot-button" data-tooltip="Export current settings, active audio devices, WebAudio context (renderQuantumSize & renderSizeHint), track getters, and RTCPeerConnection getStats() reports to a gUM-snapshot.json file.">Save Snapshot</button>
     </div>
   </div>
   <audio id="audio-playback"></audio>
-  <audio id="file-source-audio" style="display: none;" loop></audio>
-  <p id="error-message" class="error"></p>
+  <audio id="file-source-audio" hidden loop></audio>
+  <p id="error-message" class="error" hidden></p>
   <p id="bookmark-url-container"></p>
   <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
   <script type="module" src="js/main.js?v=74291005" defer></script>

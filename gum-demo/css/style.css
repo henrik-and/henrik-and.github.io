@@ -8,6 +8,12 @@ body {
   align-items: center;
 }
 
+/* Visibility is toggled with the hidden attribute. !important makes it win
+   over id and class rules that set display. */
+[hidden] {
+  display: none !important;
+}
+
 #system-info-container {
   background: #f1f3f5;
   padding: 5px 10px;
@@ -295,10 +301,6 @@ body {
   margin-top: 1em;
 }
 
-#snapshot-button-container {
-  display: none;
-}
-
 #gum-button:disabled,
 #apply-constraints-button:disabled,
 #copy-bookmark-button:disabled {
@@ -320,11 +322,10 @@ button:disabled {
   background-color: #FFD2D2; /* A light red background */
   border-radius: 8px;
   border: 1px solid #D8000C;
-  display: none; /* Start hidden */
 }
 
 #stream-controls-container {
-  display: none; /* Hidden by default */
+  display: flex;
   flex-direction: column;
   align-items: center;
   margin-top: 10px;
@@ -359,7 +360,7 @@ button:disabled {
 }
 
 #webaudio-quantum-badge {
-  display: none;
+  display: inline-block;
   font-size: 11px;
   font-weight: 600;
   color: #1b5e20;
@@ -558,19 +559,14 @@ button:disabled {
 }
 
 #recorded-visualizer {
-  display: none;
+  display: block;
   background-color: rgb(250, 250, 250);
   border: 1px solid #444;
   border-radius: 8px;
 }
 
-#audio-output-info,
-#webaudio-context-info {
-  display: none;
-}
-
 #audio-devices-container {
-  display: none; /* Hidden by default */
+  display: flex;
   width: 100%;
   justify-content: center;
   gap: 10px;
@@ -688,7 +684,6 @@ button:disabled {
 }
 
 #rtp-stats-section-container {
-  display: none; /* Shown when peerconnection stats are active */
   border: 1px solid #90CAF9;
   border-radius: 8px;
   padding: 10px 14px;
@@ -769,12 +764,6 @@ button:disabled {
   white-space: pre-wrap;
   text-align: left;
   margin: 0;
-}
-
-#outbound-rtp-stats,
-#inbound-rtp-stats,
-#audio-playout-stats {
-  display: none;
 }
 
 .glitch-badge {

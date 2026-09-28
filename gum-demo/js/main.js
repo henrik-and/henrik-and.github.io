@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const voiceIsolationContainer = document.getElementById('voiceIsolation-container');
   const voiceIsolationSelect = document.getElementById('voiceIsolation');
   if (isVoiceIsolationSupported && voiceIsolationContainer) {
-    voiceIsolationContainer.style.display = '';
+    voiceIsolationContainer.hidden = false;
   }
   const channelCountSelect = document.getElementById('channelCount');
   const latencyConstraintSelect = document.getElementById('latencyConstraint');
@@ -1024,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isStreamActive = !!(localStream && localStream.active);
     
     // Toggle visibility of the file selection container
-    fileSelectionContainer.style.display = isMic ? 'none' : 'flex';
+    fileSelectionContainer.hidden = isMic;
 
     if (!isMic) {
       constraintSelects.forEach(select => {
@@ -1216,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error getting media permissions:', err);
         errorMessageElement.textContent = 
             `Error getting permissions: ${err.name} - ${err.message}`;
-        errorMessageElement.style.display = 'block';
+        errorMessageElement.hidden = false;
         return;
       }
     }
@@ -1318,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (visualizerDbLabel) {
       visualizerDbLabel.textContent = '';
       visualizerDbLabel.classList.remove('active');
-      visualizerDbLabel.style.display = 'none';
+      visualizerDbLabel.hidden = true;
     }
   }
 
@@ -1344,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const text = db > -100 ? db.toFixed(1) : '-∞';
     visualizerDbLabel.innerHTML = `<span class="rms-key">Level:</span><span class="rms-val">${text} dBFS</span>`;
     visualizerDbLabel.classList.toggle('active', db > VISUALIZER_DB_FLOOR);
-    visualizerDbLabel.style.display = 'block';
+    visualizerDbLabel.hidden = false;
     visualizerDbSumSquares = 0;
     visualizerDbSampleCount = 0;
     visualizerDbLastUpdate = now;
@@ -1396,12 +1396,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           'Example: a sine with peak 0.2 shows 0.2 here, but -17.0 dBFS (RMS 0.141) on the level meter above. ' +
           'Green when >= 0.0007. Audio must be rendered (HTML:Play or WebAudio:Play) for pc2 to report non-zero values.'
       );
-      rmsLabel.style.display = 'block';
+      rmsLabel.hidden = false;
     } else {
       rmsLabel.textContent = '';
       rmsLabel.classList.remove('active');
       rmsLabel.removeAttribute('data-tooltip');
-      rmsLabel.style.display = 'none';
+      rmsLabel.hidden = true;
     }
   }
 
@@ -1490,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!micSourceRadio.checked || !audioTrack) {
       snapshotState.trackConstraints = null;
       trackConstraintsElement.innerHTML = '';
-      trackConstraintsElement.style.display = 'none';
+      trackConstraintsElement.hidden = true;
       return;
     }
     const constraints = audioTrack.getConstraints ? audioTrack.getConstraints() : {};
@@ -1509,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const entries = Object.entries(displayConstraints);
     if (entries.length === 0) {
       trackConstraintsElement.innerHTML = header + '{}';
-      trackConstraintsElement.style.display = 'block';
+      trackConstraintsElement.hidden = false;
       return;
     }
 
@@ -1531,7 +1531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     content += '}';
 
     trackConstraintsElement.innerHTML = header + content;
-    trackConstraintsElement.style.display = 'block';
+    trackConstraintsElement.hidden = false;
 
     if (highlightedKeys.length > 0) {
       setTimeout(() => {
@@ -1693,10 +1693,10 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   async function updateRtpStats() {
     if (!pc1 || !peerConnectionCheckbox.checked) {
-      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = 'none';
-      outboundRtpStatsElement.style.display = 'none';
-      inboundRtpStatsElement.style.display = 'none';
-      audioPlayoutStatsElement.style.display = 'none';
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.hidden = true;
+      outboundRtpStatsElement.hidden = true;
+      inboundRtpStatsElement.hidden = true;
+      audioPlayoutStatsElement.hidden = true;
       return;
     }
 
@@ -1782,16 +1782,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
       // Show or hide the element based on whether stats were found in this report.
-      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = outboundStatsFound ? 'block' : 'none';
-      outboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
-      inboundRtpStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
-      audioPlayoutStatsElement.style.display = outboundStatsFound ? 'block' : 'none';
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.hidden = !outboundStatsFound;
+      outboundRtpStatsElement.hidden = !outboundStatsFound;
+      inboundRtpStatsElement.hidden = !outboundStatsFound;
+      audioPlayoutStatsElement.hidden = !outboundStatsFound;
     } catch (err) {
       console.error('Error getting RTP stats:', err);
-      if (rtpStatsSectionContainer) rtpStatsSectionContainer.style.display = 'none';
-      outboundRtpStatsElement.style.display = 'none';
-      inboundRtpStatsElement.style.display = 'none';
-      audioPlayoutStatsElement.style.display = 'none';
+      if (rtpStatsSectionContainer) rtpStatsSectionContainer.hidden = true;
+      outboundRtpStatsElement.hidden = true;
+      inboundRtpStatsElement.hidden = true;
+      audioPlayoutStatsElement.hidden = true;
     }
 
     if (pc2) {
@@ -2187,7 +2187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     simulatedGlitchCumulativeDuration = 0;
     updateVisualizerRmsLabel();
     errorMessageElement.textContent = '';
-    errorMessageElement.style.display = 'none';
+    errorMessageElement.hidden = true;
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
     errorMessageElement.classList.remove('notice');
@@ -2269,7 +2269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
           console.error('PeerConnection setup failed:', err);
           errorMessageElement.textContent = `PC Error: ${err.name} - ${err.message}`;
-          errorMessageElement.style.display = 'block';
+          errorMessageElement.hidden = false;
           logLifecycleEvent('PeerConnection Error', `${err.name}: ${err.message}`, 'error');
           // Don't proceed with a broken stream setup
           return;
@@ -2299,7 +2299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('Audio track muted:', event);
         logLifecycleEvent('track.onmute', `Warning: Audio track muted - ${event.type}`, 'warning');
         errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
-        errorMessageElement.style.display = 'block';
+        errorMessageElement.hidden = false;
         errorMessageElement.classList.add('notice');
         updateTrackProperties(audioTrack);
       };
@@ -2307,7 +2307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('Audio track unmuted:', event);
         logLifecycleEvent('track.onunmute', 'Audio track unmuted - capture resumed', 'success');
         errorMessageElement.textContent = '';
-        errorMessageElement.style.display = 'none';
+        errorMessageElement.hidden = true;
         // Reset to default error colors from CSS
         errorMessageElement.classList.remove('notice');
         updateTrackProperties(audioTrack);
@@ -2353,13 +2353,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Set and show the warning message AFTER the UI cleanup
         const warningMessage = `Warning: Audio track ended - ${event.type}`;
         errorMessageElement.textContent = warningMessage;
-        errorMessageElement.style.display = 'block';
+        errorMessageElement.hidden = false;
       };
       stopButton.disabled = false;
       recordButton.disabled = false;
-      streamControlsContainer.style.display = 'flex';
-      audioDevicesContainer.style.display = 'flex';
-      snapshotButtonContainer.style.display = 'block';
+      streamControlsContainer.hidden = false;
+      audioDevicesContainer.hidden = false;
+      snapshotButtonContainer.hidden = false;
       visualizeAudio(streamForPlaybackAndVisualizer);
       await populateAudioInputDevices();
       await populateSystemInfo();
@@ -2401,7 +2401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `<span id="info-extra-wav"></span>` +
             `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
             `<progress id="audio-file-progress" value="0" max="100"></progress>`;
-        audioInputDeviceElement.style.display = 'block';
+        audioInputDeviceElement.hidden = false;
         updateAudioFileProgress();
 
         // Fetch and update metadata
@@ -2437,7 +2437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       } else {
         snapshotState.audioSource = null;
-        audioInputDeviceElement.style.display = 'none';
+        audioInputDeviceElement.hidden = true;
       }
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
@@ -2475,7 +2475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMsg = `Error: ${err.name}`;
       }
       errorMessageElement.textContent = errorMsg;
-      errorMessageElement.style.display = 'block';
+      errorMessageElement.hidden = false;
       logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia Error' : 'captureStream Error', errorMsg, 'error');
       gumButton.disabled = false;
       applyConstraintsButton.disabled = true;
@@ -2521,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugLog('--- applyConstraints() END ---');
 
       errorMessageElement.textContent = '';
-      errorMessageElement.style.display = 'none';
+      errorMessageElement.hidden = true;
 
       // Reset to default error colors from CSS
       errorMessageElement.classList.remove('notice');
@@ -2560,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMsg = `applyConstraints Error: ${err.name}`;
       }
       errorMessageElement.textContent = errorMsg;
-      errorMessageElement.style.display = 'block';
+      errorMessageElement.hidden = false;
       logLifecycleEvent('applyConstraints Error', errorMsg, 'error');
     }
   });
@@ -2589,7 +2589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         `  label: ${device.label}\n` +
         `  deviceId: ${device.deviceId}\n` +
         `  groupId: ${device.groupId}`;
-    audioInputDeviceElement.style.display = 'block';
+    audioInputDeviceElement.hidden = false;
   }
 
   /**
@@ -2688,13 +2688,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     cancelAnimationFrame(fileProgressFrameRequest);
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
-    streamControlsContainer.style.display = 'none';
-    audioDevicesContainer.style.display = 'none';
-    snapshotButtonContainer.style.display = 'none';
-    audioOutputInfoElement.style.display = 'none';
+    streamControlsContainer.hidden = true;
+    audioDevicesContainer.hidden = true;
+    snapshotButtonContainer.hidden = true;
+    audioOutputInfoElement.hidden = true;
     audioOutputInfoElement.textContent = '';
     if (webaudioContextInfoElement) {
-      webaudioContextInfoElement.style.display = 'none';
+      webaudioContextInfoElement.hidden = true;
       webaudioContextInfoElement.textContent = '';
     }
     gumButton.disabled = false;
@@ -2722,7 +2722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderSizeHintCustomInput.disabled = false;
     }
     if (webaudioQuantumBadge) {
-      webaudioQuantumBadge.style.display = 'none';
+      webaudioQuantumBadge.hidden = true;
       webaudioQuantumBadge.textContent = '';
     }
     audioPlayback.pause();
@@ -2742,14 +2742,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       snapshotState[key] = null;
     }
     if (rtpStatsSectionContainer) {
-      rtpStatsSectionContainer.style.display = 'none';
+      rtpStatsSectionContainer.hidden = true;
     }
     outboundRtpStatsElement.textContent = '';
-    outboundRtpStatsElement.style.display = 'none';
+    outboundRtpStatsElement.hidden = true;
     inboundRtpStatsElement.textContent = '';
-    inboundRtpStatsElement.style.display = 'none';
+    inboundRtpStatsElement.hidden = true;
     audioPlayoutStatsElement.textContent = '';
-    audioPlayoutStatsElement.style.display = 'none';
+    audioPlayoutStatsElement.hidden = true;
     audioPlayoutStatsElement.classList.remove('glitch-active');
     previousStats = null;
     previousTrackProperties = null;
@@ -2777,7 +2777,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       glitchSelect.value = 'none';
     }
     if (recordedAudioContainer) {
-      recordedAudioContainer.style.display = 'none';
+      recordedAudioContainer.hidden = true;
     }
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
@@ -2785,14 +2785,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     lastRecordedBlob = null;
     lastRecordedMimeType = '';
-    recordedVisualizer.style.display = 'none';
+    recordedVisualizer.hidden = true;
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
     isRecording = false;
     updateRecordButtonUI();
     errorMessageElement.textContent = '';
-    errorMessageElement.style.display = 'none';
+    errorMessageElement.hidden = true;
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
     errorMessageElement.classList.remove('notice');
@@ -2845,7 +2845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showToastNotification('Recording started', 3000);
     }
     if (recordedAudioContainer) {
-      recordedAudioContainer.style.display = 'none';
+      recordedAudioContainer.hidden = true;
     }
     if (recordedAudio.src) {
       URL.revokeObjectURL(recordedAudio.src);
@@ -2853,7 +2853,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     lastRecordedBlob = null;
     lastRecordedMimeType = '';
-    recordedVisualizer.style.display = 'none';
+    recordedVisualizer.hidden = true;
     recordedChunks = [];
     try {
       mediaRecorder = new MediaRecorder(localStream, { mimeType });
@@ -2871,7 +2871,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const audioUrl = URL.createObjectURL(recordedBlob);
         recordedAudio.src = audioUrl;
         if (recordedAudioContainer) {
-          recordedAudioContainer.style.display = 'flex';
+          recordedAudioContainer.hidden = false;
         }
         const recordedLabel = document.querySelector('.recorded-label');
         if (recordedLabel) {
@@ -2891,7 +2891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event.error);
         errorMessageElement.textContent = `Recorder Error: ${event.error.name}`;
-        errorMessageElement.style.display = 'block';
+        errorMessageElement.hidden = false;
         logLifecycleEvent('MediaRecorder Error', `${event.error.name}: ${event.error.message || 'Unknown error'}`, 'error');
       };
       mediaRecorder.start();
@@ -2900,7 +2900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       isRecording = false;
       updateRecordButtonUI();
       errorMessageElement.textContent = `MediaRecorder Error: ${err.message}`;
-      errorMessageElement.style.display = 'block';
+      errorMessageElement.hidden = false;
       logLifecycleEvent('MediaRecorder Error', `Failed to start: ${err.message}`, 'error');
     }
   }
@@ -2950,7 +2950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   recordedAudio.addEventListener('play', () => {
     try {
       debugLog('Recorded audio playback started.');
-      recordedVisualizer.style.display = 'block';
+      recordedVisualizer.hidden = false;
       
       // Create the context and source node only once.
       if (!recordedAudioContext) {
@@ -2987,7 +2987,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Error visualizing recorded audio:', err);
       errorMessageElement.textContent = `Visualization Error: ${err.message}`;
-      errorMessageElement.style.display = 'block';
+      errorMessageElement.hidden = false;
     }
   });
 
@@ -3039,13 +3039,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           await audioPlayback.play();
           await updateAudioOutputInfo(audioPlayback.sinkId);
-          audioOutputInfoElement.style.display = 'block';
+          audioOutputInfoElement.hidden = false;
           audioOutputDeviceSelect.disabled = true;
           logLifecycleEvent('HTML:Play', `Playback started (sinkId: ${audioOutputDeviceSelect.value || 'default'})`);
         } catch (err) {
           console.error('Error setting audio output device:', err);
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
-          errorMessageElement.style.display = 'block';
+          errorMessageElement.hidden = false;
           // Revert the UI state since we failed.
           htmlPlayCheckbox.checked = false;
           updateHtmlPlayTooltip();
@@ -3054,7 +3054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } else {
         await audioPlayback.pause();
-        audioOutputInfoElement.style.display = 'none';
+        audioOutputInfoElement.hidden = true;
         audioOutputDeviceSelect.disabled = false;
         logLifecycleEvent('HTML:Play', 'Playback stopped');
       }
@@ -3135,9 +3135,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `  sampleRate: ${webAudioContext.sampleRate} Hz\n` +
                 `  baseLatency: ${baseLatencyDisplay}\n` +
                 `  renderQuantumSize: ${quantumDisplay}${hintDisplay}`;
-            webaudioContextInfoElement.style.display = 'block';
+            webaudioContextInfoElement.hidden = false;
           }
-          audioOutputInfoElement.style.display = 'block';
+          audioOutputInfoElement.hidden = false;
           audioOutputDeviceSelect.disabled = true;
           latencyHintSelect.disabled = true;
           sampleRateSelect.disabled = true;
@@ -3153,11 +3153,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                   'data-tooltip',
                   `Negotiated audioContext.renderQuantumSize: ${qSize} samples (${ms} ms at ${webAudioContext.sampleRate} Hz).`
               );
-              webaudioQuantumBadge.style.display = 'inline-block';
+              webaudioQuantumBadge.hidden = false;
             } else {
               webaudioQuantumBadge.textContent = 'quantum: 128 (legacy)';
               webaudioQuantumBadge.setAttribute('data-tooltip', 'renderQuantumSize not supported in this browser; running at standard 128-sample quantum.');
-              webaudioQuantumBadge.style.display = 'inline-block';
+              webaudioQuantumBadge.hidden = false;
             }
           }
 
@@ -3171,7 +3171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.name} - ${err.message}`;
-          errorMessageElement.style.display = 'block';
+          errorMessageElement.hidden = false;
           webaudioPlayCheckbox.checked = false;
           updateWebAudioPlayTooltip();
           audioOutputDeviceSelect.disabled = false;
@@ -3180,12 +3180,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
           if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
           if (webaudioQuantumBadge) {
-            webaudioQuantumBadge.style.display = 'none';
+            webaudioQuantumBadge.hidden = true;
             webaudioQuantumBadge.textContent = '';
           }
           snapshotState.webAudioContext = null;
           if (webaudioContextInfoElement) {
-            webaudioContextInfoElement.style.display = 'none';
+            webaudioContextInfoElement.hidden = true;
             webaudioContextInfoElement.textContent = '';
           }
           if (webAudioContext) {
@@ -3200,10 +3200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           webAudioContext = null;
           webAudioSource = null;
         }
-        audioOutputInfoElement.style.display = 'none';
+        audioOutputInfoElement.hidden = true;
         snapshotState.webAudioContext = null;
         if (webaudioContextInfoElement) {
-          webaudioContextInfoElement.style.display = 'none';
+          webaudioContextInfoElement.hidden = true;
           webaudioContextInfoElement.textContent = '';
         }
         audioOutputDeviceSelect.disabled = false;
@@ -3212,7 +3212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
         if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
         if (webaudioQuantumBadge) {
-          webaudioQuantumBadge.style.display = 'none';
+          webaudioQuantumBadge.hidden = true;
           webaudioQuantumBadge.textContent = '';
         }
         logLifecycleEvent('WebAudio:Play', 'AudioContext playback stopped');
@@ -3223,10 +3223,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (renderSizeHintSelect) {
     renderSizeHintSelect.addEventListener('change', () => {
       if (renderSizeHintSelect.value === 'custom') {
-        renderSizeHintCustomInput.style.display = 'inline-block';
+        renderSizeHintCustomInput.hidden = false;
         renderSizeHintCustomInput.focus();
       } else {
-        renderSizeHintCustomInput.style.display = 'none';
+        renderSizeHintCustomInput.hidden = true;
       }
     });
   }
@@ -3283,7 +3283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   audioPlayback.addEventListener('play', async () => {
     debugLog('Audio playback started.');
     await updateAudioOutputInfo(audioPlayback.sinkId);
-    audioOutputInfoElement.style.display = 'block';
+    audioOutputInfoElement.hidden = false;
   });
 
   audioPlayback.addEventListener('pause', () => {
@@ -3325,7 +3325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             logLifecycleEvent('devicechange', `Active mic disconnected (${label})`);
             stopButton.click();
             errorMessageElement.textContent = `Warning: Active audio input device disconnected (${label}). Stream stopped.`;
-            errorMessageElement.style.display = 'block';
+            errorMessageElement.hidden = false;
           } else {
             debugLog(`devicechange: active audio device "${audioTrack.label || activeDeviceId}" is still connected.`);
           }
