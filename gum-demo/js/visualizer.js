@@ -39,6 +39,22 @@ export function stopVisualizer() {
 // Level meter range in dBFS. The bar is empty at or below the floor and full at 0 dBFS.
 const VISUALIZER_DB_FLOOR = -60;
 
+// Colour scale for canvases with class meter-gradient (preview.html). The
+// gradient spans the whole canvas, so a colour always maps to the same level:
+// green up to -18 dBFS, yellow at about -5 dBFS, orange-red at 0 dBFS.
+let cachedMeterGradient = null;
+function meterGradient() {
+  if (!cachedMeterGradient) {
+    const g = canvasCtx.createLinearGradient(0, 0, visualizerCanvas.width, 0);
+    g.addColorStop(0, 'hsl(150, 55%, 45%)');
+    g.addColorStop(0.7, 'hsl(140, 60%, 50%)');
+    g.addColorStop(0.92, 'hsl(60, 80%, 50%)');
+    g.addColorStop(1, 'hsl(20, 85%, 55%)');
+    cachedMeterGradient = g;
+  }
+  return cachedMeterGradient;
+}
+
 export function visualizeAudio(stream) {
   stopVisualizer();
   audioContext = createSilentAudioContext();
@@ -85,10 +101,11 @@ function drawVisualizer(now = performance.now()) {
   const rms = Math.sqrt(sumSquares / visualizerDataArray.length);
   const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
   const level = Math.min(1, Math.max(0, (db - VISUALIZER_DB_FLOOR) / -VISUALIZER_DB_FLOOR));
-  canvasCtx.fillStyle = 'rgb(250, 250, 250)';
+  const useGradient = visualizerCanvas.classList.contains('meter-gradient');
+  canvasCtx.fillStyle = useGradient ? '#e9edf2' : 'rgb(250, 250, 250)';
   canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
   const barWidth = level * visualizerCanvas.width;
-  canvasCtx.fillStyle = '#00FF00';
+  canvasCtx.fillStyle = useGradient ? meterGradient() : '#00FF00';
   canvasCtx.fillRect(0, 0, barWidth, visualizerCanvas.height);
 }
 

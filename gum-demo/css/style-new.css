@@ -263,8 +263,21 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 #error-message.notice { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-line); }
 
 /* ---------- Live bar contents ---------- */
+/* Level meter with a dBFS scale. The coloured fill is drawn by visualizer.js
+   (class meter-gradient on the canvas). */
+.meter { flex: 1 1 220px; min-width: 160px; display: grid; gap: 2px; }
+/* Ticks at their true positions: -60, -40, -20 and 0 dBFS. */
+.meter-scale {
+  position: relative; height: 11px;
+  font-family: var(--font-mono); font-size: 10.5px; line-height: 1; color: var(--text-3);
+}
+.meter-scale span { position: absolute; top: 0; transform: translateX(-50%); }
+.meter-scale span:nth-child(1) { left: 0; transform: none; }
+.meter-scale span:nth-child(2) { left: 33.333%; }
+.meter-scale span:nth-child(3) { left: 66.667%; }
+.meter-scale span:nth-child(4) { left: 100%; transform: translateX(-100%); }
 #audio-visualizer {
-  flex: 1 1 200px; min-width: 140px; width: 100%; height: 22px; display: block;
+  width: 100%; height: 14px; display: block;
   background: rgb(250, 250, 250); border: 1px solid var(--border-strong); border-radius: 999px;
 }
 .readouts { display: flex; flex-wrap: wrap; gap: var(--s2); }

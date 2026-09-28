@@ -24,7 +24,10 @@
          (see style-new.css). Sticky together with the header. -->
     <div class="live-bar">
       <div class="live-bar-inner">
-        <canvas id="audio-visualizer" width="100" height="34"></canvas>
+        <div class="meter">
+          <canvas id="audio-visualizer" class="meter-gradient" width="100" height="34"></canvas>
+          <div class="meter-scale" aria-hidden="true"><span>-60</span><span>-40</span><span>-20</span><span>0</span></div>
+        </div>
         <div class="readouts">
           <div id="visualizer-db-label" hidden data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The green bar goes from -60 dBFS (empty) to 0 dBFS (full). When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS. Green above -60 dBFS (RMS). The audioLevel label is based on peak values and turns green at 0.0007 (about -63 dB), so it is often green while this label is gray for quiet speech or background noise, where peaks are 10-20 dB above the RMS."></div>
           <div id="visualizer-rms-label" hidden></div>
