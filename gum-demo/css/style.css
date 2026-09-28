@@ -1000,3 +1000,71 @@ button:disabled {
   display: inline-block;
   animation: recordPulse 1.2s infinite ease-in-out;
 }
+
+/* ---------------------------------------------------------------------------
+ * Styles moved from inline style="" attributes in index.html and main.js.
+ * Selectors are specific enough to beat the existing container rules
+ * (e.g. .file-settings-container label, #checkbox-container label), so the
+ * rendered result matches the old inline styles.
+ * ------------------------------------------------------------------------- */
+
+#summary-compute-pressure-badge {
+  font-size: 11px;
+  font-weight: normal;
+  margin-left: 8px;
+  color: #555;
+}
+
+#summary-compute-pressure-badge.na {
+  color: #888;
+}
+
+.file-settings-container label[for="localFileInput"] {
+  margin-left: 10px;
+  margin-right: 5px;
+}
+
+#checkbox-container label[for="sampleRate"],
+#checkbox-container label[for="renderSizeHint"] {
+  margin-left: 10px;
+}
+
+#renderSizeHintCustom {
+  width: 60px;
+  margin-left: 4px;
+  font-size: 11px;
+  padding: 1px 3px;
+}
+
+#glitch-simulation-container {
+  font-size: 11px;
+  font-weight: normal;
+  margin-left: 12px;
+}
+
+#glitch-simulation-container label {
+  color: #666;
+}
+
+#simulate-glitch-select,
+#simulate-glitch-cycle-btn {
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#simulate-glitch-select {
+  font-size: 11px;
+  padding: 1px 4px;
+}
+
+#simulate-glitch-cycle-btn {
+  margin-left: 4px;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+#glitch-simulation-container .info-icon {
+  margin-left: 4px;
+}

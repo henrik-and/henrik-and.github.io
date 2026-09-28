@@ -523,13 +523,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const summaryBadge = document.getElementById('summary-compute-pressure-badge');
     if (summaryBadge) {
       if (typeof PressureObserver === 'undefined' && !latestComputePressure.isSimulated) {
-        summaryBadge.innerHTML = '<span style="color: #888;">[CPU: N/A]</span>';
+        summaryBadge.textContent = '[CPU: N/A]';
+        summaryBadge.classList.add('na');
       } else if (latestComputePressure.state !== 'Unknown') {
         let icon = '🟢';
         if (latestComputePressure.state === 'fair') icon = '🟡';
         else if (latestComputePressure.state === 'serious') icon = '🟠';
         else if (latestComputePressure.state === 'critical') icon = '🔴';
-        summaryBadge.innerHTML = `<span style="color: #555;">[CPU: ${icon} ${latestComputePressure.state.toUpperCase()}${latestComputePressure.isSimulated ? ' (sim)' : ''}]</span>`;
+        summaryBadge.textContent = `[CPU: ${icon} ${latestComputePressure.state.toUpperCase()}${latestComputePressure.isSimulated ? ' (sim)' : ''}]`;
+        summaryBadge.classList.remove('na');
       }
     }
     renderComputePressureGraph();
