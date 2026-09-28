@@ -490,15 +490,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   function getComputePressureBadge(state) {
     switch (state) {
       case 'nominal':
-        return '<span style="color: #2E7D32; font-weight: bold;">🟢 Nominal (Light load)</span>';
+        return '<span class="cp-state cp-nominal">🟢 Nominal (Light load)</span>';
       case 'fair':
-        return '<span style="color: #F57F17; font-weight: bold;">🟡 Fair (Moderate load)</span>';
+        return '<span class="cp-state cp-fair">🟡 Fair (Moderate load)</span>';
       case 'serious':
-        return '<span style="color: #E65100; font-weight: bold;">🟠 Serious (High load)</span>';
+        return '<span class="cp-state cp-serious">🟠 Serious (High load)</span>';
       case 'critical':
-        return '<span style="color: #C62828; font-weight: bold;">🔴 Critical (Heavy load)</span>';
+        return '<span class="cp-state cp-critical">🔴 Critical (Heavy load)</span>';
       default:
-        return `<span style="color: #666;">${state}</span>`;
+        return `<span class="cp-unknown">${escapeHtml(state)}</span>`;
     }
   }
 
@@ -506,10 +506,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isSupported = typeof PressureObserver !== 'undefined';
     const stateBadge = getComputePressureBadge(pressure ? pressure.state : 'Unknown');
     const factorsText = (pressure && pressure.factors && pressure.factors.length > 0)
-      ? ` <small style="color: #666; font-weight: normal;">[factors: ${pressure.factors.join(', ')}]</small>`
+      ? ` <small class="cp-factors">[factors: ${escapeHtml(pressure.factors.join(', '))}]</small>`
       : '';
     const sampleMeta = (pressure && pressure.lastSampleTime)
-      ? ` <small style="color: #777; font-weight: normal;">(last: ${pressure.lastSampleTime}, count: ${pressure.sampleCount}${pressure.isSimulated ? ', simulated' : ''})</small>`
+      ? ` <small class="cp-sample-meta">(last: ${pressure.lastSampleTime}, count: ${pressure.sampleCount}${pressure.isSimulated ? ', simulated' : ''})</small>`
       : '';
 
     return `${stateBadge}${factorsText}${sampleMeta}`;
@@ -2050,7 +2050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (displayStats.rate && displayStats.rate.synthesizedSamplesEvents > 0) {
               statsString = statsString.replace(
                 /"synthesizedSamplesEvents": (\d+)/,
-                '"synthesizedSamplesEvents": <span style="color: #D32F2F; font-weight: bold;">$1</span>'
+                '"synthesizedSamplesEvents": <span class="stat-alert">$1</span>'
               );
             }
             snapshotState.audioPlayout = displayStats;
@@ -2190,9 +2190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
-    errorMessageElement.style.color = '';
-    errorMessageElement.style.backgroundColor = '';
-    errorMessageElement.style.borderColor = '';
+    errorMessageElement.classList.remove('notice');
     const audioConstraints = buildAudioConstraints();
     const deviceId = audioDeviceSelect.value;
     if (deviceId !== 'undefined') {
@@ -2302,9 +2300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         logLifecycleEvent('track.onmute', `Warning: Audio track muted - ${event.type}`, 'warning');
         errorMessageElement.textContent = `Warning: Audio track muted - ${event.type}`;
         errorMessageElement.style.display = 'block';
-        errorMessageElement.style.color = '#2F652F';
-        errorMessageElement.style.backgroundColor = '#DFF2BF';
-        errorMessageElement.style.borderColor = '#4F8A10';
+        errorMessageElement.classList.add('notice');
         updateTrackProperties(audioTrack);
       };
       audioTrack.onunmute = (event) => {
@@ -2313,9 +2309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorMessageElement.textContent = '';
         errorMessageElement.style.display = 'none';
         // Reset to default error colors from CSS
-        errorMessageElement.style.color = '';
-        errorMessageElement.style.backgroundColor = '';
-        errorMessageElement.style.borderColor = '';
+        errorMessageElement.classList.remove('notice');
         updateTrackProperties(audioTrack);
       };
       audioTrack.onended = (event) => {
@@ -2530,9 +2524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorMessageElement.style.display = 'none';
 
       // Reset to default error colors from CSS
-      errorMessageElement.style.color = '';
-      errorMessageElement.style.backgroundColor = '';
-      errorMessageElement.style.borderColor = '';
+      errorMessageElement.classList.remove('notice');
 
       // Determine which constraint keys were requested and evaluate if getSettings() adopted them
       const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
@@ -2803,9 +2795,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     errorMessageElement.style.display = 'none';
     bookmarkUrlContainer.innerHTML = ''; // Clear the bookmark URL
     // Reset to default error colors from CSS
-    errorMessageElement.style.color = '';
-    errorMessageElement.style.backgroundColor = '';
-    errorMessageElement.style.borderColor = '';
+    errorMessageElement.classList.remove('notice');
     debugLog('Stream stopped and visualizer cleared.');
     logLifecycleEvent('Stream', 'Stream stopped and audio pipeline closed');
   });
@@ -3550,9 +3540,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    let permissionColor = 'orange';
-    if (permissionStatus === 'granted') permissionColor = 'green';
-    if (permissionStatus === 'denied') permissionColor = 'red';
+    let permissionClass = 'status-warn';
+    if (permissionStatus === 'granted') permissionClass = 'status-ok';
+    if (permissionStatus === 'denied') permissionClass = 'status-bad';
 
     // 1. System Resources
     const cores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : null;
@@ -3621,30 +3611,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     infoDiv.innerHTML = `
       <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
-      <strong>Secure Context:</strong> ${isSecure ? '<span style="color: green; font-weight:bold;">Yes</span>' : '<span style="color: red; font-weight:bold;">No (getUserMedia will fail)</span>'}<br>
-      <strong>Microphone Permission:</strong> <span style="color: ${permissionColor}; font-weight:bold;">${permissionStatus}</span><br>
+      <strong>Secure Context:</strong> ${isSecure ? '<span class="status-ok">Yes</span>' : '<span class="status-bad">No (getUserMedia will fail)</span>'}<br>
+      <strong>Microphone Permission:</strong> <span class="${permissionClass}">${escapeHtml(permissionStatus)}</span><br>
       <strong>Origin:</strong> ${protocol}//${host}<br>
       <strong>System Resources:</strong> ${systemResources}<br>
       <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}, Render Quantum: ${hwRenderQuantum}<br>
       <strong>Detected Devices:</strong> ${displayedInputs}, ${displayedOutputs}<br>
-      <strong>Compute Pressure (CPU):</strong> <span id="compute-pressure-status">${formatComputePressureHtml(latestComputePressure)}</span> <button id="simulate-pressure-cycle-btn" style="margin-left: 8px; font-size: 10px; padding: 1px 6px; cursor: pointer; border: 1px solid #aaa; border-radius: 3px; background: #fff;" data-tooltip="Run an automated ~10-second simulation cycle (nominal -> fair -> serious -> critical -> serious -> fair -> nominal) to test app adaptation to CPU pressure.">Simulate Cycle</button> <select id="simulate-pressure-select" style="margin-left: 4px; font-size: 10px; padding: 1px 2px; border-radius: 3px; border: 1px solid #aaa; background: #fff; cursor: pointer;" data-tooltip="Manually inject a simulated Compute Pressure state into the observer pipeline without placing real load on your physical processor."><option value="" disabled selected>Set State...</option><option value="nominal">nominal (25% load)</option><option value="fair">fair (50% load)</option><option value="serious">serious (75% load)</option><option value="critical">critical (100% load)</option></select> <span class="info-icon" style="margin-left: 4px;" data-tooltip="Simulates Compute Pressure API (PressureObserver) CPU load states without placing actual load on your physical processor. Injects nominal, fair, serious, and critical states to test how WebRTC applications adapt (e.g. lowering video quality or disabling heavy audio processing) under varying system thermal and workload conditions.">i</span><br>
-      <div id="compute-pressure-graph-container" style="margin: 6px 0; padding: 6px 8px; background: #ffffff; border: 1px solid #d0d5dd; border-radius: 4px; width: 100%; box-sizing: border-box;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-weight: bold; font-size: 10px; color: #495057;" data-tooltip="Real-time 1Hz rolling history mapping Compute Pressure CPU states to normalized load values (nominal=25%, fair=50%, serious=75%, critical=100%).">Compute Pressure History (1Hz Mapped States)</span>
-          <span id="compute-pressure-graph-legend" style="font-size: 9px; color: #666;" data-tooltip="Color-coded 1Hz load thresholds: Light (25% nominal), Moderate (50% fair), High (75% serious), Heavy (100% critical).">
-            <span style="color: #2E7D32;">● light (25%)</span> |
-            <span style="color: #F57F17;">● moderate (50%)</span> |
-            <span style="color: #E65100;">● high (75%)</span> |
-            <span style="color: #C62828;">● heavy (100%)</span>
+      <strong>Compute Pressure (CPU):</strong> <span id="compute-pressure-status">${formatComputePressureHtml(latestComputePressure)}</span> <button id="simulate-pressure-cycle-btn" data-tooltip="Run an automated ~10-second simulation cycle (nominal -> fair -> serious -> critical -> serious -> fair -> nominal) to test app adaptation to CPU pressure.">Simulate Cycle</button> <select id="simulate-pressure-select" data-tooltip="Manually inject a simulated Compute Pressure state into the observer pipeline without placing real load on your physical processor."><option value="" disabled selected>Set State...</option><option value="nominal">nominal (25% load)</option><option value="fair">fair (50% load)</option><option value="serious">serious (75% load)</option><option value="critical">critical (100% load)</option></select> <span class="info-icon" data-tooltip="Simulates Compute Pressure API (PressureObserver) CPU load states without placing actual load on your physical processor. Injects nominal, fair, serious, and critical states to test how WebRTC applications adapt (e.g. lowering video quality or disabling heavy audio processing) under varying system thermal and workload conditions.">i</span><br>
+      <div id="compute-pressure-graph-container">
+        <div class="cp-graph-header">
+          <span class="cp-graph-title" data-tooltip="Real-time 1Hz rolling history mapping Compute Pressure CPU states to normalized load values (nominal=25%, fair=50%, serious=75%, critical=100%).">Compute Pressure History (1Hz Mapped States)</span>
+          <span id="compute-pressure-graph-legend" data-tooltip="Color-coded 1Hz load thresholds: Light (25% nominal), Moderate (50% fair), High (75% serious), Heavy (100% critical).">
+            <span class="cp-nominal">● light (25%)</span> |
+            <span class="cp-fair">● moderate (50%)</span> |
+            <span class="cp-serious">● high (75%)</span> |
+            <span class="cp-critical">● heavy (100%)</span>
           </span>
         </div>
-        <canvas id="compute-pressure-canvas" height="85" style="width: 100%; height: 85px; display: block; border: 1px solid #eee; border-radius: 2px;"></canvas>
+        <canvas id="compute-pressure-canvas" height="85"></canvas>
       </div>
       <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Render Quantum:${quantumSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}, Compute Pressure:${computePressureSupported ? '✅' : '❌'}<br>
       <strong>Supported Constraints:</strong> ${constraintsSummary}<br>
-      <details style="margin-top: 4px; cursor: pointer;">
-        <summary style="font-size: 10px; color: #666;">Raw User Agent</summary>
-        <pre style="margin: 3px 0 0 0; font-size: 10px; white-space: pre-wrap; background: #e9ecef; padding: 4px 6px; border-radius: 3px;">${navigator.userAgent}</pre>
+      <details class="ua-details">
+        <summary>Raw User Agent</summary>
+        <pre>${escapeHtml(navigator.userAgent)}</pre>
       </details>
     `;
 
