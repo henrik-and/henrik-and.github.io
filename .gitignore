@@ -1,2 +1,6 @@
 # Gemini CLI local-only context
 GEMINI.md
+
+# Local dev helpers (not part of the site)
+diff.html
+serve.py

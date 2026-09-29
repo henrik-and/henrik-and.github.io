@@ -11,7 +11,11 @@
   <button id="copy-markdown-button">Copy as Markdown</button>
   <textarea id="markdown-source" style="display:none;"></textarea>
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Pinned version with SRI hash. Newer marked releases no longer ship
+       marked.min.js, so the unpinned URL can break when jsDelivr updates. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"
+          integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
+          crossorigin="anonymous"></script>
   <script>
     'use strict';
 
