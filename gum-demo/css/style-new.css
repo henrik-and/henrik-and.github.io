@@ -270,7 +270,7 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 /* ---------- Live bar contents ---------- */
 /* Level meter with a dBFS scale. The coloured fill is drawn by visualizer.js
    (class meter-gradient on the canvas). */
-.meter { flex: 0 1 240px; min-width: 160px; display: grid; gap: 2px; }
+.meter { flex: 1 1 260px; max-width: 460px; min-width: 160px; display: grid; gap: 2px; }
 /* Ticks at their true positions: -60, -40, -20 and 0 dBFS. */
 .meter-scale {
   position: relative; height: 11px;
@@ -380,7 +380,7 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 .fold[open] > summary.card-head::before,
 #system-info-container[open] > summary::before { transform: rotate(90deg); }
 #system-info-container > summary { list-style: none; display: flex; align-items: center; gap: var(--s3); }
-.rtp-tools { display: flex; justify-content: flex-end; padding: var(--s2) var(--s4) 0; }
+.rtp-tools { display: flex; padding: var(--s2) var(--s4) 0; }
 /* A playout glitch is visible in the heading also when the card is closed. */
 .rtp-glitch-flag {
   display: none; margin-left: var(--s2); padding: 1px 8px; border-radius: 999px;
