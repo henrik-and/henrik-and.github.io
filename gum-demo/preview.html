@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
   <!-- Preview of a new layout. Uses the same js/main.js and element IDs as
        index.html. No cache busters or import map: local testing only. -->
-  <link rel="stylesheet" href="css/style-new.css?v=fold3">
+  <link rel="stylesheet" href="css/style-new.css?v=fold4">
 </head>
 <body>
   <header class="app-header">
@@ -53,7 +53,7 @@
   </header>
 
   <div class="diag">
-    <details id="system-info-container" class="card">
+    <details id="system-info-container" class="card" data-fold="diagnostics">
       <summary id="system-info-summary">System Diagnostics <span id="summary-compute-pressure-badge"></span></summary>
       <div id="system-info-details">
         Loading diagnostics...
@@ -77,7 +77,7 @@
       <canvas id="recorded-visualizer" hidden width="200" height="50"></canvas>
     </div>
     <section id="track-section-container" class="card card-track">
-      <details class="fold" open>
+      <details class="fold" data-fold="track" open>
         <summary class="card-head"><h2 id="track-section-title" class="card-title">MediaStreamTrack (Audio) Getters &amp; Properties</h2></summary>
         <div id="track-settings-container" class="card-body panes">
           <pre id="track-constraints" class="pane"></pre>
@@ -86,7 +86,7 @@
           <pre id="track-stats" class="pane"></pre>
         </div>
         <div class="card-foot">
-          <details id="lifecycle-events-container">
+          <details id="lifecycle-events-container" data-fold="lifecycle">
             <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)</summary>
             <div id="lifecycle-events-log"></div>
           </details>
@@ -96,7 +96,7 @@
 
     <section id="rtp-stats-section-container" class="card card-rtp" hidden>
       <!-- Closed by default (no open attribute), unlike the other cards. -->
-      <details id="rtp-stats-details" class="fold">
+      <details id="rtp-stats-details" class="fold" data-fold="rtp">
         <summary class="card-head"><h2 id="rtp-stats-section-title" class="card-title">RTCPeerConnection getStats()</h2><span class="rtp-glitch-flag">Playout glitch</span></summary>
         <div class="rtp-tools">
           <span id="glitch-simulation-container" class="field">
@@ -123,7 +123,7 @@
     <!-- ================= Left: controls ================= -->
     <div class="col col-controls">
       <section class="card">
-        <details class="fold" open>
+        <details class="fold" data-fold="source" open>
           <summary class="card-head">
             <h2 class="card-title">Source</h2>
             <span class="spacer"></span>
@@ -340,7 +340,7 @@
       <p id="bookmark-url-container"></p>
 
       <section class="card">
-        <details class="fold" open>
+        <details class="fold" data-fold="options" open>
           <summary class="card-head"><h2 class="card-title">Options</h2></summary>
           <div class="card-body">
             <div class="checks">
@@ -382,7 +382,7 @@
            bar, recording and stats sections are hidden together with it. -->
       <div id="stream-controls-container" hidden>
         <section class="card card-playback">
-          <details class="fold" open>
+          <details class="fold" data-fold="playback" open>
             <summary class="card-head"><h2 class="card-title">Playback settings</h2></summary>
             <div class="card-body play-grid">
               <div class="play-row">
@@ -448,7 +448,7 @@
       </div>
 
       <section id="audio-devices-container" class="card card-devices" hidden>
-        <details class="fold" open>
+        <details class="fold" data-fold="devices" open>
           <summary class="card-head"><h2 class="card-title">Devices</h2></summary>
           <div class="card-body panes">
             <pre id="audio-input-device" class="pane"></pre>
@@ -469,5 +469,7 @@
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
   <script type="module" src="js/main.js"></script>
+  <!-- Remembers folded cards across reloads (localStorage). -->
+  <script type="module" src="js/fold-state.js"></script>
 </body>
 </html>
