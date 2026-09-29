@@ -32,6 +32,10 @@
   --radius-l: 14px;
   --shadow-card: 0 1px 2px hsl(218 30% 20% / 0.05), 0 4px 16px hsl(218 30% 20% / 0.05);
 
+  /* Page width limit. none = full browser width (like index.html). Set to
+     e.g. 1680px to cap it on very wide screens. */
+  --page-max: none;
+
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
 }
 
@@ -62,7 +66,7 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
   border-bottom: 1px solid var(--border);
 }
 .app-header-inner {
-  max-width: 1680px; margin: 0 auto;
+  max-width: var(--page-max); margin: 0 auto;
   display: flex; align-items: center; gap: var(--s4);
   padding: var(--s3) var(--s6);
 }
@@ -75,9 +79,9 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
 .link-quiet:hover { color: var(--text); text-decoration: underline; }
 
 /* ---------- Layout ---------- */
-.diag { max-width: 1680px; margin: var(--s5) auto 0; padding: 0 var(--s6); }
+.diag { max-width: var(--page-max); margin: var(--s5) auto 0; padding: 0 var(--s6); }
 .layout {
-  max-width: 1680px; margin: 0 auto;
+  max-width: var(--page-max); margin: 0 auto;
   padding: var(--s4) var(--s6) var(--s6);
   display: grid;
   grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
@@ -85,7 +89,7 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
   align-items: start;
 }
 .col { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
-.foot { max-width: 1680px; margin: 0 auto; padding: 0 var(--s6) var(--s8); }
+.foot { max-width: var(--page-max); margin: 0 auto; padding: 0 var(--s6) var(--s8); }
 
 /* The right column: #stream-controls-container is only a wrapper, so its
    cards and #audio-devices-container can be ordered together. */
@@ -99,14 +103,14 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
    stats are outside #stream-controls-container, so hide them together with
    it. While a stream is active they sit above the controls. */
 body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: none; }
-.wide { max-width: 1680px; margin: 0 auto; padding: var(--s4) var(--s6) 0; display: flex; flex-direction: column; gap: var(--s4); }
-.page-msg { max-width: 1680px; margin: var(--s4) auto 0; padding: 0 var(--s6); }
+.wide { max-width: var(--page-max); margin: 0 auto; padding: var(--s4) var(--s6) 0; display: flex; flex-direction: column; gap: var(--s4); }
+.page-msg { max-width: var(--page-max); margin: var(--s4) auto 0; padding: 0 var(--s6); }
 .page-msg:has(> #error-message[hidden]) { display: none; }
 
 /* Live bar: second header row with the level meter and stream controls. */
 .live-bar { border-top: 1px solid var(--border); }
 .live-bar-inner {
-  max-width: 1680px; margin: 0 auto;
+  max-width: var(--page-max); margin: 0 auto;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
   padding: var(--s2) var(--s6);
 }
