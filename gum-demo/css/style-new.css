@@ -154,8 +154,8 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
 .btn:active { transform: translateY(1px); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 1px 2px hsl(152 60% 20% / .3); }
 .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn-danger { color: var(--danger); border-color: hsl(356 60% 85%); }
-.btn-danger:hover { background: var(--danger-soft); border-color: hsl(356 60% 75%); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; box-shadow: 0 1px 2px hsl(356 60% 20% / .25); }
+.btn-danger:hover { background: hsl(356 72% 41%); border-color: hsl(356 72% 41%); }
 .btn-ghost { border-color: transparent; background: transparent; color: var(--text-2); font-weight: 500; }
 .btn-ghost:hover { background: var(--surface-code); color: var(--text); }
 .btn-sm { padding: 5px 10px; font-size: 13px; }
@@ -163,6 +163,7 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
   opacity: .45; cursor: not-allowed; transform: none;
 }
 .btn-primary:disabled, .btn-primary:disabled:hover { background: var(--accent); border-color: var(--accent); }
+.btn-danger:disabled, .btn-danger:disabled:hover { background: var(--danger); border-color: var(--danger); }
 
 /* ---------- Form controls ---------- */
 select, input[type=number] {
@@ -269,7 +270,7 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 /* ---------- Live bar contents ---------- */
 /* Level meter with a dBFS scale. The coloured fill is drawn by visualizer.js
    (class meter-gradient on the canvas). */
-.meter { flex: 1 1 220px; min-width: 160px; display: grid; gap: 2px; }
+.meter { flex: 0 1 240px; min-width: 160px; display: grid; gap: 2px; }
 /* Ticks at their true positions: -60, -40, -20 and 0 dBFS. */
 .meter-scale {
   position: relative; height: 11px;
