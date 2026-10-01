@@ -7,8 +7,24 @@
   <title>gum-demo (new layout preview)</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
   <!-- Preview of a new layout. Uses the same js/main.js and element IDs as
-       index.html. No cache busters or import map: local testing only. -->
-  <link rel="stylesheet" href="css/style-new.css?v=activity1">
+       index.html. Local testing only. -->
+  <link rel="stylesheet" href="css/style-new.css?v=filesrc3">
+  <!-- Preview cache busters for modules imported by main.js. Bump v= after
+       changing a JS file. bump-version.sh replaces this at adoption. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./js/a11y.js": "./js/a11y.js?v=p1",
+      "./js/compute-pressure.js": "./js/compute-pressure.js?v=p1",
+      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=p1",
+      "./js/sdp.js": "./js/sdp.js?v=p1",
+      "./js/sysinfo.js": "./js/sysinfo.js?v=p1",
+      "./js/util.js": "./js/util.js?v=p1",
+      "./js/visualizer.js": "./js/visualizer.js?v=p1",
+      "./js/wav.js": "./js/wav.js?v=p1"
+    }
+  }
+  </script>
 </head>
 <body>
   <header class="app-header">
@@ -74,8 +90,17 @@
     <div id="recorded-audio-container" class="card recorded-audio-container" hidden>
       <span class="recorded-label">Recorded Audio:</span>
       <audio id="recorded-audio" controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
-      <button id="download-recorded-audio-button" class="btn btn-sm download-button" data-tooltip="Download recorded audio as WebM file"><svg class="download-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download</span></button>
-      <canvas id="recorded-visualizer" hidden width="200" height="50"></canvas>
+      <span class="check">
+        <input type="checkbox" id="recorded-loop-checkbox">
+        <label for="recorded-loop-checkbox" data-tooltip="Repeat the recording (HTMLMediaElement.loop). Can be changed during playback.">Loop</label>
+      </span>
+      <!-- Same meter as the live bar; shows the level while the recording plays. -->
+      <div class="meter recorded-meter">
+        <canvas id="recorded-visualizer" class="meter-gradient" hidden width="100" height="34"></canvas>
+        <div class="meter-scale" aria-hidden="true"><span>-60</span><span>-40</span><span>-20</span><span>0</span></div>
+      </div>
+      <div id="recorded-db-label" class="db-label" hidden data-tooltip="Level of the recorded audio while it plays: RMS measured with an AnalyserNode and averaged over about 250 ms, in dBFS. Same scale and colours as the live level meter."></div>
+      <button id="download-recorded-audio-button" class="btn btn-sm download-button push-right" data-tooltip="Download recorded audio as WebM file"><svg class="download-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download</span></button>
     </div>
     <section id="track-section-container" class="card card-track">
       <details class="fold" data-fold="track" open>
@@ -343,28 +368,45 @@
       <section class="card">
         <details class="fold" data-fold="options" open>
           <summary class="card-head"><h2 class="card-title">Options</h2></summary>
-          <div class="card-body">
-            <div class="checks">
-              <span class="check">
-                <input type="checkbox" id="peerconnection-checkbox">
-                <label for="peerconnection-checkbox" data-tooltip="Send and receive the recorded local audio track via an RTCPeerConnection loopback (pc1 -> pc2) using Opus stereo.">PeerConnection</label>
-              </span>
-              <span class="check">
-                <input type="checkbox" id="dtx-checkbox">
-                <label for="dtx-checkbox" data-tooltip="Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.">VAD/DTX/CNG</label>
-              </span>
-              <span class="check">
-                <input type="checkbox" id="auto-record-checkbox">
-                <label for="auto-record-checkbox" data-tooltip="Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().">Auto-Record</label>
-              </span>
-              <span class="check">
-                <input type="checkbox" id="auto-play-checkbox">
-                <label for="auto-play-checkbox" data-tooltip="Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.">Auto-Play</label>
-              </span>
-              <span class="check">
-                <input type="checkbox" id="sine-tone-checkbox">
-                <label for="sine-tone-checkbox" data-tooltip="Replace live mic input with a continuous 440 Hz sine wave tone while keeping physical microphone capture active.">440Hz Sine</label>
-              </span>
+          <div class="card-body option-groups">
+            <div class="option-group">
+              <span class="option-label">Transport</span>
+              <div class="checks">
+                <span class="check">
+                  <input type="checkbox" id="peerconnection-checkbox">
+                  <label for="peerconnection-checkbox" data-tooltip="Send and receive the recorded local audio track via an RTCPeerConnection loopback (pc1 -> pc2) using Opus stereo.">PeerConnection</label>
+                </span>
+                <span class="check">
+                  <input type="checkbox" id="dtx-checkbox">
+                  <label for="dtx-checkbox" data-tooltip="Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.">VAD/DTX/CNG</label>
+                </span>
+              </div>
+            </div>
+            <div class="option-group">
+              <span class="option-label">Test signal</span>
+              <div class="checks">
+                <span class="check">
+                  <input type="checkbox" id="sine-tone-checkbox">
+                  <label for="sine-tone-checkbox" data-tooltip="Replace live mic input with a continuous 440 Hz sine wave tone while keeping physical microphone capture active.">440Hz Sine</label>
+                </span>
+              </div>
+            </div>
+            <div class="option-group">
+              <span class="option-label">On start</span>
+              <div class="checks">
+                <span class="check">
+                  <input type="checkbox" id="auto-record-checkbox">
+                  <label for="auto-record-checkbox" data-tooltip="Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().">Auto-Record</label>
+                </span>
+                <span class="check">
+                  <input type="checkbox" id="auto-play-checkbox">
+                  <label for="auto-play-checkbox" data-tooltip="Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.">Auto-Play</label>
+                  <select id="auto-play-mode" class="check-select" aria-label="Auto-Play mode">
+                    <option value="html" selected>HTML</option>
+                    <option value="webaudio">WebAudio</option>
+                  </select>
+                </span>
+              </div>
             </div>
           </div>
         </details>
@@ -375,7 +417,7 @@
     <div class="col col-live">
       <section class="card placeholder-card">
         <div class="card-body">
-          Choose constraints and press <b>getUserMedia</b>. The level meter and stream controls appear in the bar at the top, with track and RTP stats below it.
+          <span class="for-mic">Choose constraints and press <b>getUserMedia</b>.</span><span class="for-file">Choose an audio file and press <b>captureStream</b>.</span> The level meter and stream controls appear in the bar at the top, with track and RTP stats below it.
         </div>
       </section>
 
@@ -450,7 +492,7 @@
 
       <section id="audio-devices-container" class="card card-devices" hidden>
         <details class="fold" data-fold="devices" open>
-          <summary class="card-head"><h2 class="card-title">Devices</h2></summary>
+          <summary class="card-head"><h2 class="card-title">Audio Path</h2></summary>
           <div class="card-body panes">
             <pre id="audio-input-device" class="pane"></pre>
             <pre id="audio-output-info" class="pane" hidden></pre>
@@ -469,9 +511,9 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=p3"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
-  <script type="module" src="js/fold-state.js"></script>
-  <script type="module" src="js/fold-activity.js"></script>
+  <script type="module" src="js/fold-state.js?v=p1"></script>
+  <script type="module" src="js/fold-activity.js?v=p1"></script>
 </body>
 </html>

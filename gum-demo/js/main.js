@@ -21,8 +21,11 @@ import {
   setComputePressureState,
 } from './compute-pressure.js';
 import {
+  hasRecordedLevelMeter,
   hideAudioLevelLabel,
   showAudioLevelLabel,
+  startRecordedLevelMeter,
+  stopRecordedLevelMeter,
   stopVisualizer,
   visualizeAudio,
 } from './visualizer.js';
@@ -89,6 +92,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const autoRecordLabel = document.querySelector('label[for="auto-record-checkbox"]');
   const autoPlayCheckbox = document.getElementById('auto-play-checkbox');
   const autoPlayLabel = document.querySelector('label[for="auto-play-checkbox"]');
+  // Optional: only preview.html has it. Without it Auto-Play uses HTML:Play.
+  const autoPlayModeSelect = document.getElementById('auto-play-mode');
+  const autoPlayModeName = () =>
+    autoPlayModeSelect && autoPlayModeSelect.value === 'webaudio' ? 'WebAudio:Play' : 'HTML:Play';
+  // The select is locked together with the Auto-Play checkbox (while a stream runs).
+  const syncAutoPlayMode = () => {
+    if (autoPlayModeSelect && autoPlayCheckbox) {
+      autoPlayModeSelect.disabled = autoPlayCheckbox.disabled;
+    }
+  };
   const sineToneCheckbox = document.getElementById('sine-tone-checkbox');
   const sineToneLabel = document.querySelector('label[for="sine-tone-checkbox"]');
   const micSourceRadio = document.getElementById('mic-source');
@@ -403,10 +416,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const webaudioPlayLabel = document.querySelector('label[for="webaudio-play-checkbox"]');
 
   function updateActionButtonsTooltips() {
+    const isMic = micSourceRadio.checked;
+    gumButton.textContent = isMic ? 'getUserMedia' : 'captureStream';
     if (gumButton.disabled) {
-      gumButton.setAttribute('data-tooltip', "Active stream running via getUserMedia(). Click 'Stop Stream' to stop before requesting a new stream.");
+      gumButton.setAttribute('data-tooltip', isMic
+        ? "Active stream running via getUserMedia(). Click 'Stop Stream' to stop before requesting a new stream."
+        : "Active stream running via captureStream(). Click 'Stop Stream' to stop before starting a new stream.");
     } else {
-      gumButton.setAttribute('data-tooltip', 'Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.');
+      gumButton.setAttribute('data-tooltip', isMic
+        ? 'Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.'
+        : 'Play the selected audio file and capture it as a MediaStream with HTMLMediaElement.captureStream(). No microphone permission is needed.');
     }
 
     if (applyConstraintsButton.disabled) {
@@ -442,10 +461,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateAutoPlayTooltip() {
     if (autoPlayLabel && autoPlayCheckbox) {
+      const mode = autoPlayModeName();
       autoPlayLabel.setAttribute('data-tooltip', autoPlayCheckbox.checked
-        ? 'Auto-play is enabled. Audio track will automatically start playing in loopback via HTML:Play as soon as the stream is acquired.'
-        : 'Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.');
+        ? `Auto-play is enabled. Audio track will automatically start playing in loopback via ${mode} as soon as the stream is acquired.`
+        : `Automatically start rendering the audio track in loopback using ${mode} as soon as the stream is acquired.`);
     }
+    syncAutoPlayMode();
   }
 
   function updateMuteTooltip() {
@@ -508,11 +529,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateAutoPlayTooltip();
       if (autoPlayCheckbox.checked) {
         debugLog('Auto-play enabled');
-        logLifecycleEvent('Auto-Play', 'Auto-Play enabled (will start HTML:Play from start)');
+        logLifecycleEvent('Auto-Play', `Auto-Play enabled (will start ${autoPlayModeName()} from start)`);
       } else {
         debugLog('Auto-play disabled');
         logLifecycleEvent('Auto-Play', 'Auto-Play disabled');
       }
+    });
+  }
+  if (autoPlayModeSelect) {
+    autoPlayModeSelect.addEventListener('change', () => {
+      updateAutoPlayTooltip();
+      logLifecycleEvent('Auto-Play', `Auto-Play mode: ${autoPlayModeName()}`);
     });
   }
 
@@ -548,6 +575,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Toggle visibility of the file selection container
     fileSelectionContainer.hidden = isMic;
+    // Button text and tooltip: getUserMedia or captureStream.
+    updateActionButtonsTooltips();
 
     if (!isMic) {
       constraintSelects.forEach(select => {
@@ -648,6 +677,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoRecordCheckbox.dispatchEvent(new Event('change'));
     }
 
+    if (params.get('autoPlayMode') === 'webaudio' && autoPlayModeSelect) {
+      autoPlayModeSelect.value = 'webaudio';
+    }
     if (params.has('autoPlay') && params.get('autoPlay') === 'true' && autoPlayCheckbox) {
       autoPlayCheckbox.checked = true;
       autoPlayCheckbox.dispatchEvent(new Event('change'));
@@ -1572,6 +1604,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (autoPlayCheckbox) {
       autoPlayCheckbox.disabled = true;
+      syncAutoPlayMode();
     }
     setConstraintsDisabled(true);
     previousStats = null;
@@ -1842,8 +1875,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
       if (autoPlayCheckbox && autoPlayCheckbox.checked) {
-        htmlPlayCheckbox.checked = true;
-        htmlPlayCheckbox.dispatchEvent(new Event('change'));
+        const target = autoPlayModeName() === 'WebAudio:Play' ? webaudioPlayCheckbox : htmlPlayCheckbox;
+        if (target !== htmlPlayCheckbox) htmlPlayCheckbox.checked = false;
+        target.checked = true;
+        target.dispatchEvent(new Event('change'));
       } else {
         htmlPlayCheckbox.checked = false;
       }
@@ -1887,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       if (autoPlayCheckbox) {
         autoPlayCheckbox.disabled = false;
+        syncAutoPlayMode();
       }
       setConstraintsDisabled(false);
       updateActionButtonsTooltips();
@@ -2111,6 +2147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (autoPlayCheckbox) {
       autoPlayCheckbox.disabled = false;
+      syncAutoPlayMode();
     }
     audioOutputDeviceSelect.disabled = false;
     latencyHintSelect.disabled = false;
@@ -2186,6 +2223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     lastRecordedBlob = null;
     lastRecordedMimeType = '';
     recordedVisualizer.hidden = true;
+    stopRecordedLevelMeter(true);
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
     }
@@ -2255,6 +2293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     lastRecordedBlob = null;
     lastRecordedMimeType = '';
     recordedVisualizer.hidden = true;
+    stopRecordedLevelMeter(true);
     recordedChunks = [];
     try {
       // Record what is sent and played: the sine tone if it is on when
@@ -2395,7 +2434,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       stopRecordedVisualization();
-      drawRecordedVisualizer();
+      if (hasRecordedLevelMeter()) {
+        startRecordedLevelMeter(recordedAnalyser);
+      } else {
+        drawRecordedVisualizer();
+      }
     } catch (err) {
       console.error('Error visualizing recorded audio:', err);
       errorMessageElement.textContent = `Visualization Error: ${err.message}`;
@@ -2403,8 +2446,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  function stopRecordedVisualization() {
+  // clear = true also empties the level meter bar and label (preview.html).
+  function stopRecordedVisualization(clear = false) {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
+    stopRecordedLevelMeter(clear);
   }
 
   // Suspend the playback context while idle so it does not keep an output
@@ -2423,9 +2468,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   recordedAudio.addEventListener('ended', () => {
     debugLog('Recorded audio playback ended.');
-    stopRecordedVisualization();
+    stopRecordedVisualization(true);
     suspendRecordedAudioContext();
   });
+
+  // Optional (preview.html): repeat the recording. With loop on the element
+  // does not fire 'ended', so the level meter keeps running across repeats.
+  const recordedLoopCheckbox = document.getElementById('recorded-loop-checkbox');
+  if (recordedLoopCheckbox) {
+    recordedLoopCheckbox.addEventListener('change', () => {
+      recordedAudio.loop = recordedLoopCheckbox.checked;
+      debugLog(`Recorded audio loop ${recordedAudio.loop ? 'on' : 'off'}`);
+    });
+  }
 
   muteCheckbox.addEventListener('change', () => {
     updateMuteTooltip();
@@ -2807,6 +2862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (autoPlayCheckbox && autoPlayCheckbox.checked) {
       params.set('autoPlay', 'true');
+      if (autoPlayModeName() === 'WebAudio:Play') params.set('autoPlayMode', 'webaudio');
     }
 
     if (sineToneCheckbox && sineToneCheckbox.checked) {
@@ -3125,6 +3181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
       'Auto-Record': autoRecordCheckbox ? autoRecordCheckbox.checked : false,
       'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
+      'Auto-Play Mode': autoPlayModeName(),
       'Active audio source': activeAudioSource,
       'Active audio output device': snapshotState.audioOutput,
       'Active WebAudio Context': snapshotState.webAudioContext,
