@@ -60,7 +60,6 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
 
 /* ---------- Header ---------- */
 .app-header {
-  position: sticky; top: 0; z-index: 20;
   background: hsl(0 0% 100% / 0.9);
   backdrop-filter: saturate(1.4) blur(8px);
   border-bottom: 1px solid var(--border);
@@ -107,8 +106,14 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
 .page-msg { max-width: var(--page-max); margin: var(--s4) auto 0; padding: 0 var(--s6); }
 .page-msg:has(> #error-message[hidden]) { display: none; }
 
-/* Live bar: second header row with the level meter and stream controls. */
-.live-bar { border-top: 1px solid var(--border); }
+/* Live bar: level meter and stream controls, below System Diagnostics. It
+   sticks to the top of the window when the page scrolls. */
+.live-bar {
+  position: sticky; top: 0; z-index: 20; margin-top: var(--s4);
+  background: hsl(0 0% 100% / 0.92);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
 .live-bar-inner {
   max-width: var(--page-max); margin: 0 auto;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
@@ -131,21 +136,25 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
   color: hsl(28 85% 20%);
 }
 .live-bar #mute-checkbox { accent-color: hsl(32 85% 38%); }
+/* Play controls: HTML:Play is sky blue (hue 200), WebAudio:Play is indigo
+   (hue 240). The same hues mark the matching rows in Playback settings. */
+.live-bar .check:has(#html-play-checkbox) { --play-h: 200; }
+.live-bar .check:has(#webaudio-play-checkbox) { --play-h: 240; }
 .live-bar .check:has(#html-play-checkbox, #webaudio-play-checkbox) {
-  background: hsl(208 85% 94%);
-  border-color: hsl(208 55% 76%);
-  color: hsl(212 65% 26%);
+  background: hsl(var(--play-h) 85% 94%);
+  border-color: hsl(var(--play-h) 55% 76%);
+  color: hsl(var(--play-h) 65% 26%);
 }
 .live-bar .check:has(#html-play-checkbox, #webaudio-play-checkbox):hover {
-  background: hsl(208 85% 90%);
-  border-color: hsl(208 60% 66%);
+  background: hsl(var(--play-h) 85% 90%);
+  border-color: hsl(var(--play-h) 60% 66%);
 }
 .live-bar .check:has(#html-play-checkbox:checked, #webaudio-play-checkbox:checked) {
-  background: hsl(208 88% 86%);
-  border-color: hsl(210 70% 55%);
-  color: hsl(214 75% 20%);
+  background: hsl(var(--play-h) 88% 86%);
+  border-color: hsl(var(--play-h) 70% 55%);
+  color: hsl(var(--play-h) 75% 20%);
 }
-.live-bar :is(#html-play-checkbox, #webaudio-play-checkbox) { accent-color: hsl(212 80% 42%); }
+.live-bar :is(#html-play-checkbox, #webaudio-play-checkbox) { accent-color: hsl(var(--play-h) 80% 42%); }
 
 /* ---------- Cards ---------- */
 .card {
@@ -381,11 +390,13 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 .card-playback .card-title { color: hsl(212 60% 32%); }
 .play-grid { display: grid; gap: var(--s2); }
 .play-row {
+  --play-h: 200;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4);
   padding: var(--s2) var(--s3); border-radius: var(--radius-m);
-  background: hsl(208 85% 95%); border: 1px solid hsl(208 55% 78%);
+  background: hsl(var(--play-h) 85% 95%); border: 1px solid hsl(var(--play-h) 55% 78%);
 }
-.sub-title { font-weight: 600; font-size: 13px; color: hsl(212 65% 26%); min-width: 11ch; }
+.play-row.webaudio-settings-group { --play-h: 240; }
+.sub-title { font-weight: 600; font-size: 13px; color: hsl(var(--play-h, 212) 65% 26%); min-width: 11ch; }
 #audioOutputDevice { max-width: 280px; }
 #renderSizeHintCustom { width: 80px; }
 #webaudio-quantum-badge {
@@ -439,6 +450,23 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
   background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2;
 }
 .card-rtp:has(#audio-playout-stats.glitch-active) .rtp-glitch-flag { display: inline-block; }
+/* Folded Track and RTP cards: health dot, change badge and a coloured left
+   edge (fold-activity.js). Shown only while the card is folded. */
+.fold-health, .fold-badge { display: none; }
+.fold-health { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.fold-health[data-state="ok"] { background: hsl(140 55% 42%); }
+.fold-health[data-state="warn"] { background: hsl(38 92% 50%); }
+.fold-health[data-state="bad"] { background: hsl(356 75% 50%); }
+.fold:not([open]) > summary .fold-health[data-state] { display: inline-block; }
+.fold-badge {
+  padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: hsl(48 95% 88%); color: hsl(35 80% 24%); border: 1px solid hsl(45 80% 62%);
+}
+.fold:not([open]) > summary .fold-badge.has-changes { display: inline-block; animation: badge-pop .4s ease-out; }
+@keyframes badge-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.card:has(> .fold:not([open]))[data-health="ok"] { border-left: 4px solid hsl(140 55% 42%); }
+.card:has(> .fold:not([open]))[data-health="warn"] { border-left: 4px solid hsl(38 92% 50%); }
+.card:has(> .fold:not([open]))[data-health="bad"] { border-left: 4px solid hsl(356 75% 50%); }
 
 /* Lifecycle log */
 #lifecycle-events-container { width: 100%; }
@@ -602,18 +630,25 @@ input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
 }
 [data-tooltip=""]::before,
 [data-tooltip=""]::after { display: none; }
-/* Header tooltips open downwards and align to the right edge. */
-.app-header [data-tooltip]::after { bottom: auto; top: calc(100% + 6px); left: auto; right: 0; transform: translateY(-4px); }
+/* Header and live bar tooltips open downwards. Header ones align to the
+   right edge; live bar ones are centred (Stop Stream aligns right). */
+:is(.app-header, .live-bar) [data-tooltip]::after { bottom: auto; top: calc(100% + 6px); left: auto; right: 0; transform: translateY(-4px); }
 .live-bar [data-tooltip]:not(#stop-button)::after { left: 50%; right: auto; transform: translateX(-50%) translateY(-4px); }
-.app-header [data-tooltip]::before {
+:is(.app-header, .live-bar) [data-tooltip]::before {
   bottom: auto; top: calc(100% + 1px);
   border-top: 0; border-bottom: 5px solid #212121; transform: translateX(-50%) translateY(-4px);
 }
-.app-header [data-tooltip]:not([data-tooltip=""]):hover::after,
-.app-header [data-tooltip]:not([data-tooltip=""]):focus-visible::after { transform: translateY(0); }
+:is(.app-header, .live-bar) [data-tooltip]:not([data-tooltip=""]):hover::after,
+:is(.app-header, .live-bar) [data-tooltip]:not([data-tooltip=""]):focus-visible::after { transform: translateY(0); }
 .live-bar [data-tooltip]:not(#stop-button):not([data-tooltip=""]):hover::after,
 .live-bar [data-tooltip]:not(#stop-button):not([data-tooltip=""]):focus-visible::after,
 .live-bar input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after { transform: translateX(-50%) translateY(0); }
+/* Left column and RTP tools sit at the left window edge. Their tooltips start
+   at the element's left edge and open to the right, so they are not cut. */
+:is(.col-controls, .rtp-tools) [data-tooltip]::after { left: 0; transform: translateY(4px); }
+:is(.col-controls, .rtp-tools) [data-tooltip]:not([data-tooltip=""]):hover::after,
+:is(.col-controls, .rtp-tools) [data-tooltip]:not([data-tooltip=""]):focus-visible::after,
+:is(.col-controls, .rtp-tools) input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after { transform: translateY(0); }
 /* Esc hides the open tooltip until the pointer or focus moves (a11y.js). */
 .tooltips-dismissed [data-tooltip]::before,
 .tooltips-dismissed [data-tooltip]::after { opacity: 0 !important; visibility: hidden !important; }

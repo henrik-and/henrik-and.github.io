@@ -40,16 +40,22 @@ export function stopVisualizer() {
 const VISUALIZER_DB_FLOOR = -60;
 
 // Colour scale for canvases with class meter-gradient (preview.html). The
-// gradient spans the whole canvas, so a colour always maps to the same level:
-// green up to -18 dBFS, yellow at about -5 dBFS, orange-red at 0 dBFS.
+// gradient spans the whole canvas (-60 to 0 dBFS), so a colour always maps to
+// the same level: green up to -20 dBFS, yellow to -10 dBFS, orange to -3 dBFS
+// and red above -3 dBFS. Short blends between the zones.
 let cachedMeterGradient = null;
 function meterGradient() {
   if (!cachedMeterGradient) {
     const g = canvasCtx.createLinearGradient(0, 0, visualizerCanvas.width, 0);
-    g.addColorStop(0, 'hsl(150, 55%, 45%)');
-    g.addColorStop(0.7, 'hsl(140, 60%, 50%)');
-    g.addColorStop(0.92, 'hsl(60, 80%, 50%)');
-    g.addColorStop(1, 'hsl(20, 85%, 55%)');
+    const at = (dbfs) => (dbfs - VISUALIZER_DB_FLOOR) / -VISUALIZER_DB_FLOOR;
+    g.addColorStop(0, 'hsl(150, 55%, 42%)');
+    g.addColorStop(at(-21), 'hsl(135, 60%, 45%)');
+    g.addColorStop(at(-19), 'hsl(52, 90%, 50%)');
+    g.addColorStop(at(-11), 'hsl(48, 95%, 50%)');
+    g.addColorStop(at(-9), 'hsl(30, 95%, 52%)');
+    g.addColorStop(at(-3.5), 'hsl(24, 95%, 52%)');
+    g.addColorStop(at(-2.5), 'hsl(0, 80%, 50%)');
+    g.addColorStop(1, 'hsl(356, 85%, 45%)');
     cachedMeterGradient = g;
   }
   return cachedMeterGradient;

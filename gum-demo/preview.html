@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
   <!-- Preview of a new layout. Uses the same js/main.js and element IDs as
        index.html. No cache busters or import map: local testing only. -->
-  <link rel="stylesheet" href="css/style-new.css?v=hlspace1">
+  <link rel="stylesheet" href="css/style-new.css?v=activity1">
 </head>
 <body>
   <header class="app-header">
@@ -20,36 +20,6 @@
       </div>
       <a class="link-quiet" href="readme.html?v=margins1" target="_blank">About</a>
     </div>
-    <!-- Live bar: second header row, shown only while a stream is active
-         (see style-new.css). Sticky together with the header. -->
-    <div class="live-bar">
-      <div class="live-bar-inner">
-        <div class="meter">
-          <canvas id="audio-visualizer" class="meter-gradient" width="100" height="34"></canvas>
-          <div class="meter-scale" aria-hidden="true"><span>-60</span><span>-40</span><span>-20</span><span>0</span></div>
-        </div>
-        <div class="readouts">
-          <div id="visualizer-db-label" hidden data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The green bar goes from -60 dBFS (empty) to 0 dBFS (full). When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS. Green above -60 dBFS (RMS). The audioLevel label is based on peak values and turns green at 0.0007 (about -63 dB), so it is often green while this label is gray for quiet speech or background noise, where peaks are 10-20 dB above the RMS."></div>
-          <div id="visualizer-rms-label" hidden></div>
-        </div>
-        <button id="record-button" class="btn" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API. If 440Hz Sine is on when recording starts, the tone is recorded; otherwise the microphone (or audio file). Switching the tone during a recording does not change the recorded source."><span class="record-dot"></span>Rec</button>
-        <span class="bar-sep"></span>
-        <span class="check">
-          <input type="checkbox" id="mute-checkbox">
-          <label for="mute-checkbox" data-tooltip="Mute the audio track by setting MediaStreamTrack.enabled = false without stopping hardware capture.">Track:Mute</label>
-        </span>
-        <span class="check">
-          <input type="checkbox" id="html-play-checkbox">
-          <label for="html-play-checkbox" data-tooltip="Play the audio track directly using an HTML <audio> element with setSinkId() output routing.">HTML:Play</label>
-        </span>
-        <span class="check">
-          <input type="checkbox" id="webaudio-play-checkbox">
-          <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext &amp; MediaStreamAudioSourceNode) applying latencyHint, sampleRate, and renderSizeHint.">WebAudio:Play</label>
-        </span>
-        <span class="bar-sep"></span>
-        <button id="stop-button" class="btn btn-danger" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
-      </div>
-    </div>
   </header>
 
   <div class="diag">
@@ -59,6 +29,37 @@
         Loading diagnostics...
       </div>
     </details>
+  </div>
+
+  <!-- Live bar: shown only while a stream is active (see style-new.css).
+       Below System Diagnostics; sticks to the top of the window on scroll. -->
+  <div class="live-bar">
+    <div class="live-bar-inner">
+      <div class="meter">
+        <canvas id="audio-visualizer" class="meter-gradient" width="100" height="34"></canvas>
+        <div class="meter-scale" aria-hidden="true"><span>-60</span><span>-40</span><span>-20</span><span>0</span></div>
+      </div>
+      <div class="readouts">
+        <div id="visualizer-db-label" hidden data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The bar goes from -60 dBFS (empty) to 0 dBFS (full): green up to -20 dBFS, yellow to -10 dBFS, orange to -3 dBFS, red above -3 dBFS. When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS. Green above -60 dBFS (RMS). The audioLevel label is based on peak values and turns green at 0.0007 (about -63 dB), so it is often green while this label is gray for quiet speech or background noise, where peaks are 10-20 dB above the RMS."></div>
+        <div id="visualizer-rms-label" hidden></div>
+      </div>
+      <button id="record-button" class="btn" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API. If 440Hz Sine is on when recording starts, the tone is recorded; otherwise the microphone (or audio file). Switching the tone during a recording does not change the recorded source."><span class="record-dot"></span>Rec</button>
+      <span class="bar-sep"></span>
+      <span class="check">
+        <input type="checkbox" id="mute-checkbox">
+        <label for="mute-checkbox" data-tooltip="Mute the audio track by setting MediaStreamTrack.enabled = false without stopping hardware capture.">Track:Mute</label>
+      </span>
+      <span class="check">
+        <input type="checkbox" id="html-play-checkbox">
+        <label for="html-play-checkbox" data-tooltip="Play the audio track directly using an HTML <audio> element with setSinkId() output routing.">HTML:Play</label>
+      </span>
+      <span class="check">
+        <input type="checkbox" id="webaudio-play-checkbox">
+        <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext &amp; MediaStreamAudioSourceNode) applying latencyHint, sampleRate, and renderSizeHint.">WebAudio:Play</label>
+      </span>
+      <span class="bar-sep"></span>
+      <button id="stop-button" class="btn btn-danger" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
+    </div>
   </div>
 
   <!-- Outside the columns, so errors from applyConstraints() etc. show near
@@ -471,5 +472,6 @@
   <script type="module" src="js/main.js"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js"></script>
+  <script type="module" src="js/fold-activity.js"></script>
 </body>
 </html>
