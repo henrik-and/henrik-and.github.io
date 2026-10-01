@@ -904,6 +904,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 5000);
   }
 
+  const TRACK_ROW_TAIL_KEYS = ['deviceId', 'groupId'];
+
+  /**
+   * Returns the shared row order for the getConstraints() and getSettings()
+   * panes: the sorted union of keys, with deviceId and groupId last. The
+   * constraints side is only included in mic mode (where it is shown).
+   * @param {MediaStreamTrack} audioTrack
+   * @returns {string[]}
+   */
+  function trackRowKeys(audioTrack) {
+    const constraints = (micSourceRadio.checked && audioTrack.getConstraints) ? audioTrack.getConstraints() : {};
+    const settings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+    const all = new Set([...Object.keys(constraints), ...Object.keys(settings)]);
+    const head = [...all].filter(k => !TRACK_ROW_TAIL_KEYS.includes(k)).sort();
+    const tail = TRACK_ROW_TAIL_KEYS.filter(k => all.has(k));
+    return [...head, ...tail];
+  }
+
+  /** Formats a value as one-line JSON, e.g. { "exact": true }. */
+  function formatInlineValue(value) {
+    if (Array.isArray(value)) {
+      return `[${value.map(formatInlineValue).join(', ')}]`;
+    }
+    if (value && typeof value === 'object') {
+      const parts = Object.entries(value).map(([k, v]) => `${JSON.stringify(k)}: ${formatInlineValue(v)}`);
+      return parts.length ? `{ ${parts.join(', ')} }` : '{}';
+    }
+    return JSON.stringify(value);
+  }
+
+  /**
+   * Renders obj as JSON-like text with one row per key in rowKeys. Keys that
+   * obj lacks become blank rows so that two panes line up. Blank rows after
+   * the last real entry are dropped.
+   * @param {Object} obj
+   * @param {string[]} rowKeys
+   * @param {(key: string, escapedText: string) => string} wrap - Adds highlight markup.
+   * @returns {string} HTML
+   */
+  function renderAlignedRows(obj, rowKeys, wrap) {
+    const has = k => Object.prototype.hasOwnProperty.call(obj, k);
+    let lastReal = -1;
+    rowKeys.forEach((k, i) => { if (has(k)) lastReal = i; });
+    if (lastReal < 0) return '{}';
+    const lines = rowKeys.slice(0, lastReal + 1).map((key, i) => {
+      if (!has(key)) return '';
+      const text = escapeHtml(`"${key}": ${formatInlineValue(obj[key])}${i === lastReal ? '' : ','}`);
+      return '  ' + wrap(key, text);
+    });
+    return `{\n${lines.join('\n')}\n}`;
+  }
+
   /**
    * Updates the 'getConstraints():' UI box using track.getConstraints().
    *
@@ -937,30 +989,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     snapshotState.trackConstraints = displayConstraints;
 
     const header = 'getConstraints():\n';
-    const entries = Object.entries(displayConstraints);
-    if (entries.length === 0) {
-      trackConstraintsElement.innerHTML = header + '{}';
-      trackConstraintsElement.hidden = false;
-      return;
-    }
-
-    let content = '{\n';
-    entries.forEach(([key, value], index) => {
-      const isLast = index === entries.length - 1;
-      const jsonVal = JSON.stringify(value, null, 2);
-      const indentedVal = jsonVal.includes('\n')
-        ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
-        : jsonVal;
-      const leadingSpaces = '  ';
-      const textContent = escapeHtml(`"${key}": ${indentedVal}${isLast ? '' : ','}`);
-      if (highlightedKeys.includes(key)) {
-        content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
-      } else {
-        content += `${leadingSpaces}${textContent}\n`;
-      }
-    });
-    content += '}';
-
+    const content = renderAlignedRows(displayConstraints, trackRowKeys(audioTrack), (key, text) =>
+      highlightedKeys.includes(key) ? `<span class="highlight">${text}</span>` : text);
     trackConstraintsElement.innerHTML = header + content;
     trackConstraintsElement.hidden = false;
 
@@ -1034,32 +1064,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     snapshotState.trackSettings = displaySettings;
 
     const header = 'getSettings():\n';
-    const entries = Object.entries(displaySettings);
-    if (entries.length === 0) {
-      trackSettingsElement.innerHTML = header + '{}';
-      return;
-    }
-
-    let content = '{\n';
-    entries.forEach(([key, value], index) => {
-      const isLast = index === entries.length - 1;
-      const jsonVal = JSON.stringify(value, null, 2);
-      const indentedVal = jsonVal.includes('\n')
-        ? jsonVal.split('\n').map((line, lIdx) => lIdx === 0 ? line : '  ' + line).join('\n')
-        : jsonVal;
-      const leadingSpaces = '  ';
-      const textContent = escapeHtml(`"${key}": ${indentedVal}${isLast ? '' : ','}`);
+    const content = renderAlignedRows(displaySettings, trackRowKeys(audioTrack), (key, text) => {
       const status = statusMap[key];
-      if (status === 'applied') {
-        content += `${leadingSpaces}<span class="highlight-green">${textContent}</span>\n`;
-      } else if (status === 'not-applied') {
-        content += `${leadingSpaces}<span class="highlight-red">${textContent}</span>\n`;
-      } else {
-        content += `${leadingSpaces}${textContent}\n`;
-      }
+      if (status === 'applied') return `<span class="highlight-green">${text}</span>`;
+      if (status === 'not-applied') return `<span class="highlight-red">${text}</span>`;
+      return text;
     });
-    content += '}';
-
     trackSettingsElement.innerHTML = header + content;
 
     if (Object.keys(statusMap).length > 0) {
