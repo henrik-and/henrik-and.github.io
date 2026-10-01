@@ -35,6 +35,8 @@
   /* Page width limit, centred. none = full browser width. Other values
      (e.g. 1440px) change the cap. */
   --page-max: 1600px;
+  /* Space between the window edge and the cards. */
+  --gutter: var(--s6);
 
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
 }
@@ -110,16 +112,20 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
 
 /* Live bar: level meter and stream controls, below System Diagnostics. It
    sticks to the top of the window when the page scrolls. */
+/* Same width and look as the cards below it; floats at the top on scroll. */
 .live-bar {
-  position: sticky; top: 0; z-index: 20; margin-top: var(--s4);
+  position: sticky; top: var(--s2); z-index: 20;
+  width: calc(100% - 2 * var(--gutter));
+  max-width: calc(var(--page-max) - 2 * var(--gutter));
+  margin: var(--s4) auto 0;
   background: hsl(0 0% 100% / 0.92);
   backdrop-filter: saturate(1.4) blur(8px);
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border); border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
 }
 .live-bar-inner {
-  max-width: var(--page-max); margin: 0 auto;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
-  padding: var(--s2) var(--s6);
+  padding: var(--s2) var(--s4);
 }
 .bar-sep { width: 1px; height: 24px; background: var(--border); }
 .live-bar .check label { padding-top: 4px; padding-bottom: 4px; }
@@ -691,7 +697,7 @@ input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
   .diag { padding: 0 var(--s4); margin-top: var(--s4); }
   .wide { padding: var(--s3) var(--s4) 0; gap: var(--s3); }
   .page-msg { padding: 0 var(--s4); }
-  .live-bar-inner { padding: var(--s2) var(--s4); }
+  :root { --gutter: var(--s4); }
   .placeholder-card { display: none; }
 }
 @media (max-width: 600px) {
