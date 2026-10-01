@@ -29,7 +29,7 @@ export function stopVisualizer() {
 // Level meter range in dBFS. The bar is empty at or below the floor and full at 0 dBFS.
 const VISUALIZER_DB_FLOOR = -60;
 
-// Colour scale for canvases with class meter-gradient (preview.html). The
+// Colour scale for canvases with class meter-gradient. The
 // gradient spans the whole canvas (-60 to 0 dBFS), so a colour always maps to
 // the same level: green up to -20 dBFS, yellow to -10 dBFS, orange to -3 dBFS
 // and red above -3 dBFS. Short blends between the zones.
@@ -136,7 +136,7 @@ function drawVisualizer(now = performance.now()) {
 
 // ---------- Recorded audio playback meter ----------
 // Only on pages where #recorded-visualizer has class meter-gradient
-// (preview.html). main.js draws its spectrum on other pages.
+// main.js draws a spectrum if the canvas lacks that class.
 const recordedCanvas = document.querySelector('#recorded-visualizer.meter-gradient');
 const recordedMeter = recordedCanvas &&
     createLevelMeter(recordedCanvas, document.getElementById('recorded-db-label'));

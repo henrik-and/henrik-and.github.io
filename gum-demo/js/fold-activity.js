@@ -1,4 +1,4 @@
-// Activity hints for folded cards in preview.html. While the Track or RTP
+// Activity hints for folded cards in index.html. While the Track or RTP
 // card is folded, its heading shows:
 //   - a health dot: the current state (green / amber / red);
 //   - a badge: the number of changes since the card was last open.

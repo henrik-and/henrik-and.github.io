@@ -1,1212 +1,717 @@
-body {
-  font-family: "Lucida Console", "Courier New", monospace;
-  font-size: 14px;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* Styles for gum-demo (index.html). Element IDs and JS-generated classes
+   come from js/main.js. */
+
+/* ---------- Design tokens ---------- */
+:root {
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  --bg: hsl(216 25% 97%);
+  --surface: hsl(0 0% 100%);
+  --surface-2: hsl(216 25% 98.5%);
+  --surface-code: hsl(216 30% 97%);
+  --border: hsl(216 18% 88%);
+  --border-strong: hsl(216 14% 78%);
+  --text: hsl(218 25% 16%);
+  --text-2: hsl(218 12% 42%);
+  --text-3: hsl(218 10% 58%);
+
+  --accent: hsl(152 58% 34%);
+  --accent-hover: hsl(152 60% 29%);
+  --accent-soft: hsl(150 50% 94%);
+  --accent-line: hsl(150 40% 80%);
+  --accent-text: hsl(152 65% 24%);
+  --warn-soft: hsl(40 95% 93%);
+  --danger: hsl(356 70% 48%);
+  --danger-soft: hsl(356 90% 96%);
+  --rtp-soft: hsl(208 80% 97%);
+  --focus: hsl(212 85% 52%);
+
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --shadow-card: 0 1px 2px hsl(218 30% 20% / 0.05), 0 4px 16px hsl(218 30% 20% / 0.05);
+
+  /* Page width limit. none = full browser width. Set to
+     e.g. 1680px to cap it on very wide screens. */
+  --page-max: none;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
 }
 
 /* Visibility is toggled with the hidden attribute. !important makes it win
    over id and class rules that set display. */
-[hidden] {
-  display: none !important;
-}
+[hidden] { display: none !important; }
 
-#system-info-container {
-  background: #f1f3f5;
-  padding: 5px 10px;
-  border: 1px solid #d0d5dd;
-  margin-top: 6px;
-  margin-bottom: 0;
-  border-radius: 6px;
-  width: fit-content;
-  max-width: 90%;
-  box-sizing: border-box;
-}
-
-#system-info-container summary {
-  cursor: pointer;
-  user-select: none;
-  color: #495057;
-  font-size: 11px;
-  font-weight: bold;
-  text-align: left;
-}
-
-#system-info-container[open] {
-  padding: 8px 12px;
-}
-
-#system-info-container[open] summary {
-  margin-bottom: 6px;
-}
-
-#system-info-details {
-  font-size: 11px;
-  line-height: 1.45;
-  color: #333;
-  text-align: left;
-}
-
-.api-call-container {
-  display: flex;
-  align-items: center;
-  margin-top: 20px;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-@media (max-width: 800px) {
-  .api-call-container {
-    flex-direction: column;
-    align-items: center;
-  }
-}
-
-.constraints-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.source-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: bold;
-  padding-left: 5px;
-  margin-bottom: 5px;
-}
-
-.source-selector-label {
-  margin-right: 5px;
-}
-
-.source-selector input[type="radio"] {
-  cursor: pointer;
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
   margin: 0;
-  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
 }
+pre, code { font-family: var(--font-mono); font-size: 12.5px; }
 
-.source-selector label {
-  cursor: pointer;
-  margin-right: 5px;
-  display: flex;
-  align-items: center;
+/* One visible focus ring for keyboard users. */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- Header ---------- */
+.app-header {
+  background: hsl(0 0% 100% / 0.9);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--border);
+  /* backdrop-filter makes a stacking context; lift it so the Save Snapshot
+     tooltip is drawn above System Diagnostics and the live bar. */
+  position: relative; z-index: 30;
 }
+.app-header-inner {
+  max-width: var(--page-max); margin: 0 auto;
+  display: flex; align-items: center; gap: var(--s4);
+  padding: var(--s3) var(--s6);
+}
+.app-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.app-title a { color: inherit; text-decoration: none; }
+.app-title a:hover { text-decoration: underline; }
+.app-title .api { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent-text); }
+.header-spacer { flex: 1; }
+.link-quiet { color: var(--text-2); font-size: 13px; text-decoration: none; }
+.link-quiet:hover { color: var(--text); text-decoration: underline; }
 
+/* ---------- Layout ---------- */
+.diag { max-width: var(--page-max); margin: var(--s5) auto 0; padding: 0 var(--s6); }
+.layout {
+  max-width: var(--page-max); margin: 0 auto;
+  padding: var(--s4) var(--s6) var(--s6);
+  display: grid;
+  grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+  gap: var(--s5);
+  align-items: start;
+}
+.col { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+
+/* The right column: #stream-controls-container is only a wrapper, so its
+   cards and #audio-devices-container can be ordered together. */
+#stream-controls-container { display: contents; }
+.card-playback { order: 2; }
+.card-devices { order: 3; }
+.placeholder-card { color: var(--text-2); border-style: dashed; box-shadow: none; }
+.col-live:has(> #stream-controls-container:not([hidden])) > .placeholder-card { display: none; }
+
+/* Call view. The live bar (in the header), the recording and the track/RTP
+   stats are outside #stream-controls-container, so hide them together with
+   it. While a stream is active they sit above the controls. */
+body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: none; }
+.wide { max-width: var(--page-max); margin: 0 auto; padding: var(--s4) var(--s6) 0; display: flex; flex-direction: column; gap: var(--s4); }
+.page-msg { max-width: var(--page-max); margin: var(--s4) auto 0; padding: 0 var(--s6); }
+.page-msg:has(> #error-message[hidden]) { display: none; }
+
+/* Live bar: level meter and stream controls, below System Diagnostics. It
+   sticks to the top of the window when the page scrolls. */
+.live-bar {
+  position: sticky; top: 0; z-index: 20; margin-top: var(--s4);
+  background: hsl(0 0% 100% / 0.92);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.live-bar-inner {
+  max-width: var(--page-max); margin: 0 auto;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s6);
+}
+.bar-sep { width: 1px; height: 24px; background: var(--border); }
+.live-bar .check label { padding-top: 4px; padding-bottom: 4px; }
+.live-bar .check:has(#mute-checkbox) {
+  background: hsl(40 90% 93%);
+  border-color: hsl(38 60% 74%);
+  color: hsl(32 75% 24%);
+}
+.live-bar .check:has(#mute-checkbox):hover {
+  background: hsl(40 90% 89%);
+  border-color: hsl(38 65% 64%);
+}
+.live-bar .check:has(#mute-checkbox:checked) {
+  background: hsl(38 92% 84%);
+  border-color: hsl(34 80% 52%);
+  color: hsl(28 85% 20%);
+}
+.live-bar #mute-checkbox { accent-color: hsl(32 85% 38%); }
+/* Play controls: HTML:Play is sky blue (hue 200), WebAudio:Play is indigo
+   (hue 240). The same hues mark the matching rows in Playback settings. */
+.live-bar .check:has(#html-play-checkbox) { --play-h: 200; }
+.live-bar .check:has(#webaudio-play-checkbox) { --play-h: 240; }
+.live-bar .check:has(#html-play-checkbox, #webaudio-play-checkbox) {
+  background: hsl(var(--play-h) 85% 94%);
+  border-color: hsl(var(--play-h) 55% 76%);
+  color: hsl(var(--play-h) 65% 26%);
+}
+.live-bar .check:has(#html-play-checkbox, #webaudio-play-checkbox):hover {
+  background: hsl(var(--play-h) 85% 90%);
+  border-color: hsl(var(--play-h) 60% 66%);
+}
+.live-bar .check:has(#html-play-checkbox:checked, #webaudio-play-checkbox:checked) {
+  background: hsl(var(--play-h) 88% 86%);
+  border-color: hsl(var(--play-h) 70% 55%);
+  color: hsl(var(--play-h) 75% 20%);
+}
+.live-bar :is(#html-play-checkbox, #webaudio-play-checkbox) { accent-color: hsl(var(--play-h) 80% 42%); }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.card-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4) 0;
+}
+.card-title {
+  margin: 0; font-size: 12px; font-weight: 650; letter-spacing: 0.02em;
+  text-transform: uppercase; color: var(--text-2);
+}
+.spacer { flex: 1; }
+.card-body { padding: var(--s3) var(--s4) var(--s4); }
+.card-foot {
+  display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
+  padding: var(--s2) var(--s4); border-top: 1px solid var(--border);
+  background: var(--surface-2); border-radius: 0 0 var(--radius-l) var(--radius-l);
+}
+.push-right { margin-left: auto; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: inherit; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 8px 14px; border-radius: var(--radius-m); white-space: nowrap;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.btn:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 1px 2px hsl(152 60% 20% / .3); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; box-shadow: 0 1px 2px hsl(356 60% 20% / .25); }
+.btn-danger:hover { background: hsl(356 72% 41%); border-color: hsl(356 72% 41%); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--text-2); font-weight: 500; }
+.btn-ghost:hover { background: var(--surface-code); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 13px; }
+.btn:disabled, .btn:disabled:hover {
+  opacity: .45; cursor: not-allowed; transform: none;
+}
+.btn-primary:disabled, .btn-primary:disabled:hover { background: var(--accent); border-color: var(--accent); }
+.btn-danger:disabled, .btn-danger:disabled:hover { background: var(--danger); border-color: var(--danger); }
+
+/* ---------- Form controls ---------- */
+select, input[type=number] {
+  font: inherit; font-family: var(--font-mono); font-size: 12.5px;
+  color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  padding: 4px 6px; min-width: 0; max-width: 100%;
+}
+select:hover { border-color: var(--border-strong); }
+select:disabled { color: var(--text-3); background: var(--surface-code); }
+
+/* Segmented Microphone / Audio File switch. The radios stay in the DOM for
+   keyboard use and for main.js. */
+.segmented {
+  display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px;
+  background: var(--surface-code); border: 1px solid var(--border); border-radius: var(--radius-m);
+}
+.segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.segmented label {
+  padding: 5px 12px; border-radius: 7px; font-weight: 500; color: var(--text-2); cursor: pointer;
+  transition: background-color .15s, color .15s, box-shadow .15s;
+}
+.segmented label:hover { color: var(--text); }
+.segmented input:checked + label { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px hsl(218 30% 20% / .12); }
+.segmented input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* Checkbox chips: <span class="check"><input><label></span>. The label gets
+   the padding so the whole chip is clickable. */
+.checks { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.option-groups { display: grid; grid-template-columns: max-content 1fr; gap: var(--s2) var(--s3); align-items: center; }
+.option-group { display: contents; }
+.option-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
+.check {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--border); border-radius: var(--radius-s);
+  background: var(--surface); font-weight: 500; color: var(--text);
+  transition: border-color .15s, background-color .15s;
+}
+.check:hover { border-color: var(--border-strong); }
+.check input { accent-color: var(--accent); margin: 0 0 0 10px; cursor: pointer; }
+.check label { padding: 6px 10px 6px 7px; cursor: pointer; white-space: nowrap; }
+.check-select { margin: 0 8px 0 0; padding: 2px 4px; font-size: 12px; font-family: var(--font-ui); border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.check-select:disabled { opacity: .5; }
+.check:has(input:checked) { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+.check:has(input:disabled) label, .check:has(input:disabled) input { cursor: not-allowed; }
+
+.field { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; }
+
+.info-icon {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+  font: italic 600 11px/1 Georgia, "Times New Roman", serif; color: var(--text-3);
+  border: 1px solid var(--border-strong); background: var(--surface);
+  cursor: help; flex: none; user-select: none;
+}
+.info-icon:hover { color: var(--accent-text); border-color: var(--accent); }
+
+.disabled-setting { opacity: 0.5; pointer-events: none; }
+
+/* ---------- Source card: constraints code frame ---------- */
 .file-settings-container {
-  border: 1px solid darkgrey;
-  padding: 10px;
-  background-color: #F5F5F5; /* Light Gray */
-  border-radius: 8px;
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Match the visual width style of the settings-container if possible, 
-     though explicit width isn't set on either. */
-  width: fit-content; 
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  margin-bottom: var(--s3); padding: var(--s3);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-m);
+  font-size: 13px; color: var(--text-2);
 }
-
-.file-settings-container label {
-  font-family: monospace;
-  margin-right: 10px;
-  font-weight: bold;
-}
-
-.file-settings-container select,
-.file-settings-container input {
-  font-family: "Lucida Console", "Courier New", monospace;
-  font-size: 13px;
-  padding: 5px;
-  border-radius: 4px;
-}
-
+.file-settings-container select { flex: 1 1 160px; }
+.file-settings-container input[type=file] { font: inherit; font-size: 12.5px; max-width: 100%; }
 .file-settings-container input::file-selector-button {
-  font-family: inherit;
-  font-size: inherit;
-  padding: 2px 8px;
-  cursor: pointer;
-}
-
-.settings-and-copy-container {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+  font: inherit; padding: 3px 10px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface);
 }
 
 .settings-container {
-  border: 1px solid darkgrey;
-  padding: 10px;
-  background-color: #E8F5E9;
-  border-radius: 8px;
-  position: relative;
+  font-family: var(--font-mono); font-size: 12.5px;
+  background: var(--surface-code); border: 1px solid var(--border); border-radius: var(--radius-m);
+  padding: var(--s3) var(--s4);
 }
+.settings-container > pre { margin: 0; color: var(--text-2); }
 
-.peerconnection-container,
-.dtx-container,
-.auto-record-container,
-.auto-play-container,
-.sine-tone-container {
-  position: absolute;
-  right: 10px;
-  display: flex;
-  align-items: center;
-}
-
-.peerconnection-container {
-  top: 10px;
-}
-
-.dtx-container {
-  top: 40px; /* Position it below the PeerConnection container */
-}
-
-.auto-record-container {
-  top: 70px; /* Position it below the DTX container */
-}
-
-.auto-play-container {
-  top: 100px; /* Position it below the Auto-Record container */
-}
-
-.sine-tone-container {
-  top: 130px; /* Position it below the Auto-Play container */
-}
-
-#peerconnection-checkbox:checked + label,
-#dtx-checkbox:checked + label,
-#auto-record-checkbox:checked + label,
-#auto-play-checkbox:checked + label,
-#sine-tone-checkbox:checked + label {
-  background-color: #E3F2FD; /* Light blue */
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.settings-container pre {
-  font-family: monospace;
-  margin: 0;
-}
+/* Each constraint row: label | select | info. The label column is a fixed
+   width so rows inside and outside the applyConstraints() group line up. */
 .setting {
-  display: flex;
-  align-items: center;
-  margin-left: 2em;
+  display: grid; grid-template-columns: 18ch minmax(0, 1fr) auto;
+  align-items: center; gap: var(--s2); margin: 3px 0;
 }
-
-.setting label {
-  display: inline-block;
-  width: 17ch;
-  font-family: monospace;
-  margin-right: 6px;
-}
-
-.dynamic-constraints-group .setting select {
-  width: 140px;
-}
-
-.info-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  min-width: 14px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-style: italic;
-  font-weight: bold;
-  font-size: 11px;
-  color: #2E7D32;
-  border: 1px solid #81C784;
-  border-radius: 50%;
-  margin-left: 8px;
-  margin-right: 4px;
-  cursor: help;
-  user-select: none;
-  background-color: #FFFFFF;
-  line-height: 14px;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.info-icon:hover {
-  background-color: #E8F5E9;
-  color: #1B5E20;
-  border-color: #388E3C;
-}
-
-.action-buttons-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+.setting label { color: var(--text); }
+.setting select { width: 100%; }
 .dynamic-constraints-group {
-  border: 1px dashed #81C784;
-  border-radius: 6px;
-  padding: 6px 14px 6px 0;
-  margin: 4px 0 4px 1.5em;
-  background-color: rgba(255, 255, 255, 0.45);
-  width: fit-content;
+  margin: var(--s1) 0 var(--s1) 2ch; padding: var(--s1) var(--s2) var(--s2);
+  border: 1px dashed hsl(150 30% 72%); border-radius: var(--radius-s);
+  background: hsl(0 0% 100% / 0.55);
 }
-
-.dynamic-constraints-group .setting {
-  margin-left: 1em;
-}
-
 .dynamic-constraints-header {
-  font-family: monospace;
-  font-size: 11px;
-  color: #2E7D32;
-  margin-left: 1em;
-  margin-bottom: 4px;
-  font-weight: bold;
+  font-size: 11.5px; font-style: italic; color: var(--accent-text); margin-bottom: 2px;
 }
+.dynamic-constraints-header::before { content: "// "; }
+.setting-device { margin-left: calc(2ch + var(--s2) + 1px); margin-right: calc(var(--s2) + 1px); }
 
-.disabled-setting {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-#gum-button,
-#apply-constraints-button,
-#copy-bookmark-button,
-#copy-markdown-button,
-#save-snapshot-button {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  font-size: 1em;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  height: fit-content;
-}
-#gum-button:hover,
-#apply-constraints-button:hover,
-#copy-bookmark-button:hover,
-#copy-markdown-button:hover,
-#save-snapshot-button:hover {
-  background-color: #45a049;
-}
-
-#copy-markdown-button {
-  margin-top: 1em;
-}
-
-#gum-button:disabled,
-#apply-constraints-button:disabled,
-#copy-bookmark-button:disabled {
-  background-color: #cccccc;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  color: #666666;
-  cursor: not-allowed;
-}
+#bookmark-url-container { margin: 0; word-break: break-all; font-size: 12.5px; color: var(--text-2); }
+#bookmark-url-container:empty { display: none; }
 
 .error {
-  color: #D8000C; /* A clear, strong red */
-  font-family: inherit;
-  font-size: inherit;
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #FFD2D2; /* A light red background */
-  border-radius: 8px;
-  border: 1px solid #D8000C;
+  margin: 0; padding: var(--s3) var(--s4);
+  color: hsl(356 75% 36%); background: var(--danger-soft);
+  border: 1px solid hsl(356 60% 82%); border-radius: var(--radius-m);
 }
+#error-message.notice { color: var(--accent-text); background: var(--accent-soft); border-color: var(--accent-line); }
 
-#stream-controls-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 10px;
-  gap: 10px;
+/* ---------- Live bar contents ---------- */
+/* Level meter with a dBFS scale. The coloured fill is drawn by visualizer.js
+   (class meter-gradient on the canvas). */
+.meter { flex: 1 1 260px; max-width: 460px; min-width: 160px; display: grid; gap: 2px; }
+/* Ticks at their true positions: -60, -40, -20 and 0 dBFS. */
+.meter-scale {
+  position: relative; height: 11px;
+  font-family: var(--font-mono); font-size: 10.5px; line-height: 1; color: var(--text-3);
 }
-
-#checkbox-container {
-  display: flex;
-  align-items: center;
+.meter-scale span { position: absolute; top: 0; transform: translateX(-50%); }
+.meter-scale span:nth-child(1) { left: 0; transform: none; }
+.meter-scale span:nth-child(2) { left: 33.333%; }
+.meter-scale span:nth-child(3) { left: 66.667%; }
+.meter-scale span:nth-child(4) { left: 100%; transform: translateX(-100%); }
+#audio-visualizer,
+#recorded-visualizer {
+  width: 100%; height: 14px; display: block;
+  background: rgb(250, 250, 250); border: 1px solid var(--border-strong); border-radius: 999px;
 }
-
-#checkbox-container label {
-  margin-right: 5px;
-}
-
-.latency-hint-select,
-.sample-rate-select,
-.render-size-hint-select {
-  margin-right: 0;
-}
-
-.webaudio-settings-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid #ccc;
-  padding: 5px 10px;
-  border-radius: 8px;
-  margin: 0 8px 0 3px;
-  background-color: #f7f7ff;
-}
-
-#webaudio-quantum-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
-  color: #1b5e20;
-  background: #e8f5e9;
-  border: 1px solid #81c784;
-  padding: 1px 6px;
-  border-radius: 4px;
-  cursor: help;
-  white-space: nowrap;
-}
-
-#visualizer-and-stop-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#visualizer-container {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-#audio-visualizer {
-  background-color: rgb(250, 250, 250);
-  border: 1px solid #444;
-  border-radius: 8px;
-  display: block;
-}
-
-#visualizer-db-label,
+.readouts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+#visualizer-db-label, #recorded-db-label,
 #visualizer-rms-label {
-  font-size: 11px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-  background: #f5f5f5;
-  color: #777;
-  cursor: help;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; padding: 3px 8px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--surface-code); color: var(--text-2);
+  cursor: help; transition: background-color .15s, border-color .15s, color .15s;
 }
+#visualizer-db-label.active, #recorded-db-label.active,
+#visualizer-rms-label.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+#visualizer-db-label .rms-key, #recorded-db-label .rms-key,
+#visualizer-rms-label .rms-key { margin-right: 4px; opacity: 0.85; }
+#visualizer-db-label .rms-val, #recorded-db-label .rms-val,
+#visualizer-rms-label .rms-val { font-weight: 600; }
 
-#visualizer-db-label.active,
-#visualizer-rms-label.active {
-  background: #e8f5e9;
-  border-color: #81c784;
-  color: #1b5e20;
-}
-
-#visualizer-db-label .rms-key,
-#visualizer-rms-label .rms-key {
-  font-weight: 600;
-  margin-right: 3px;
-  opacity: 0.85;
-}
-
-#visualizer-db-label .rms-val,
-#visualizer-rms-label .rms-val {
-  font-weight: 700;
-}
-
+.record-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); display: inline-block; }
 #record-button {
-  background-color: #FFCCCC;
-  color: black;
-  border: 1.5px solid transparent;
-  padding: 10px 15px;
-  font-size: 1em;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
+  background: hsl(356 85% 93%);
+  border-color: hsl(356 60% 78%);
+  color: hsl(356 65% 26%);
 }
-
 #record-button:hover {
-  background-color: #FF9999;
+  background: hsl(356 85% 89%);
+  border-color: hsl(356 60% 68%);
 }
-
 #record-button.recording-active {
-  background-color: #FFCDD2;
-  color: #900;
-  border-color: #D32F2F;
+  background: hsl(356 85% 86%);
+  border-color: var(--danger);
+  color: hsl(356 75% 22%);
 }
-
 #record-button.recording-active:hover {
-  background-color: #EF9A9A;
+  background: hsl(356 85% 82%);
 }
-
-.record-dot {
-  height: 10px;
-  width: 10px;
-  background-color: red;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-}
-
 @keyframes recordPulse {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.25;
-    transform: scale(0.85);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
 }
-
-#record-button.recording-active .record-dot {
-  display: inline-block;
-  animation: recordPulse 1.2s infinite ease-in-out;
-}
-
-#stop-button {
-  background-color: #D8000C;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  font-size: 1em;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-#audio-playback {
-  display: none;
-}
+#record-button.recording-active .record-dot { animation: recordPulse 1.2s infinite ease-in-out; }
 
 .recorded-audio-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #F8FAFC;
-  border: 1px solid #CBD5E1;
-  border-radius: 8px;
-  padding: 4px 10px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3);
+  padding: var(--s2) var(--s4);
 }
-
 .recorded-label {
-  font-size: 0.85em;
-  font-weight: bold;
-  color: #334155;
-  white-space: nowrap;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1.5px solid transparent;
+  font-weight: 600; font-size: 13px; white-space: nowrap;
+  padding: 2px 6px; border-radius: 4px; border: 1.5px solid transparent;
   transition: all 1s ease-in-out;
 }
-
-#recorded-audio {
-  height: 36px;
-}
-
+#recorded-audio { height: 36px; flex: 0 1 320px; min-width: 220px; }
+/* main.js hides the canvas until playback starts; keep the empty meter visible
+   so the card layout does not jump. */
+.recorded-meter canvas[hidden] { display: block !important; }
 #recorded-audio::-webkit-media-controls-overflow-button,
 #recorded-audio::-webkit-media-controls-download-button {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;
+}
+.download-icon { width: 14px; height: 14px; stroke: currentColor; flex-shrink: 0; }
+#audio-playback { display: none; }
+
+/* ---------- Playback card ---------- */
+.card-playback { border-color: hsl(208 50% 82%); }
+.card-playback .card-title { color: hsl(212 60% 32%); }
+.play-grid { display: grid; gap: var(--s2); }
+.play-row {
+  --play-h: 200;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4);
+  padding: var(--s2) var(--s3); border-radius: var(--radius-m);
+  background: hsl(var(--play-h) 85% 95%); border: 1px solid hsl(var(--play-h) 55% 78%);
+}
+.play-row.webaudio-settings-group { --play-h: 240; }
+.sub-title { font-weight: 600; font-size: 13px; color: hsl(var(--play-h, 212) 65% 26%); min-width: 11ch; }
+#audioOutputDevice { max-width: 280px; }
+#renderSizeHintCustom { width: 80px; }
+#webaudio-quantum-badge {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  padding: 2px 7px; border-radius: var(--radius-s); cursor: help;
+  background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line);
 }
 
-#download-recorded-audio-button {
-  background-color: #0F766E;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  font-size: 0.85em;
-  font-weight: bold;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  transition: background-color 0.15s ease;
+/* ---------- Readout panes (track, devices, RTP) ---------- */
+/* Panes on the same row get the same height (align-items: stretch). */
+.panes { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: stretch; }
+/* Each pane is as wide as its longest line (no wrapping) and grows to fill
+   the row. A pane wider than the card scrolls horizontally. */
+.pane {
+  flex: 1 1 auto; max-width: 100%;
+  margin: 0; overflow-x: auto;
+  white-space: pre;
+  font-size: 11.5px; line-height: 1.4;
+  background: var(--surface-code); border: 1px solid var(--border); border-radius: var(--radius-s);
+  padding: var(--s2) var(--s3); color: var(--text);
 }
+.pane:empty { display: none; }
+#webaudio-context-info { background: var(--accent-soft); border-color: var(--accent-line); border-left: 4px solid var(--accent); color: var(--accent-text); }
+.card-rtp .pane { background: var(--rtp-soft); }
+#audio-file-progress { width: 100%; height: 10px; margin-top: 5px; display: block; accent-color: var(--accent); }
 
-#download-recorded-audio-button:hover {
-  background-color: #115E59;
+/* Foldable cards: <details class="fold"><summary class="card-head">. All
+   cards are open by default except RTP. The Source card's buttons are outside
+   its <details>, so getUserMedia stays reachable when it is folded. */
+.fold > summary.card-head { cursor: pointer; user-select: none; list-style: none; padding-bottom: var(--s3); }
+.fold[open] > summary.card-head { padding-bottom: 0; }
+.fold > summary.card-head::-webkit-details-marker,
+#system-info-container > summary::-webkit-details-marker { display: none; }
+.fold > summary.card-head:hover .card-title,
+#system-info-container > summary:hover { color: var(--text); }
+/* Same small arrow for the cards and System Diagnostics. */
+.fold > summary.card-head::before,
+#system-info-container > summary::before {
+  content: ""; flex: none; width: 0; height: 0;
+  border-left: 7px solid var(--text-2); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  transition: transform .15s;
 }
-
-.download-icon {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  flex-shrink: 0;
+.fold[open] > summary.card-head::before,
+#system-info-container[open] > summary::before { transform: rotate(90deg); }
+#system-info-container > summary { list-style: none; display: flex; align-items: center; gap: var(--s3); }
+.rtp-tools { display: flex; padding: var(--s2) var(--s4) 0; }
+/* A playout glitch is visible in the heading also when the card is closed. */
+.rtp-glitch-flag {
+  display: none; margin-left: var(--s2); padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; vertical-align: middle;
+  background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2;
 }
-
-#recorded-visualizer {
-  display: block;
-  background-color: rgb(250, 250, 250);
-  border: 1px solid #444;
-  border-radius: 8px;
+.card-rtp:has(#audio-playout-stats.glitch-active) .rtp-glitch-flag { display: inline-block; }
+/* Folded Track and RTP cards: health dot, change badge and a coloured left
+   edge (fold-activity.js). Shown only while the card is folded. */
+.fold-health, .fold-badge { display: none; }
+.fold-health { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.fold-health[data-state="ok"] { background: hsl(140 55% 42%); }
+.fold-health[data-state="warn"] { background: hsl(38 92% 50%); }
+.fold-health[data-state="bad"] { background: hsl(356 75% 50%); }
+.fold:not([open]) > summary .fold-health[data-state] { display: inline-block; }
+.fold-badge {
+  padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: hsl(48 95% 88%); color: hsl(35 80% 24%); border: 1px solid hsl(45 80% 62%);
 }
+.fold:not([open]) > summary .fold-badge.has-changes { display: inline-block; animation: badge-pop .4s ease-out; }
+@keyframes badge-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.card:has(> .fold:not([open]))[data-health="ok"] { border-left: 4px solid hsl(140 55% 42%); }
+.card:has(> .fold:not([open]))[data-health="warn"] { border-left: 4px solid hsl(38 92% 50%); }
+.card:has(> .fold:not([open]))[data-health="bad"] { border-left: 4px solid hsl(356 75% 50%); }
 
-#audio-devices-container {
-  display: flex;
-  width: 100%;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 1em;
-}
-
-#track-section-container {
-  border: 1px solid #A5D6A7;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 14px auto 0 auto;
-  background-color: rgba(232, 245, 233, 0.35);
-  width: fit-content;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-#track-section-title {
-  font-family: monospace;
-  font-weight: bold;
-  font-size: 13px;
-  color: #2E7D32;
-  padding: 0 8px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-#track-settings-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-#lifecycle-events-container {
-  width: 100%;
-  margin-top: 10px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid #C8E6C9;
-  border-radius: 6px;
-  padding: 5px 8px;
-  box-sizing: border-box;
-}
-
+/* Lifecycle log */
+#lifecycle-events-container { width: 100%; }
 #lifecycle-events-container summary {
-  cursor: pointer;
-  user-select: none;
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: bold;
-  color: #2E7D32;
+  cursor: pointer; user-select: none; font-weight: 600; font-size: 13px; color: var(--text-2);
 }
-
 #lifecycle-events-log {
-  margin-top: 6px;
-  font-family: "Lucida Console", "Courier New", monospace;
-  font-size: 10px;
-  line-height: 1.45;
-  color: #212529;
-  max-height: 90px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  background: #FFFFFF;
-  border: 1px solid #E0E0E0;
+  margin-top: var(--s2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  max-height: 220px; overflow-y: auto; white-space: pre-wrap;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-s);
   padding: 6px 8px;
-  border-radius: 4px;
-  box-sizing: border-box;
 }
+.lifecycle-event-line { margin-bottom: 2px; padding: 1px 4px; border-radius: 3px; transition: background-color 0.2s ease; }
+.lifecycle-event-line:last-child { margin-bottom: 0; }
+.lifecycle-event-line.event-error { color: #B71C1C; background-color: #FFEBEE; border-left: 3px solid #D32F2F; }
+.lifecycle-event-line.event-warning { color: #2F652F; background-color: #EDF7DE; border-left: 3px solid #4F8A10; }
+.lifecycle-event-line.event-success { color: #1B5E20; }
+.event-timestamp { color: var(--text-3); margin-right: 4px; }
+.event-marker { margin-right: 4px; font-size: 9px; display: inline-block; vertical-align: middle; }
 
-.lifecycle-event-line {
-  margin-bottom: 2px;
-  padding: 1px 4px;
-  border-radius: 3px;
-  transition: background-color 0.2s ease;
-}
-
-.lifecycle-event-line:last-child {
-  margin-bottom: 0;
-}
-
-.lifecycle-event-line.event-error {
-  color: #B71C1C;
-  background-color: #FFEBEE;
-  border-left: 3px solid #D32F2F;
-}
-
-.lifecycle-event-line.event-warning {
-  color: #2F652F;
-  background-color: #EDF7DE;
-  border-left: 3px solid #4F8A10;
-}
-
-.lifecycle-event-line.event-success {
-  color: #1B5E20;
-}
-
-.event-timestamp {
-  color: #757575;
-  margin-right: 4px;
-}
-
-.event-marker {
-  margin-right: 4px;
-  font-size: 9px;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-#audio-file-progress {
-  width: 100%;
-  height: 10px;
-  margin-top: 5px;
-  display: block;
-}
-
-#rtp-stats-section-container {
-  border: 1px solid #90CAF9;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 14px auto 0 auto;
-  background-color: rgba(227, 242, 253, 0.35);
-  width: fit-content;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-#rtp-stats-section-title {
-  font-family: monospace;
-  font-weight: bold;
-  font-size: 13px;
-  color: #1565C0;
-  padding: 0 8px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-#rtp-stats-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-#track-constraints,
-#track-settings,
-#track-properties,
-#track-stats,
-#audio-input-device,
-#audio-output-info {
-  background-color: rgb(250, 250, 250);
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 10px 10px 5px 10px;
-  font-size: 12px;
-  font-family: "Lucida Console", "Courier New", monospace;
-  white-space: pre-wrap;
-  text-align: left;
-  margin: 0;
-}
-
-#track-constraints:empty,
-#track-settings:empty,
-#track-properties:empty,
-#track-stats:empty,
-#audio-input-device:empty,
-#audio-output-info:empty,
-#webaudio-context-info:empty {
-  display: none;
-}
-
-#webaudio-context-info {
-  background-color: #E8F5E9; /* Pale emerald green */
-  border: 1px solid #81C784;
-  border-left: 4px solid #2E7D32;
-  border-radius: 8px;
-  padding: 10px 12px 6px 12px;
-  font-size: 12px;
-  font-family: "Lucida Console", "Courier New", monospace;
-  white-space: pre-wrap;
-  text-align: left;
-  margin: 0;
-  color: #1B5E20;
-}
-
-#outbound-rtp-stats,
-#inbound-rtp-stats,
-#audio-playout-stats {
-  background-color: #E3F2FD; /* Light blue */
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 10px 10px 5px 10px;
-  font-size: 12px;
-  font-family: "Lucida Console", "Courier New", monospace;
-  white-space: pre-wrap;
-  text-align: left;
-  margin: 0;
-}
-
+/* RTP card: glitch simulation and badges */
+#glitch-simulation-container { flex-wrap: wrap; font-size: 12.5px; }
 .glitch-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: bold;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
-  vertical-align: middle;
+  display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle;
 }
-
-.glitch-badge-clean {
-  background-color: #E8F5E9;
-  color: #2E7D32;
-  border: 1px solid #A5D6A7;
-}
-
-.glitch-badge-warning {
-  background-color: #FFF9C4;
-  color: #F57F17;
-  border: 1px solid #FFF176;
-}
-
-.glitch-badge-error {
-  background-color: #FFEBEE;
-  color: #C62828;
-  border: 1px solid #FFCDD2;
-}
-
+.glitch-badge-clean { background: #E8F5E9; color: #2E7D32; border: 1px solid #A5D6A7; }
+.glitch-badge-warning { background: #FFF9C4; color: #F57F17; border: 1px solid #FFF176; }
+.glitch-badge-error { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
 #audio-playout-stats.glitch-active {
-  border-color: #E53935 !important;
-  background-color: #FFF5F5 !important;
-  box-shadow: 0 0 8px rgba(229, 57, 53, 0.4);
-  transition: all 0.3s ease;
+  border-color: #E53935 !important; background-color: #FFF5F5 !important;
+  box-shadow: 0 0 8px rgba(229, 57, 53, 0.4); transition: all 0.3s ease;
 }
+.stat-alert { color: #D32F2F; font-weight: bold; }
 
+/* ---------- Highlights in the track panes (copied from style.css) ---------- */
 @keyframes highlight-pulse {
-  0% {
-    box-shadow: 0 0 4px rgba(255, 143, 0, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 14px rgba(255, 143, 0, 1);
-  }
-  100% {
-    box-shadow: 0 0 4px rgba(255, 143, 0, 0.6);
-  }
+  0% { box-shadow: 0 0 4px rgba(255, 143, 0, 0.6); }
+  50% { box-shadow: 0 0 14px rgba(255, 143, 0, 1); }
+  100% { box-shadow: 0 0 4px rgba(255, 143, 0, 0.6); }
 }
-
 @keyframes highlight-pulse-red {
-  0% {
-    box-shadow: 0 0 4px rgba(211, 47, 47, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 14px rgba(211, 47, 47, 1);
-  }
-  100% {
-    box-shadow: 0 0 4px rgba(211, 47, 47, 0.6);
-  }
+  0% { box-shadow: 0 0 4px rgba(211, 47, 47, 0.6); }
+  50% { box-shadow: 0 0 14px rgba(211, 47, 47, 1); }
+  100% { box-shadow: 0 0 4px rgba(211, 47, 47, 0.6); }
 }
-
 @keyframes highlight-pulse-green {
-  0% {
-    box-shadow: 0 0 4px rgba(56, 142, 60, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 14px rgba(56, 142, 60, 1);
-  }
-  100% {
-    box-shadow: 0 0 4px rgba(56, 142, 60, 0.6);
-  }
+  0% { box-shadow: 0 0 4px rgba(56, 142, 60, 0.6); }
+  50% { box-shadow: 0 0 14px rgba(56, 142, 60, 1); }
+  100% { box-shadow: 0 0 4px rgba(56, 142, 60, 0.6); }
 }
-
+.highlight, .highlight-red, .highlight-green {
+  display: inline; color: #000; font-weight: bold;
+  padding: 0 4px; border-radius: 3px; transition: all 1s ease-in-out;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
 .highlight {
-  display: inline-block;
-  background-color: #FFEB3B;
-  color: #000000;
-  font-weight: bold;
-  padding: 2px 8px;
-  border: 1.5px solid #FF8F00;
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(255, 143, 0, 0.8);
-  animation: highlight-pulse 1.2s ease-in-out 3;
-  transition: all 1s ease-in-out;
+  background-color: #FFEB3B; border: 1.5px solid #FF8F00;
+  box-shadow: 0 0 8px rgba(255, 143, 0, 0.8); animation: highlight-pulse 1.2s ease-in-out 3;
 }
-
 .highlight-red {
-  display: inline-block;
-  background-color: #FFCDD2;
-  color: #000000;
-  font-weight: bold;
-  padding: 2px 8px;
-  border: 1.5px solid #D32F2F;
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(211, 47, 47, 0.8);
-  animation: highlight-pulse-red 1.2s ease-in-out 3;
-  transition: all 1s ease-in-out;
+  background-color: #FFCDD2; border: 1.5px solid #D32F2F;
+  box-shadow: 0 0 8px rgba(211, 47, 47, 0.8); animation: highlight-pulse-red 1.2s ease-in-out 3;
 }
-
 .highlight-green {
-  display: inline-block;
-  background-color: #C8E6C9;
-  color: #000000;
-  font-weight: bold;
-  padding: 2px 8px;
-  border: 1.5px solid #388E3C;
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(56, 142, 60, 0.8);
-  animation: highlight-pulse-green 1.2s ease-in-out 3;
-  transition: all 1s ease-in-out;
+  background-color: #C8E6C9; border: 1.5px solid #388E3C;
+  box-shadow: 0 0 8px rgba(56, 142, 60, 0.8); animation: highlight-pulse-green 1.2s ease-in-out 3;
 }
-
-/* Text cue next to the colour, so the result does not depend on telling red
-   from green. Removed together with the colour when the highlight fades. */
-.highlight-green::after {
-  content: " \2713  applied";
-  font-weight: normal;
-  color: #1b5e20;
-}
-
-.highlight-red::after {
-  content: " \2717  not applied";
-  font-weight: normal;
-  color: #b71c1c;
-}
-
+/* Text cue next to the colour. Removed together with the colour on fade. */
+.highlight-green::after { content: " \2713  applied"; font-weight: normal; color: #1b5e20; }
+.highlight-red::after { content: " \2717  not applied"; font-weight: normal; color: #b71c1c; }
 .highlight-red.fade-out::after,
-.highlight-green.fade-out::after {
-  content: none;
-}
-
+.highlight-green.fade-out::after { content: none; }
 .highlight.fade-out,
 .highlight-red.fade-out,
 .highlight-green.fade-out {
-  background-color: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  color: inherit !important;
-  font-weight: normal !important;
-  padding: 2px 0;
-  animation: none;
+  background-color: transparent !important; border-color: transparent !important;
+  box-shadow: none !important; color: inherit !important; font-weight: normal !important;
+  padding: 0; animation: none;
 }
 
-#bookmark-url-container {
-  margin-top: 5px;
-  word-break: break-all;
+/* ---------- System Diagnostics ---------- */
+#system-info-container > summary {
+  cursor: pointer; user-select: none; padding: var(--s3) var(--s4);
+  font-weight: 600; font-size: 13px; color: var(--text-2);
 }
-
-.about-link-container {
-  margin-top: 5px;
+#system-info-details {
+  padding: 0 var(--s4) var(--s4); font-size: 12.5px; line-height: 1.55; color: var(--text);
 }
-
-/* Custom Tooltips */
-[data-tooltip] {
-  position: relative;
-}
-
-[data-tooltip]::before,
-[data-tooltip]::after {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease-in-out, transform 0.18s ease-in-out, visibility 0.18s;
-  z-index: 1000;
-  visibility: hidden;
-}
-
-[data-tooltip]::after {
-  content: attr(data-tooltip);
-  background-color: #212121;
-  color: #FFFFFF;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  font-size: 11px;
-  font-weight: normal;
-  line-height: 1.35;
-  text-align: left;
-  padding: 6px 9px;
-  border-radius: 5px;
-  white-space: normal;
-  width: max-content;
-  max-width: 250px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-}
-
-[data-tooltip]::before {
-  content: "";
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid #212121;
-  bottom: calc(100% + 1px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-}
-
-[data-tooltip]:not([data-tooltip=""]):hover::before,
-[data-tooltip]:not([data-tooltip=""]):hover::after,
-[data-tooltip]:not([data-tooltip=""]):focus-visible::before,
-[data-tooltip]:not([data-tooltip=""]):focus-visible::after,
-input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::before,
-input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-[data-tooltip=""]::before,
-[data-tooltip=""]::after {
-  display: none;
-}
-
-/* Esc hides the open tooltip until the pointer or focus moves (a11y.js). */
-.tooltips-dismissed [data-tooltip]::before,
-.tooltips-dismissed [data-tooltip]::after {
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-
-/* One visible focus ring for keyboard users. Mouse clicks do not trigger
-   :focus-visible on buttons, so this does not show on click. */
-:focus-visible {
-  outline: 2px solid #1a73e8;
-  outline-offset: 2px;
-}
-
-.toast-notification {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background-color: rgba(30, 41, 59, 0.95);
-  color: #FFFFFF;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-size: 0.9em;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  z-index: 10000;
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-  pointer-events: none;
-}
-
-.toast-notification.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.toast-notification .toast-dot {
-  width: 9px;
-  height: 9px;
-  background-color: #FF5252;
-  border-radius: 50%;
-  display: inline-block;
-  animation: recordPulse 1.2s infinite ease-in-out;
-}
-
-/* ---------------------------------------------------------------------------
- * Styles moved from inline style="" attributes in index.html and main.js.
- * Selectors are specific enough to beat the existing container rules
- * (e.g. .file-settings-container label, #checkbox-container label), so the
- * rendered result matches the old inline styles.
- * ------------------------------------------------------------------------- */
-
-#summary-compute-pressure-badge {
-  font-size: 11px;
-  font-weight: normal;
-  margin-left: 8px;
-  color: #555;
-}
-
-#summary-compute-pressure-badge.na {
-  color: #888;
-}
-
-.file-settings-container label[for="localFileInput"] {
-  margin-left: 10px;
-  margin-right: 5px;
-}
-
-#checkbox-container label[for="sampleRate"],
-#checkbox-container label[for="renderSizeHint"] {
-  margin-left: 10px;
-}
-
-#renderSizeHintCustom {
-  width: 60px;
-  margin-left: 4px;
-  font-size: 11px;
-  padding: 1px 3px;
-}
-
-#glitch-simulation-container {
-  font-size: 11px;
-  font-weight: normal;
-  margin-left: 12px;
-}
-
-#glitch-simulation-container label {
-  color: #666;
-}
-
-#simulate-glitch-select,
-#simulate-glitch-cycle-btn {
-  border: 1px solid #aaa;
-  border-radius: 3px;
-  background: #fff;
-  cursor: pointer;
-}
-
-#simulate-glitch-select {
-  font-size: 11px;
-  padding: 1px 4px;
-}
-
-#simulate-glitch-cycle-btn {
-  margin-left: 4px;
-  font-size: 10px;
-  padding: 1px 6px;
-}
-
-#glitch-simulation-container .info-icon {
-  margin-left: 4px;
-}
-
-/* Info (green) variant of the error message box, e.g. "track muted" notices. */
-#error-message.notice {
-  color: #2F652F;
-  background-color: #DFF2BF;
-  border-color: #4F8A10;
-}
-
-/* Highlighted value inside the audio-playout stats <pre>. */
-.stat-alert {
-  color: #D32F2F;
-  font-weight: bold;
-}
-
-/* System Diagnostics panel. */
+#summary-compute-pressure-badge { font-size: 12px; font-weight: normal; margin-left: 8px; color: var(--text-2); }
+#summary-compute-pressure-badge.na { color: var(--text-3); }
 #system-info-details .status-ok,
 #system-info-details .status-warn,
-#system-info-details .status-bad {
-  font-weight: bold;
-}
-
+#system-info-details .status-bad { font-weight: bold; }
 #system-info-details .status-ok { color: green; }
 #system-info-details .status-warn { color: orange; }
 #system-info-details .status-bad { color: red; }
-
-/* Compute Pressure state colors (status text and graph legend). */
+#system-info-details .info-icon { margin-left: 4px; vertical-align: middle; }
 .cp-state { font-weight: bold; }
 .cp-nominal { color: #2E7D32; }
 .cp-fair { color: #F57F17; }
 .cp-serious { color: #E65100; }
 .cp-critical { color: #C62828; }
 .cp-unknown { color: #666; }
-
-.cp-factors,
-.cp-sample-meta {
-  font-weight: normal;
-}
-
+.cp-factors, .cp-sample-meta { font-weight: normal; }
 .cp-factors { color: #666; }
 .cp-sample-meta { color: #777; }
-
 #simulate-pressure-cycle-btn,
 #simulate-pressure-select {
-  font-size: 10px;
-  border: 1px solid #aaa;
-  border-radius: 3px;
-  background: #fff;
-  cursor: pointer;
+  font: inherit; font-size: 11.5px; cursor: pointer;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-s); background: var(--surface);
 }
-
-#simulate-pressure-cycle-btn {
-  margin-left: 8px;
-  padding: 1px 6px;
-}
-
-#simulate-pressure-select {
-  margin-left: 4px;
-  padding: 1px 2px;
-}
-
-#system-info-details .info-icon {
-  margin-left: 4px;
-}
-
+#simulate-pressure-cycle-btn { margin-left: 8px; padding: 2px 8px; }
+#simulate-pressure-select { margin-left: 4px; padding: 1px 4px; }
 #compute-pressure-graph-container {
-  margin: 6px 0;
-  padding: 6px 8px;
-  background: #ffffff;
-  border: 1px solid #d0d5dd;
-  border-radius: 4px;
-  width: 100%;
-  box-sizing: border-box;
+  margin: var(--s2) 0; padding: var(--s2) var(--s3); width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-m);
 }
-
-#compute-pressure-graph-container .cp-graph-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-#compute-pressure-graph-container .cp-graph-title {
-  font-weight: bold;
-  font-size: 10px;
-  color: #495057;
-}
-
-#compute-pressure-graph-legend {
-  font-size: 9px;
-  color: #666;
-}
-
-#compute-pressure-canvas {
-  width: 100%;
-  height: 85px;
-  display: block;
-  border: 1px solid #eee;
-  border-radius: 2px;
-}
-
-/* Beats "#system-info-container summary" for the nested Raw User Agent block. */
-#system-info-details .ua-details {
-  margin-top: 4px;
-  cursor: pointer;
-}
-
-#system-info-details .ua-details > summary {
-  font-size: 10px;
-  color: #666;
-}
-
+#compute-pressure-graph-container .cp-graph-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+#compute-pressure-graph-container .cp-graph-title { font-weight: 600; font-size: 11.5px; color: var(--text-2); }
+#compute-pressure-graph-legend { font-size: 11px; color: var(--text-2); }
+#compute-pressure-canvas { width: 100%; height: 85px; display: block; border: 1px solid var(--border); border-radius: 4px; background: #fff; }
+#system-info-details .ua-details { margin-top: 4px; cursor: pointer; }
+#system-info-details .ua-details > summary { font-size: 11.5px; color: var(--text-2); }
 #system-info-details .ua-details > pre {
-  margin: 3px 0 0 0;
-  font-size: 10px;
-  white-space: pre-wrap;
-  background: #e9ecef;
-  padding: 4px 6px;
-  border-radius: 3px;
+  margin: 3px 0 0; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--surface-code); padding: 4px 6px; border-radius: 4px;
 }
+
+/* ---------- Tooltips ---------- */
+[data-tooltip] { position: relative; }
+[data-tooltip]::before,
+[data-tooltip]::after {
+  position: absolute; opacity: 0; pointer-events: none; z-index: 1000; visibility: hidden;
+  transition: opacity 0.18s ease-in-out, transform 0.18s ease-in-out, visibility 0.18s;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  background-color: #212121; color: #fff;
+  font-family: var(--font-ui); font-size: 12px; font-weight: normal; font-style: normal;
+  line-height: 1.4; text-align: left; text-transform: none; letter-spacing: normal;
+  padding: 6px 9px; border-radius: 6px; white-space: normal;
+  width: max-content; max-width: 280px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+[data-tooltip]::before {
+  content: "";
+  border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #212121;
+  bottom: calc(100% + 1px); left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+[data-tooltip]:not([data-tooltip=""]):hover::before,
+[data-tooltip]:not([data-tooltip=""]):hover::after,
+[data-tooltip]:not([data-tooltip=""]):focus-visible::before,
+[data-tooltip]:not([data-tooltip=""]):focus-visible::after,
+input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::before,
+input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
+  opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+[data-tooltip=""]::before,
+[data-tooltip=""]::after { display: none; }
+/* Header and live bar tooltips open downwards. Header ones align to the
+   right edge; live bar ones are centred (Stop Stream aligns right). */
+:is(.app-header, .live-bar) [data-tooltip]::after { bottom: auto; top: calc(100% + 6px); left: auto; right: 0; transform: translateY(-4px); }
+.live-bar [data-tooltip]:not(#stop-button)::after { left: 50%; right: auto; transform: translateX(-50%) translateY(-4px); }
+:is(.app-header, .live-bar) [data-tooltip]::before {
+  bottom: auto; top: calc(100% + 1px);
+  border-top: 0; border-bottom: 5px solid #212121; transform: translateX(-50%) translateY(-4px);
+}
+:is(.app-header, .live-bar) [data-tooltip]:not([data-tooltip=""]):hover::after,
+:is(.app-header, .live-bar) [data-tooltip]:not([data-tooltip=""]):focus-visible::after { transform: translateY(0); }
+.live-bar [data-tooltip]:not(#stop-button):not([data-tooltip=""]):hover::after,
+.live-bar [data-tooltip]:not(#stop-button):not([data-tooltip=""]):focus-visible::after,
+.live-bar input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after { transform: translateX(-50%) translateY(0); }
+/* Left column and RTP tools sit at the left window edge. Their tooltips start
+   at the element's left edge and open to the right, so they are not cut. */
+:is(.col-controls, .rtp-tools) [data-tooltip]::after { left: 0; transform: translateY(4px); }
+:is(.col-controls, .rtp-tools) [data-tooltip]:not([data-tooltip=""]):hover::after,
+:is(.col-controls, .rtp-tools) [data-tooltip]:not([data-tooltip=""]):focus-visible::after,
+:is(.col-controls, .rtp-tools) input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after { transform: translateY(0); }
+/* Buttons at the right edge of a card: align the tooltip to the right. */
+#download-recorded-audio-button::after { left: auto; right: 0; transform: translateY(4px); }
+#download-recorded-audio-button:not([data-tooltip=""]):hover::after,
+#download-recorded-audio-button:not([data-tooltip=""]):focus-visible::after { transform: translateY(0); }
+/* Esc hides the open tooltip until the pointer or focus moves (a11y.js). */
+.tooltips-dismissed [data-tooltip]::before,
+.tooltips-dismissed [data-tooltip]::after { opacity: 0 !important; visibility: hidden !important; }
+
+/* ---------- Toast ---------- */
+.toast-notification {
+  position: fixed; bottom: 24px; right: 24px; z-index: 10000;
+  background-color: rgba(30, 41, 59, 0.95); color: #fff;
+  padding: 10px 18px; border-radius: var(--radius-m); font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  opacity: 0; transform: translateY(12px); pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.toast-notification.show { opacity: 1; transform: translateY(0); }
+.toast-notification .toast-dot {
+  width: 9px; height: 9px; background-color: #FF5252; border-radius: 50%;
+  display: inline-block; animation: recordPulse 1.2s infinite ease-in-out;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+  .layout { grid-template-columns: 1fr; padding: var(--s4); gap: var(--s4); }
+  .app-header-inner { padding: var(--s3) var(--s4); flex-wrap: wrap; }
+  .diag { padding: 0 var(--s4); margin-top: var(--s4); }
+  .wide { padding: var(--s3) var(--s4) 0; gap: var(--s3); }
+  .page-msg { padding: 0 var(--s4); }
+  .live-bar-inner { padding: var(--s2) var(--s4); }
+  .placeholder-card { display: none; }
+}
+@media (max-width: 600px) {
+  .app-header { position: static; }
+  .app-title { font-size: 15px; }
+  .app-title .api { font-size: 13px; }
+  .card-head, .card-body, .card-foot { padding-left: var(--s4); padding-right: var(--s4); }
+  .setting { grid-template-columns: 17ch minmax(0, 1fr) auto; }
+  .dynamic-constraints-group { margin-left: 0; }
+  .setting-device { margin-left: calc(var(--s2) + 1px); }
+  .settings-container { padding: var(--s3); }
+  .play-row .field { flex: 1 1 100%; }
+  .play-row .field select { flex: 1 1 auto; width: 0; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* Audio File source: hide what does not apply to a captureStream() track
+   instead of greying it out:
+   - getUserMedia constraints, deviceId and applyConstraints();
+   - 440Hz Sine (replaces the microphone signal only), so the Test signal row;
+   - getConstraints() (always {} for a captureStream() track). */
+.col-controls:has(#file-source:checked) :is(.settings-container, #apply-constraints-button),
+body:has(#file-source:checked) :is(.option-group:has(#sine-tone-checkbox), #track-constraints) { display: none; }
+body:has(#file-source:checked) .for-mic,
+body:not(:has(#file-source:checked)) .for-file { display: none; }

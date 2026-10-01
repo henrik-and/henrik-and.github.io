@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const autoRecordLabel = document.querySelector('label[for="auto-record-checkbox"]');
   const autoPlayCheckbox = document.getElementById('auto-play-checkbox');
   const autoPlayLabel = document.querySelector('label[for="auto-play-checkbox"]');
-  // Optional: only preview.html has it. Without it Auto-Play uses HTML:Play.
+  // Optional: without it Auto-Play uses HTML:Play.
   const autoPlayModeSelect = document.getElementById('auto-play-mode');
   const autoPlayModeName = () =>
     autoPlayModeSelect && autoPlayModeSelect.value === 'webaudio' ? 'WebAudio:Play' : 'HTML:Play';
@@ -2446,7 +2446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // clear = true also empties the level meter bar and label (preview.html).
+  // clear = true also empties the level meter bar and label.
   function stopRecordedVisualization(clear = false) {
     cancelAnimationFrame(recordedVisualizationFrameRequest);
     stopRecordedLevelMeter(clear);
@@ -2472,7 +2472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     suspendRecordedAudioContext();
   });
 
-  // Optional (preview.html): repeat the recording. With loop on the element
+  // Optional: repeat the recording. With loop on the element
   // does not fire 'ended', so the level meter keeps running across repeats.
   const recordedLoopCheckbox = document.getElementById('recorded-loop-checkbox');
   if (recordedLoopCheckbox) {
