@@ -348,29 +348,31 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 #visualizer-rms-label .rms-val { font-weight: 600; }
 
 .record-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); display: inline-block; }
-#record-button {
-  background: hsl(356 85% 93%);
-  border-color: hsl(356 60% 78%);
-  color: hsl(356 65% 26%);
-}
-#record-button:hover {
-  background: hsl(356 85% 89%);
-  border-color: hsl(356 60% 68%);
-}
+/* Same width for "Rec" and "Stop Rec", so the live bar does not shift. */
+#record-button { min-width: 108px; justify-content: center; }
+/* Idle: a neutral button; only the dot is red. Recording: solid red with a
+   pulsing white dot and ring, so the two states cannot be confused. */
 #record-button.recording-active {
-  background: hsl(356 85% 86%);
+  background: var(--danger);
   border-color: var(--danger);
-  color: hsl(356 75% 22%);
+  color: #fff;
+  animation: recordRing 1.6s infinite ease-out;
 }
-#record-button.recording-active:hover {
-  background: hsl(356 85% 82%);
-}
+#record-button.recording-active:hover { background: hsl(356 75% 42%); }
+#record-button.recording-active .record-dot { background: #fff; animation: recordPulse 1.2s infinite ease-in-out; }
 @keyframes recordPulse {
   0% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.25; transform: scale(0.85); }
   100% { opacity: 1; transform: scale(1); }
 }
-#record-button.recording-active .record-dot { animation: recordPulse 1.2s infinite ease-in-out; }
+@keyframes recordRing {
+  0% { box-shadow: 0 0 0 0 hsl(356 75% 50% / .45); }
+  100% { box-shadow: 0 0 0 8px hsl(356 75% 50% / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #record-button.recording-active,
+  #record-button.recording-active .record-dot { animation: none; }
+}
 
 .recorded-audio-container {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3);
