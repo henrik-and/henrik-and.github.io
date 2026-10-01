@@ -200,8 +200,10 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
 .btn-ghost { border-color: transparent; background: transparent; color: var(--text-2); font-weight: 500; }
 .btn-ghost:hover { background: var(--surface-code); color: var(--text); }
 .btn-sm { padding: 5px 10px; font-size: 13px; }
+/* Disabled controls use the normal cursor. not-allowed appeared under the
+   pointer right after a click (e.g. getUserMedia disables itself). */
 .btn:disabled, .btn:disabled:hover {
-  opacity: .45; cursor: not-allowed; transform: none;
+  opacity: .45; cursor: default; transform: none;
 }
 .btn-primary:disabled, .btn-primary:disabled:hover { background: var(--accent); border-color: var(--accent); }
 .btn-danger:disabled, .btn-danger:disabled:hover { background: var(--danger); border-color: var(--danger); }
@@ -249,7 +251,7 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 .check-select { margin: 0 8px 0 0; padding: 2px 4px; font-size: 12px; font-family: var(--font-ui); border: 1px solid var(--border); border-radius: 6px; background: #fff; }
 .check-select:disabled { opacity: .5; }
 .check:has(input:checked) { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
-.check:has(input:disabled) label, .check:has(input:disabled) input { cursor: not-allowed; }
+.check:has(input:disabled) label, .check:has(input:disabled) input { cursor: default; }
 
 .field { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; }
 
