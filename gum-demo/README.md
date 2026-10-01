@@ -18,7 +18,9 @@ audio.
     *   **Microphone:** Live physical microphone capture via `getUserMedia()`.
     *   **Audio File:** Simulated `MediaStreamTrack` using
         `HTMLMediaElement.captureStream()` on preloaded or local audio files
-        without requiring microphone permissions.
+        without requiring microphone permissions. Controls that only apply to
+        a microphone (constraints, `applyConstraints()`, 440Hz Sine and
+        `getConstraints()`) are hidden in this mode.
 2.  **Configure Audio Constraints:**
     *   Adjust audio processing constraints (`echoCancellation`,
         `autoGainControl`, `noiseSuppression`, `voiceIsolation`, `channelCount`,
@@ -27,7 +29,7 @@ audio.
         constraints.
     *   Hover over the **(i)** icon next to any constraint for details on its
         behavior.
-3.  **Optional WebRTC Loopback, Sine Tone, Auto-Record & Auto-Play:**
+3.  **Options** (grouped as Transport, Test signal and On start):
     *   **PeerConnection:** Routes audio through a local two-peer connection
         (`pc1` → `pc2`) using Opus stereo.
     *   **VAD/DTX/CNG:** Injects `usedtx=1` into Opus SDP to enable Voice
@@ -36,18 +38,23 @@ audio.
     *   **Auto-Record:** Automatically initiates `MediaRecorder` at time zero as
         soon as `getUserMedia()` acquires the track, capturing the very first
         audio buffers without UI interaction delay.
-    *   **Auto-Play:** Automatically renders the audio track in loopback using
-        HTML:Play (`<audio>` element) as soon as the stream is acquired.
+    *   **Auto-Play:** Automatically renders the audio track in loopback as
+        soon as the stream is acquired. Select **HTML** (`<audio>` element) or
+        **WebAudio** (`AudioContext`) next to the checkbox.
     *   **440Hz Sine:** Replaces microphone audio with a clean, continuous 440
         Hz sine tone via Web Audio while keeping physical microphone capture
         active (critical for keeping Bluetooth headsets in bidirectional
         Headset/HFP mode) to make audio glitches and buffer starvation dropouts
-        immediately audible. Can be toggled on the fly.
-4.  **Start the Stream:** Click **getUserMedia** to acquire the stream.
+        immediately audible. Can be toggled on the fly. Microphone source
+        only.
+4.  **Start the Stream:** Click **getUserMedia** (or **captureStream** for an
+    audio file). A sticky live bar appears below System Diagnostics with the
+    level meter and the stream controls. It stays at the top of the window
+    when you scroll.
 5.  **Dynamic Updates:** With an active microphone track, adjust constraints in
     the `// applyConstraints() scope` box and click **applyConstraints** to
     update track settings on the fly.
-6.  **Playback & Controls:**
+6.  **Playback & Controls** (in the live bar):
     *   **Track:Mute:** Toggles `track.enabled` without stopping hardware
         capture.
     *   **HTML:Play:** Plays stream via an HTML `<audio>` tag with `sinkId`
@@ -57,13 +64,16 @@ audio.
         Quantum** (`renderSizeHint`). Displays negotiated
         `audioContext.renderQuantumSize` (samples and ms duration), sample rate,
         and base latency in a dedicated status card and interactive badge.
-    *   **Rec / Stop:** Records an Opus WebM snippet using `MediaRecorder` with
-        waveform visualization.
+    *   **Rec / Stop Rec:** Records an Opus WebM snippet using `MediaRecorder`.
+        The button turns solid red while recording. Play the recording with
+        the same level meter as the live stream, optionally with **Loop**, and
+        download it as a WebM file.
+    *   **Stop Stream:** Stops the tracks and closes the loopback connection.
     *   **Save Snapshot:** Downloads a structured `gUM-snapshot.json` file
         capturing active settings, device selections, WebAudio quantum
         parameters, track getters, and WebRTC statistics.
     *   **Copy Bookmark:** Copies a shareable URL containing your selected
-        constraints.
+        source, constraints and options.
     *   **Debug logging:** Add `?debug=1` to the URL to show verbose
         `console.log` output in DevTools. Warnings and errors are always shown.
 
@@ -80,7 +90,13 @@ audio.
     stream acquisition to diagnose driver initialization delays or early audio
     loss.
 *   **Auto-Play from Start:** Automatically begins rendering audio in loopback
-    via HTML:Play upon stream acquisition.
+    via HTML:Play or WebAudio:Play upon stream acquisition.
+*   **Level Meter:** RMS level in dBFS (-60 to 0) with colour zones: green up to
+    -20 dBFS, yellow to -10, orange to -3 and red above -3. Shown in the live
+    bar, next to the pc2 `audioLevel`, and for recorded audio playback.
+*   **Foldable Cards:** Every card can be folded; the page remembers which
+    cards are open. A folded Track or RTP card shows a health dot and a badge
+    that counts new changes or glitches since the card was last open.
 *   **Full Constraint Suite:** Test boolean, direct, `exact`, and `ideal`
     configurations for `echoCancellation`, `autoGainControl`,
     `noiseSuppression`, `voiceIsolation`, `channelCount`, `latency`,
@@ -107,7 +123,10 @@ audio.
     *   `inbound-rtp (pc2):` Received bitrate, packet loss, concealment, jitter
         buffer delay, and audio levels (RMS / dBov).
     *   `audio-playout (pc2):` Playout delay, synthesized/concealed glitch
-        metrics, and glitch ratios.
+        metrics, and glitch ratios. **Simulate Glitches** injects synthetic
+        glitch events to show the warning states without audible distortion.
+*   **Audio Path:** The active source (microphone device or audio file
+    details), the active output device and the WebAudio context.
 *   **Dual Playback Modes & Configurable Render Quantum:** Compare native
     `<audio>` element playback against Web Audio API (`AudioContext`). Features
     full support for the W3C **Configurable Render Quantum** specification:
@@ -119,9 +138,10 @@ audio.
         `audioContext.renderQuantumSize` in real time with millisecond duration
         conversion in a dedicated status card, an interactive quantum badge,
         lifecycle logs, and `gUM-snapshot.json`.
-*   **Opus Recording & Visualizer:** In-browser recording with multi-MIME
-    support and audio level meters.
-*   **System Diagnostics & CPU Compute Pressure:** Header banner detecting
+*   **Opus Recording:** In-browser recording with multi-MIME support, level
+    meter during playback, Loop and Download.
+*   **System Diagnostics & CPU Compute Pressure:** Foldable card at the top of
+    the page detecting
     browser, OS, secure context status, microphone permissions, hardware audio
     latency, and live CPU compute pressure via the
     [`Compute Pressure API`](https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API)
