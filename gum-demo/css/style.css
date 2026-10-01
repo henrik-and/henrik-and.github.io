@@ -32,9 +32,9 @@
   --radius-l: 14px;
   --shadow-card: 0 1px 2px hsl(218 30% 20% / 0.05), 0 4px 16px hsl(218 30% 20% / 0.05);
 
-  /* Page width limit. none = full browser width. Set to
-     e.g. 1680px to cap it on very wide screens. */
-  --page-max: none;
+  /* Page width limit, centred. none = full browser width. Other values
+     (e.g. 1440px) change the cap. */
+  --page-max: 1600px;
 
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
 }
