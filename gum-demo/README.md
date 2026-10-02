@@ -174,6 +174,10 @@ audio.
         the host processor.
 *   **State Snapshot Export:** Single-click JSON export of all current
     configuration, system diagnostics, and performance data.
+*   **Copy per pane:** Hover a readout pane (Track, getStats(), Audio Path)
+    and click the small copy icon in its top-right corner to copy the pane
+    text as it is at that moment. The `audio-playout (pc2)` copy also includes
+    the two audible glitch metrics.
 
 ## Advanced Debugging with `chrome://webrtc-internals`
 

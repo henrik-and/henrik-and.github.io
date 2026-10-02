@@ -3421,7 +3421,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  /**
+   * Adds a small Copy button to every readout pane (<pre class="pane">). The
+   * panes are rewritten every second, which clears any text selection, so the
+   * button copies the pane text as it is at the moment of the click. The
+   * button lives in a wrapper next to the <pre>, because the <pre> content is
+   * replaced on each update.
+   */
+  function initPaneCopyButtons() {
+    for (const pane of document.querySelectorAll('pre.pane')) {
+      const wrap = document.createElement('div');
+      wrap.className = 'pane-wrap';
+      pane.parentNode.insertBefore(wrap, pane);
+      wrap.appendChild(pane);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pane-copy-btn';
+      const COPY_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>';
+      const CHECK_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>';
+      button.innerHTML = COPY_ICON;
+      button.setAttribute('data-tooltip', pane.id === 'audio-playout-stats'
+          ? 'Copy this section and the two audible glitch metrics to the clipboard as they are now.'
+          : 'Copy this section to the clipboard as it is now.');
+      button.setAttribute('aria-label', `Copy ${pane.id || 'section'} to the clipboard`);
+      button.addEventListener('click', async () => {
+        let text = pane.innerText.replace(/\s+$/, '') + '\n';
+        if (pane.id === 'audio-playout-stats') {
+          // Add the two audible glitch metric chips, as shown in the card.
+          const chips = ['audible-subintervals-label', 'audible-glitch-time-label']
+              .map((id) => document.getElementById(id))
+              .filter((el) => el && !el.hidden && el.innerText.trim())
+              .map((el) => el.innerText.replace(/\s+/g, ' ').trim());
+          if (chips.length) text = chips.join('\n') + '\n' + text;
+        }
+        let ok = true;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (err) {
+          // Fallback for contexts without the async Clipboard API.
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand('copy');
+          ta.remove();
+        }
+        button.innerHTML = ok ? CHECK_ICON : COPY_ICON;
+        button.classList.toggle('copied', ok);
+        clearTimeout(button._resetTimer);
+        button._resetTimer = setTimeout(() => {
+          button.innerHTML = COPY_ICON;
+          button.classList.remove('copied');
+        }, 1200);
+      });
+      wrap.appendChild(button);
+    }
+  }
+
   // Initialize the application by populating system info, devices, compute pressure, and then applying URL parameters.
+  initPaneCopyButtons();
   initTooltipA11y();
   await initComputePressureObserver();
   populateSystemInfo();

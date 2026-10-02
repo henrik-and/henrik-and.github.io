@@ -436,6 +436,23 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
   padding: var(--s2) var(--s3); color: var(--text);
 }
 .pane:empty { display: none; }
+/* Each pane sits in a wrapper with a Copy button (see initPaneCopyButtons).
+   The wrapper takes over the pane's flex sizing and hides with it. */
+.pane-wrap { position: relative; display: flex; flex: 1 1 auto; max-width: 100%; min-width: 0; }
+.pane-wrap > .pane { flex: 1 1 auto; }
+.pane-wrap:has(> .pane[hidden]), .pane-wrap:has(> .pane:empty) { display: none; }
+/* Small icon-only Copy button in the pane's top-right corner. The extra
+   .pane-wrap > selector beats the global [data-tooltip] { position: relative }. */
+.pane-wrap > .pane-copy-btn {
+  position: absolute; top: 3px; right: 3px; align-self: flex-start;
+  width: 18px; height: 18px; padding: 0; display: grid; place-items: center;
+  border: none; border-radius: 4px; background: transparent;
+  color: var(--text-2); cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.pane-copy-btn svg { width: 12px; height: 12px; display: block; }
+.pane-wrap:hover > .pane-copy-btn, .pane-wrap > .pane-copy-btn:focus-visible { opacity: .6; }
+.pane-wrap > .pane-copy-btn:hover { opacity: 1; background: var(--surface); color: var(--text); }
+.pane-wrap > .pane-copy-btn.copied { opacity: 1; color: var(--accent-text); }
 #webaudio-context-info { background: var(--accent-soft); border-color: var(--accent-line); border-left: 4px solid var(--accent); color: var(--accent-text); }
 .card-rtp .pane { background: var(--rtp-soft); }
 #audio-file-progress { width: 100%; height: 10px; margin-top: 5px; display: block; accent-color: var(--accent); }
