@@ -125,6 +125,25 @@ audio.
     *   `audio-playout (pc2):` Playout delay, synthesized/concealed glitch
         metrics, and glitch ratios. **Simulate Glitches** injects synthetic
         glitch events to show the warning states without audible distortion.
+    *   **Audible glitch metrics:** Two chips in the card header row, updated
+        every second and counted since the PeerConnection started. Only
+        1-second intervals with audible playout count. An interval is audible
+        if the received level `sqrt(ΔtotalAudioEnergy / ΔtotalSamplesDuration)`
+        from `inbound-rtp` is above 0.0007.
+        *   `Audible glitchy seconds ratio` (%): share of audible seconds with
+            at least one glitch (`ΔsynthesizedSamplesDuration > 0`), with
+            `(glitchy/audible)` seconds. Example: 10 audible seconds, 2 with a
+            glitch, gives 20 %.
+        *   `Audible glitch time ratio` (%): glitch time divided by playout
+            time over audible seconds, with `(glitch ms/audible s)`. Example:
+            one 20 ms glitch every 2 s gives 1 %.
+        *   Red when the value is above 0, green when it is 0. Gray with
+            `not playing` when pc2 audio is not played out (HTML:Play and
+            WebAudio:Play off); these seconds are not counted. Gray with
+            `silent N s` when audio is played out but the level is at or below
+            0.0007 (for example a muted track).
+        *   The same values are in the `audible` object of the
+            `audio-playout (pc2)` pane and in `gUM-snapshot.json`.
 *   **Audio Path:** The active source (microphone device or audio file
     details), the active output device and the WebAudio context.
 *   **Dual Playback Modes & Configurable Render Quantum:** Compare native

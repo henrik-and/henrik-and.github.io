@@ -342,18 +342,18 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 }
 .readouts { display: flex; flex-wrap: wrap; gap: var(--s2); }
 #visualizer-db-label, #recorded-db-label,
-#visualizer-rms-label {
+#visualizer-rms-label, .readout-chip {
   font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
   white-space: nowrap; padding: 3px 8px; border-radius: var(--radius-s);
   border: 1px solid var(--border); background: var(--surface-code); color: var(--text-2);
   cursor: help; transition: background-color .15s, border-color .15s, color .15s;
 }
 #visualizer-db-label.active, #recorded-db-label.active,
-#visualizer-rms-label.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+#visualizer-rms-label.active, .readout-chip.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
 #visualizer-db-label .rms-key, #recorded-db-label .rms-key,
-#visualizer-rms-label .rms-key { margin-right: 4px; opacity: 0.85; }
+#visualizer-rms-label .rms-key, .readout-chip .rms-key { margin-right: 4px; opacity: 0.85; }
 #visualizer-db-label .rms-val, #recorded-db-label .rms-val,
-#visualizer-rms-label .rms-val { font-weight: 600; }
+#visualizer-rms-label .rms-val, .readout-chip .rms-val { font-weight: 600; }
 
 .record-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); display: inline-block; }
 /* Same width for "Rec" and "Stop Rec", so the live bar does not shift. */
@@ -459,7 +459,12 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 .fold[open] > summary.card-head::before,
 #system-info-container[open] > summary::before { transform: rotate(90deg); }
 #system-info-container > summary { list-style: none; display: flex; align-items: center; gap: var(--s3); }
-.rtp-tools { display: flex; padding: var(--s2) var(--s4) 0; }
+.rtp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4) 0; }
+/* Audible glitch chips: red when the value is above zero. */
+.readout-chip.glitchy { background: var(--danger-soft); border-color: #FFCDD2; color: #C62828; }
+/* Silent playout: values are frozen, so gray out the chip. */
+.readout-chip.silent { background: var(--surface-code); border-color: var(--border); border-style: dashed; color: var(--text-2); opacity: .75; }
+.readout-chip .silent-tag { margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--border); font-size: 11px; }
 /* A playout glitch is visible in the heading also when the card is closed. */
 .rtp-glitch-flag {
   display: none; margin-left: var(--s2); padding: 1px 8px; border-radius: 999px;

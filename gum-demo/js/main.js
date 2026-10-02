@@ -186,6 +186,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   let latestRmsAudioLevel = null;
   let total_intervals = 0;
   let glitchy_intervals = 0;
+  // Audible glitch metrics: audible glitchy seconds ratio and audible glitch
+  // time ratio, both shown in percent. A 1-second interval is audible if the
+  // playout level (Root Sum Square over all audio inbound-rtp
+  // streams of sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration)) is
+  // above AUDIBLE_LEVEL_THRESHOLD.
+  const AUDIBLE_LEVEL_THRESHOLD = 0.0007;
+  let audible_intervals = 0;
+  let audible_glitchy_intervals = 0;
+  let audible_synthesized_duration = 0;
+  let audible_total_duration = 0;
+  // Number of consecutive silent intervals (audio is played out but the level
+  // is at or below the threshold, e.g. a muted track). 0 otherwise.
+  let silent_run_intervals = 0;
+  // True while pc2 audio is not played out (HTML:Play and WebAudio:Play both
+  // off, or no playout progress). Such intervals are not counted at all.
+  let playout_inactive = false;
   const GLITCH_WINDOW_SIZE = 10;
   const glitchWindow = [];
   let simulatedGlitchMode = 'none'; // 'none', 'minor', 'degraded'
@@ -828,6 +844,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     debugLog(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
   }
 
+  /**
+   * Shows the two audible glitch metrics, in percent, as chips in the
+   * RTCPeerConnection getStats() card.
+   */
+  function updateAudibleGlitchLabels() {
+    const subLabel = document.getElementById('audible-subintervals-label');
+    const timeLabel = document.getElementById('audible-glitch-time-label');
+    if (!subLabel || !timeLabel) return;
+    const hasData = audible_intervals > 0;
+    const subPct = hasData ? (100 * audible_glitchy_intervals / audible_intervals) : 0;
+    const timePct = hasData && audible_total_duration > 0 ? (100 * audible_synthesized_duration / audible_total_duration) : 0;
+    subLabel.innerHTML = `<span class="rms-key">Audible glitchy seconds ratio:</span><span class="rms-val">${hasData ? subPct.toFixed(1) + ' %' : '–'}</span>` +
+        (hasData ? ` <span class="rms-key">(${audible_glitchy_intervals}/${audible_intervals})</span>` : '');
+    timeLabel.innerHTML = `<span class="rms-key">Audible glitch time ratio:</span><span class="rms-val">${hasData ? timePct.toFixed(2) + ' %' : '–'}</span>` +
+        (hasData ? ` <span class="rms-key">(${Math.round(audible_synthesized_duration * 1000)} ms/${audible_total_duration.toFixed(1)} s)</span>` : '');
+    // When nothing is counted, gray out the chips and say why: "not playing"
+    // (pc2 audio is not rendered) or "silent N s" (rendered, level too low).
+    const silent = playout_inactive || silent_run_intervals > 0;
+    const silentTag = playout_inactive
+        ? ' <span class="silent-tag">not playing</span>'
+        : (silent_run_intervals > 0 ? ` <span class="silent-tag">silent ${silent_run_intervals} s</span>` : '');
+    subLabel.insertAdjacentHTML('beforeend', silentTag);
+    timeLabel.insertAdjacentHTML('beforeend', silentTag);
+    for (const [el, glitchy] of [[subLabel, audible_glitchy_intervals > 0], [timeLabel, audible_synthesized_duration > 0]]) {
+      el.classList.toggle('silent', silent);
+      el.classList.toggle('glitchy', !silent && hasData && glitchy);
+      el.classList.toggle('active', !silent && hasData && !glitchy);
+      el.hidden = false;
+    }
+    subLabel.setAttribute('data-tooltip',
+        'Audible glitchy seconds ratio, in percent: the share of audible 1-second intervals with at least one playout glitch ' +
+        '(ΔsynthesizedSamplesDuration > 0 in media-playout). ' +
+        'An interval is audible if the received level sqrt(ΔtotalAudioEnergy / ΔtotalSamplesDuration) from inbound-rtp is above 0.0007. ' +
+        'Silent intervals are not counted. ' +
+        'Example: 10 audible seconds, 2 of them with a glitch, gives 20 %. ' +
+        'The numbers in parentheses are glitchy and all audible seconds. ' +
+        'Only valid while pc2 audio is played out (HTML:Play or WebAudio:Play). Gray with "not playing": no audio is played out, so nothing is counted. ' +
+        'Gray with "silent N s": audio is played out but the received level has been at or below 0.0007 for N seconds (for example a muted track), so the value is not updated. ' +
+        'Counted since the PeerConnection started.');
+    timeLabel.setAttribute('data-tooltip',
+        'Audible glitch time ratio, in percent: glitch time divided by playout time, summed over audible 1-second intervals only ' +
+        '(ΣΔsynthesizedSamplesDuration / ΣΔtotalSamplesDuration in media-playout). Silent intervals are not counted. ' +
+        'Example: one 20 ms glitch every 2 s gives 20 ms / 2000 ms = 1 % (and an audible glitchy seconds ratio of 50 %). ' +
+        'The numbers in parentheses are the total glitch time and the total audible playout time. ' +
+        'Only valid while pc2 audio is played out (HTML:Play or WebAudio:Play). Gray with "not playing": no audio is played out, so nothing is counted. ' +
+        'Gray with "silent N s": audio is played out but the received level has been at or below 0.0007 for N seconds (for example a muted track), so the value is not updated. ' +
+        'Counted since the PeerConnection started.');
+  }
+
   function updateVisualizerRmsLabel() {
     if (peerConnectionCheckbox.checked && rmsAudioLevels.length > 0) {
       showAudioLevelLabel(latestRmsAudioLevel);
@@ -1238,6 +1303,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (pc2) {
       try {
         const report = await pc2.getStats();
+        // Playout level for this interval, computed before the loop below so
+        // it does not depend on report order (previousInboundRtpStats still
+        // holds the previous sample here). Root Sum Square of
+        // sqrt(deltaTotalAudioEnergy / deltaTotalSamplesDuration) over all
+        // audio inbound-rtp streams, clamped to 1.0. null if unknown.
+        let intervalPlayoutLevel = null;
+        if (previousInboundRtpStats && previousInboundRtpStats.totalAudioEnergy !== undefined) {
+          let sumOfSquares = 0;
+          let found = false;
+          for (const s of report.values()) {
+            if (s.type !== 'inbound-rtp' || s.kind !== 'audio') continue;
+            const dE = s.totalAudioEnergy - previousInboundRtpStats.totalAudioEnergy;
+            const dT = s.totalSamplesDuration - previousInboundRtpStats.totalSamplesDuration;
+            if (dT > 0 && dE >= 0) {
+              sumOfSquares += dE / dT;
+              found = true;
+            }
+          }
+          if (found) intervalPlayoutLevel = Math.min(Math.sqrt(sumOfSquares), 1.0);
+        }
         let playoutStatsFound = false;
         let inboundRtpStatsFound = false;
         for (const stats of report.values()) {
@@ -1425,6 +1510,31 @@ document.addEventListener('DOMContentLoaded', async () => {
               rate.synthesizedSamplesPercentage = parseFloat(synthesizedSamplesPercentage.toFixed(1));
               const averagePlayoutDelayMs = (deltaTotalSamplesCount > 0) ? (deltaTotalPlayoutDelay / deltaTotalSamplesCount) * 1000 : 0;
               rate.averagePlayoutDelayMs = parseFloat(averagePlayoutDelayMs.toFixed(1));
+
+              // Audible glitch metrics. Three cases per interval:
+              // - not playing: pc2 audio is not rendered by the page, or the
+              //   playout made no progress. Not counted, not silence.
+              // - silent: playing, but level <= threshold (e.g. muted track).
+              // - audible: playing and level > threshold. Counted.
+              const pageRendersAudio = htmlPlayCheckbox.checked || webaudioPlayCheckbox.checked;
+              playout_inactive = !pageRendersAudio || deltaTotalSamplesDuration <= 1e-6;
+              if (playout_inactive) {
+                silent_run_intervals = 0;
+                rate.audible = false;
+              } else if (intervalPlayoutLevel !== null) {
+                rate.playoutLevel = parseFloat(intervalPlayoutLevel.toFixed(4));
+                const audible = intervalPlayoutLevel > AUDIBLE_LEVEL_THRESHOLD;
+                rate.audible = audible;
+                silent_run_intervals = audible ? 0 : silent_run_intervals + 1;
+                if (audible) {
+                  const glitchDuration = Math.max(deltaSynthesizedSamplesDuration, 0);
+                  audible_intervals++;
+                  if (glitchDuration > 1e-6) audible_glitchy_intervals++;
+                  audible_synthesized_duration += glitchDuration;
+                  audible_total_duration += deltaTotalSamplesDuration;
+                  rate.audibleGlitchTimePercent = parseFloat((100 * glitchDuration / deltaTotalSamplesDuration).toFixed(2));
+                }
+              }
               displayStats.rate = rate;
 
               if (deltaSynthesizedSamplesDuration > 0 || deltaSynthesizedSamplesEvents > 0) {
@@ -1464,6 +1574,24 @@ document.addEventListener('DOMContentLoaded', async () => {
               summary.averageSynthesizedPercentage = parseFloat(averageSynthesizedPercentage.toFixed(1));
             }
             displayStats.summary = summary;
+            updateAudibleGlitchLabels();
+            // Audible glitch metrics (shown as chips and stored in the
+            // snapshot). state: 'audible', 'silent' or 'not playing'.
+            if (previousPlayoutStats) {
+              const audibleSummary = {
+                state: playout_inactive ? 'not playing' : (silent_run_intervals > 0 ? 'silent' : 'audible'),
+              };
+              if (silent_run_intervals > 0) audibleSummary.silentSeconds = silent_run_intervals;
+              audibleSummary.audibleIntervals = audible_intervals;
+              audibleSummary.glitchyAudibleIntervals = audible_glitchy_intervals;
+              if (audible_intervals > 0) {
+                audibleSummary.glitchySecondsRatioPercent = parseFloat((100 * audible_glitchy_intervals / audible_intervals).toFixed(1));
+                audibleSummary.glitchTimeRatioPercent = parseFloat((100 * audible_synthesized_duration / audible_total_duration).toFixed(2));
+                audibleSummary.glitchTimeMs = Math.round(audible_synthesized_duration * 1000);
+                audibleSummary.audiblePlayoutSeconds = parseFloat(audible_total_duration.toFixed(1));
+              }
+              displayStats.audible = audibleSummary;
+            }
 
             // Update previousPlayoutStats for the next interval.
             previousPlayoutStats = {
@@ -1624,6 +1752,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    audible_intervals = 0;
+    audible_glitchy_intervals = 0;
+    audible_synthesized_duration = 0;
+    audible_total_duration = 0;
+    silent_run_intervals = 0;
+    playout_inactive = false;
+    updateAudibleGlitchLabels();
     glitchWindow.length = 0;
     simulatedGlitchCumulativeEvents = 0;
     simulatedGlitchCumulativeDuration = 0;
@@ -2205,6 +2340,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     previousPlayoutStats = null;
     total_intervals = 0;
     glitchy_intervals = 0;
+    audible_intervals = 0;
+    audible_glitchy_intervals = 0;
+    audible_synthesized_duration = 0;
+    audible_total_duration = 0;
+    silent_run_intervals = 0;
+    playout_inactive = false;
+    updateAudibleGlitchLabels();
     glitchWindow.length = 0;
     simulatedGlitchMode = 'none';
     simulatedGlitchCumulativeEvents = 0;

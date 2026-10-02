@@ -9,7 +9,7 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=22b2e50d">
+  <link rel="stylesheet" href="css/style.css?v=2cbfe83f">
   <script type="importmap">
   {
     "imports": {
@@ -136,6 +136,11 @@
             <button id="simulate-glitch-cycle-btn" class="btn btn-ghost btn-sm" data-tooltip="Run an automated 10-second UI simulation cycle (Clean -> Minor -> Degraded -> Clean) without audible audio disruptions.">Simulate Cycle</button>
             <span class="info-icon" tabindex="0" role="img" data-tooltip="Simulates audio playout glitch statistics in the UI without causing audible disruptions. Injects synthesized sample metrics to illustrate how the UI reacts to real audio underruns.">i</span>
           </span>
+          <span class="spacer"></span>
+          <div class="readouts">
+            <div id="audible-subintervals-label" class="readout-chip" hidden></div>
+            <div id="audible-glitch-time-label" class="readout-chip" hidden></div>
+          </div>
         </div>
         <div id="rtp-stats-container" class="card-body panes">
           <pre id="outbound-rtp-stats" class="pane" hidden></pre>
@@ -508,7 +513,7 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=70dca36f"></script>
+  <script type="module" src="js/main.js?v=a1cfb277"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
   <script type="module" src="js/fold-activity.js?v=f43725e2"></script>
