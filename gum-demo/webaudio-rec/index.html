@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebAudio recording paths</title>
+  <style>
+    :root {
+      --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+      --bg: hsl(216 25% 97%);
+      --surface: #fff;
+      --surface-code: hsl(216 30% 97%);
+      --border: hsl(216 18% 88%);
+      --text: hsl(218 25% 16%);
+      --text-2: hsl(218 12% 42%);
+      --accent: hsl(152 58% 34%);
+      --danger: hsl(356 70% 48%);
+      --warn-soft: hsl(40 95% 93%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto; max-width: 1100px; padding: 24px;
+      font: 14px/1.45 var(--font-ui); color: var(--text); background: var(--bg);
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--text-2); margin: 0 0 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--text-2); margin: 0 0 12px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin-bottom: 10px; }
+    label { display: inline-flex; gap: 6px; align-items: center; }
+    select, input[type=number] { font: inherit; padding: 3px 6px; }
+    input[type=number] { width: 80px; }
+    .paths label { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .paths small { color: var(--text-2); display: block; }
+    code { font-family: var(--font-mono); font-size: 12.5px; }
+    button {
+      font: inherit; font-weight: 600; padding: 8px 18px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    #start { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #stop { background: var(--danger); border-color: var(--danger); color: #fff; }
+    #status { color: var(--text-2); font-family: var(--font-mono); }
+    .jank { background: var(--warn-soft); border-radius: 8px; padding: 8px 12px; }
+    .result pre {
+      background: var(--surface-code); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; overflow-x: auto; font: 12.5px/1.4 var(--font-mono); margin: 8px 0;
+    }
+    .result details { margin-top: 8px; }
+    .result summary { cursor: pointer; color: var(--text-2); }
+    .result h3 { font-size: 14px; margin: 0 0 6px; }
+    .result audio { width: 100%; max-width: 520px; vertical-align: middle; }
+    .bad { color: var(--danger); font-weight: 600; }
+    #error { color: var(--danger); white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>WebAudio recording paths</h1>
+  <p class="sub">Record the microphone through different WebAudio paths to look for crackles and dropouts.
+    <a href="../">Back to gum-demo</a></p>
+
+  <section class="card">
+    <h2>Input</h2>
+    <div class="row">
+      <label>Microphone <select id="device"><option value="">default</option></select></label>
+      <label><input type="checkbox" id="ec" checked> echoCancellation</label>
+      <label><input type="checkbox" id="ns" checked> noiseSuppression</label>
+      <label><input type="checkbox" id="agc" checked> autoGainControl</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recording path</h2>
+    <div class="paths">
+      <label><input type="radio" name="path" value="direct" checked>
+        <span><b>0. Direct</b> <code>getUserMedia → MediaRecorder</code>
+          <small>Baseline without WebAudio.</small></span></label>
+      <label><input type="radio" name="path" value="msdest">
+        <span><b>1. MediaStreamDestination</b> <code>getUserMedia → createMediaStreamSource → createMediaStreamDestination → MediaRecorder</code>
+          <small>Moves the input from the capture clock to the AudioContext render clock (output device).</small></span></label>
+      <label><input type="radio" name="path" value="script">
+        <span><b>2. ScriptProcessorNode</b> <code>getUserMedia → createMediaStreamSource → createScriptProcessor → WAV</code>
+          <small>Copies every buffer on the main thread. Main-thread jank drops buffers.</small></span></label>
+      <label><input type="radio" name="path" value="worklet">
+        <span><b>3. AudioWorklet</b> <code>getUserMedia → createMediaStreamSource → AudioWorkletNode → WAV</code>
+          <small>Copies PCM on the audio thread. Compare with path 2.</small></span></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Options</h2>
+    <div class="row">
+      <label>AudioContext sampleRate
+        <select id="ctx-rate">
+          <option value="">default</option>
+          <option>8000</option><option>16000</option><option>22050</option>
+          <option>24000</option><option>44100</option><option>48000</option>
+        </select></label>
+      <label>latencyHint
+        <select id="ctx-latency">
+          <option value="">default</option>
+          <option>interactive</option><option>balanced</option><option>playback</option>
+        </select></label>
+      <label>ScriptProcessor bufferSize
+        <select id="sp-size">
+          <option>256</option><option>512</option><option>1024</option><option>2048</option>
+          <option selected>4096</option><option>8192</option><option>16384</option>
+        </select></label>
+      <label>MediaRecorder mimeType <select id="mime"><option value="">default</option></select></label>
+    </div>
+    <div class="row jank">
+      <label><input type="checkbox" id="jank"> Simulate main-thread jank:</label>
+      <label>block <input type="number" id="jank-ms" value="100" min="1"> ms</label>
+      <label>every <input type="number" id="jank-every" value="500" min="10"> ms</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <button id="start">Start recording</button>
+      <button id="stop" disabled>Stop</button>
+      <span id="status"></span>
+    </div>
+    <div id="error"></div>
+  </section>
+
+  <section id="results"></section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
