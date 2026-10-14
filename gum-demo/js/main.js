@@ -52,6 +52,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const errorMessageElement = document.getElementById('error-message');
   const audioDeviceSelect = document.querySelector('#audioDevice');
   const audioOutputDeviceSelect = document.querySelector('#audioOutputDevice');
+  const webaudioOutputDeviceSelect = document.querySelector('#webaudioOutputDevice');
+  // AudioContext.setSinkId() (Chrome 110+) is detected separately from
+  // HTMLMediaElement.setSinkId(); browsers can support one but not the other.
+  const mediaElementSetSinkIdSupported =
+      typeof HTMLMediaElement !== 'undefined' && ('setSinkId' in HTMLMediaElement.prototype);
+  const audioContextSetSinkIdSupported =
+      typeof AudioContext !== 'undefined' && ('setSinkId' in AudioContext.prototype);
+  // Select value for the AudioContext {type: 'none'} sink.
+  const WEBAUDIO_SINK_NONE = '__none__';
   const latencyHintSelect = document.querySelector('#latencyHint');
   const sampleRateSelect = document.querySelector('#sampleRate');
   const renderSizeHintSelect = document.querySelector('#renderSizeHint');
@@ -175,6 +184,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let fileProgressFrameRequest;
   let webAudioContext;
   let webAudioSource;
+  // renderSizeHint passed to the active AudioContext, or undefined.
+  let webAudioRenderSizeHint;
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
@@ -815,33 +826,101 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateAudioOutputDevices() {
-    if (!('setSinkId' in HTMLMediaElement.prototype)) {
+    if (!mediaElementSetSinkIdSupported) {
       audioOutputDeviceSelect.disabled = true;
-      audioOutputDeviceSelect.title = 'Audio output device selection is not supported by this browser.';
+      audioOutputDeviceSelect.title = 'HTMLMediaElement.setSinkId() is not supported by this browser.';
+    }
+    if (!audioContextSetSinkIdSupported) {
+      webaudioOutputDeviceSelect.disabled = true;
+      webaudioOutputDeviceSelect.title = 'AudioContext.setSinkId() is not supported by this browser.';
+    }
+    if (!mediaElementSetSinkIdSupported && !audioContextSetSinkIdSupported) {
       return;
     }
     debugLog('Populating audio output devices...');
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const selectedDeviceId = audioOutputDeviceSelect.value;
-    debugLog(`populateAudioOutputDevices: selectedDeviceId before populating is "${selectedDeviceId}"`);
-    audioOutputDeviceSelect.innerHTML = '';
-
-    // Add the static "undefined" option first.
-    audioOutputDeviceSelect.appendChild(new Option('undefined', 'undefined'));
-
     const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
 
-    audioOutputDevices.forEach((device, index) => {
-      const option = new Option(device.label || `Speaker ${index + 1}`,
-          device.deviceId);
-      audioOutputDeviceSelect.appendChild(option);
-    });
+    const fillSelect = (select, extraOptions = []) => {
+      const selectedDeviceId = select.value;
+      debugLog(`populateAudioOutputDevices(#${select.id}): selectedDeviceId before populating is "${selectedDeviceId}"`);
+      select.innerHTML = '';
+      // Add the static "undefined" option first.
+      select.appendChild(new Option('undefined', 'undefined'));
+      audioOutputDevices.forEach((device, index) => {
+        select.appendChild(new Option(device.label || `Speaker ${index + 1}`, device.deviceId));
+      });
+      extraOptions.forEach(option => select.appendChild(option));
+      if ([...select.options].some(option => option.value === selectedDeviceId)) {
+        select.value = selectedDeviceId;
+      }
+      debugLog(`populateAudioOutputDevices(#${select.id}): selectedDeviceId after populating is "${select.value}"`);
+    };
 
-    if ([...audioOutputDeviceSelect.options].some(option => 
-        option.value === selectedDeviceId)) {
-      audioOutputDeviceSelect.value = selectedDeviceId;
+    if (mediaElementSetSinkIdSupported) {
+      fillSelect(audioOutputDeviceSelect);
     }
-    debugLog(`populateAudioOutputDevices: selectedDeviceId after populating is "${audioOutputDeviceSelect.value}"`);
+    if (audioContextSetSinkIdSupported) {
+      fillSelect(webaudioOutputDeviceSelect, [new Option("none ({type: 'none'})", WEBAUDIO_SINK_NONE)]);
+    }
+  }
+
+  /**
+   * Maps the WebAudio sinkId select value to an AudioContext.setSinkId() argument.
+   * @returns {string|{type: string}}
+   */
+  function webAudioSinkIdFromSelect() {
+    const value = webaudioOutputDeviceSelect.value;
+    if (value === WEBAUDIO_SINK_NONE) return { type: 'none' };
+    // An empty string selects the user-agent default device.
+    return value === 'undefined' ? '' : value;
+  }
+
+  /**
+   * Returns a readable description of AudioContext.sinkId, which is either a
+   * device ID string ('' = default) or an AudioSinkInfo object ({type: 'none'}).
+   */
+  async function describeAudioContextSink(sinkId) {
+    if (sinkId === undefined) return 'n/a (AudioContext.setSinkId() not supported)';
+    if (typeof sinkId === 'object' && sinkId !== null) return `{type: '${sinkId.type}'}`;
+    if (sinkId === '') return "'' (default device)";
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const device = devices.find(d => d.kind === 'audiooutput' && d.deviceId === sinkId);
+      return device ? `${device.label || '(no label)'} [${sinkId}]` : sinkId;
+    } catch (err) {
+      return sinkId;
+    }
+  }
+
+  /** Renders the WebAudio Context pane and its snapshot state from webAudioContext. */
+  async function renderWebAudioContextInfo() {
+    if (!webAudioContext || !webaudioContextInfoElement) return;
+    const ctx = webAudioContext;
+    const qSize = ctx.renderQuantumSize;
+    const quantumDisplay = qSize !== undefined
+        ? `${qSize} samples (${((qSize / ctx.sampleRate) * 1000).toFixed(2)} ms)`
+        : '128 (default/legacy)';
+    const hintDisplay = webAudioRenderSizeHint !== undefined
+        ? ` (renderSizeHint: ${webAudioRenderSizeHint})`
+        : ' (renderSizeHint: default)';
+    const baseLatencyDisplay = `${(ctx.baseLatency * 1000).toFixed(1)} ms`;
+    const sinkDisplay = await describeAudioContextSink(ctx.sinkId);
+    // The context may have been closed while enumerateDevices() was pending.
+    if (ctx !== webAudioContext) return;
+    snapshotState.webAudioContext = {
+      sampleRate: `${ctx.sampleRate} Hz`,
+      baseLatency: baseLatencyDisplay,
+      renderQuantumSize: quantumDisplay,
+      renderSizeHint: webAudioRenderSizeHint !== undefined ? String(webAudioRenderSizeHint) : 'default',
+      sinkId: sinkDisplay,
+    };
+    webaudioContextInfoElement.textContent = `WebAudio Context:\n` +
+        `  sampleRate: ${ctx.sampleRate} Hz\n` +
+        `  baseLatency: ${baseLatencyDisplay}\n` +
+        `  renderQuantumSize: ${quantumDisplay}${hintDisplay}\n` +
+        `  sinkId: ${sinkDisplay}`;
+    webaudioContextInfoElement.hidden = false;
   }
 
   /**
@@ -1939,7 +2018,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       audioDevicesContainer.hidden = false;
       snapshotButtonContainer.hidden = false;
       visualizeAudio(streamForPlaybackAndVisualizer);
+      // Output devices are hidden by enumerateDevices() until mic permission is
+      // granted, so refresh both lists now that getUserMedia() has succeeded.
       await populateAudioInputDevices();
+      await populateAudioOutputDevices();
       await populateSystemInfo();
 
       // Display the properties of the audio device that the track is actively using.
@@ -2659,7 +2741,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           await audioPlayback.play();
           await updateAudioOutputInfo(audioPlayback.sinkId);
           audioOutputInfoElement.hidden = false;
-          audioOutputDeviceSelect.disabled = true;
           logLifecycleEvent('HTML:Play', `Playback started (sinkId: ${audioOutputDeviceSelect.value || 'default'})`);
         } catch (err) {
           console.error('Error setting audio output device:', err);
@@ -2668,13 +2749,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           // Revert the UI state since we failed.
           htmlPlayCheckbox.checked = false;
           updateHtmlPlayTooltip();
-          audioOutputDeviceSelect.disabled = false;
           logLifecycleEvent('HTML:Play', `Failed to start playback (${err.name})`);
         }
       } else {
         await audioPlayback.pause();
         audioOutputInfoElement.hidden = true;
-        audioOutputDeviceSelect.disabled = false;
         logLifecycleEvent('HTML:Play', 'Playback stopped');
       }
     }
@@ -2714,16 +2793,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             debugLog('AudioContext contextOptions:', contextOptions);
             webAudioContext = new AudioContext(contextOptions);
+            webAudioRenderSizeHint = contextOptions.renderSizeHint;
             debugLog('AudioContext base latency:', webAudioContext.baseLatency);
             debugLog('AudioContext renderQuantumSize:', webAudioContext.renderQuantumSize);
             debugLog(webAudioContext.renderQuantumSize);
+            if (audioContextSetSinkIdSupported) {
+              // Fires after setSinkId() resolves, also for later live changes.
+              webAudioContext.addEventListener('sinkchange', async () => {
+                debugLog('AudioContext "sinkchange" event, sinkId:', webAudioContext && webAudioContext.sinkId);
+                await renderWebAudioContextInfo();
+              });
+            }
           }
 
-          const sinkId = audioOutputDeviceSelect.value;
-          if ('setSinkId' in webAudioContext) {
-            const deviceIdToSet = sinkId === 'undefined' ? '' : sinkId;
-            await webAudioContext.setSinkId(deviceIdToSet);
-            debugLog(`Audio output device set to: ${deviceIdToSet || 'default'}`);
+          if (audioContextSetSinkIdSupported) {
+            const sinkIdToSet = webAudioSinkIdFromSelect();
+            await webAudioContext.setSinkId(sinkIdToSet);
+            debugLog('AudioContext output device set to:', sinkIdToSet || 'default');
           }
 
           webAudioSource = webAudioContext.createMediaStreamSource(streamForPlaybackAndVisualizer);
@@ -2732,32 +2818,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (webAudioContext.state === 'suspended') {
             await webAudioContext.resume();
           }
-          await updateAudioOutputInfo(webAudioContext.sinkId);
-          if (webAudioContext && webaudioContextInfoElement) {
-            const qSize = webAudioContext.renderQuantumSize;
-            const quantumDisplay = qSize !== undefined
-                ? `${qSize} samples (${((qSize / webAudioContext.sampleRate) * 1000).toFixed(2)} ms)`
-                : '128 (default/legacy)';
-            const hintDisplay = contextOptions.renderSizeHint !== undefined
-                ? ` (renderSizeHint: ${contextOptions.renderSizeHint})`
-                : ' (renderSizeHint: default)';
-            const baseLatencyDisplay = `${(webAudioContext.baseLatency * 1000).toFixed(1)} ms`;
-            snapshotState.webAudioContext = {
-              sampleRate: `${webAudioContext.sampleRate} Hz`,
-              baseLatency: baseLatencyDisplay,
-              renderQuantumSize: quantumDisplay,
-              renderSizeHint: contextOptions.renderSizeHint !== undefined
-                  ? String(contextOptions.renderSizeHint)
-                  : 'default',
-            };
-            webaudioContextInfoElement.textContent = `WebAudio Context:\n` +
-                `  sampleRate: ${webAudioContext.sampleRate} Hz\n` +
-                `  baseLatency: ${baseLatencyDisplay}\n` +
-                `  renderQuantumSize: ${quantumDisplay}${hintDisplay}`;
-            webaudioContextInfoElement.hidden = false;
-          }
-          audioOutputInfoElement.hidden = false;
-          audioOutputDeviceSelect.disabled = true;
+          await renderWebAudioContextInfo();
           latencyHintSelect.disabled = true;
           sampleRateSelect.disabled = true;
           if (renderSizeHintSelect) renderSizeHintSelect.disabled = true;
@@ -2786,14 +2847,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           const hintLog = contextOptions.renderSizeHint !== undefined
               ? `, renderSizeHint: ${contextOptions.renderSizeHint}`
               : '';
-          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${quantumLog}${hintLog})`);
+          const sinkLog = audioContextSetSinkIdSupported
+              ? `, sinkId: ${webaudioOutputDeviceSelect.value === WEBAUDIO_SINK_NONE ? "{type: 'none'}" : (webAudioContext.sinkId || 'default')}`
+              : '';
+          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${quantumLog}${hintLog}${sinkLog})`);
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.name} - ${err.message}`;
           errorMessageElement.hidden = false;
           webaudioPlayCheckbox.checked = false;
           updateWebAudioPlayTooltip();
-          audioOutputDeviceSelect.disabled = false;
           latencyHintSelect.disabled = false;
           sampleRateSelect.disabled = false;
           if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
@@ -2819,13 +2882,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           webAudioContext = null;
           webAudioSource = null;
         }
-        audioOutputInfoElement.hidden = true;
         snapshotState.webAudioContext = null;
         if (webaudioContextInfoElement) {
           webaudioContextInfoElement.hidden = true;
           webaudioContextInfoElement.textContent = '';
         }
-        audioOutputDeviceSelect.disabled = false;
         latencyHintSelect.disabled = false;
         sampleRateSelect.disabled = false;
         if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
@@ -2836,6 +2897,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         logLifecycleEvent('WebAudio:Play', 'AudioContext playback stopped');
       }
+    }
+  });
+
+  // HTMLMediaElement.setSinkId() also works during playback, so the HTML:Play
+  // selector stays enabled and switches the output of the playing element.
+  let previousHtmlSinkValue = audioOutputDeviceSelect.value;
+  audioOutputDeviceSelect.addEventListener('focus', () => {
+    previousHtmlSinkValue = audioOutputDeviceSelect.value;
+  });
+  audioOutputDeviceSelect.addEventListener('change', async () => {
+    if (!htmlPlayCheckbox.checked || audioPlayback.paused || !mediaElementSetSinkIdSupported) {
+      previousHtmlSinkValue = audioOutputDeviceSelect.value;
+      return;
+    }
+    const value = audioOutputDeviceSelect.value;
+    const deviceIdToSet = value === 'undefined' ? '' : value;
+    const label = audioOutputDeviceSelect.selectedOptions[0]?.text || deviceIdToSet;
+    try {
+      await audioPlayback.setSinkId(deviceIdToSet);
+      previousHtmlSinkValue = value;
+      await updateAudioOutputInfo(audioPlayback.sinkId);
+      logLifecycleEvent('HTML:Play', `setSinkId() switched output to ${label}`);
+    } catch (err) {
+      console.error('HTMLMediaElement.setSinkId() failed:', err);
+      errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
+      errorMessageElement.hidden = false;
+      audioOutputDeviceSelect.value = previousHtmlSinkValue;
+      logLifecycleEvent('HTML:Play', `setSinkId() failed (${err.name})`);
+    }
+  });
+
+  // Unlike latencyHint/sampleRate/renderSizeHint, the sink can be changed on a
+  // running AudioContext, so the select stays enabled during playback.
+  let previousWebAudioSinkValue = webaudioOutputDeviceSelect.value;
+  webaudioOutputDeviceSelect.addEventListener('focus', () => {
+    previousWebAudioSinkValue = webaudioOutputDeviceSelect.value;
+  });
+  webaudioOutputDeviceSelect.addEventListener('change', async () => {
+    const ctx = webAudioContext;
+    if (!ctx || ctx.state === 'closed' || !audioContextSetSinkIdSupported) {
+      previousWebAudioSinkValue = webaudioOutputDeviceSelect.value;
+      return;
+    }
+    const sinkIdToSet = webAudioSinkIdFromSelect();
+    const label = webaudioOutputDeviceSelect.selectedOptions[0]?.text || String(sinkIdToSet);
+    try {
+      await ctx.setSinkId(sinkIdToSet);
+      previousWebAudioSinkValue = webaudioOutputDeviceSelect.value;
+      logLifecycleEvent('WebAudio:Play', `AudioContext.setSinkId() switched output to ${label}`);
+      // 'sinkchange' also triggers a re-render; this covers same-sink no-ops.
+      await renderWebAudioContextInfo();
+    } catch (err) {
+      console.error('AudioContext.setSinkId() failed:', err);
+      errorMessageElement.textContent = `AudioContext.setSinkId() Error: ${err.name} - ${err.message}`;
+      errorMessageElement.hidden = false;
+      webaudioOutputDeviceSelect.value = previousWebAudioSinkValue;
+      logLifecycleEvent('WebAudio:Play', `AudioContext.setSinkId() failed (${err.name})`);
     }
   });
 
@@ -3091,6 +3209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           status.addEventListener('change', () => {
             populateSystemInfo();
             populateAudioInputDevices();
+            populateAudioOutputDevices();
           });
         }
       } catch (e) {
@@ -3189,7 +3308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
         <canvas id="compute-pressure-canvas" height="85"></canvas>
       </div>
-      <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId:${setSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Render Quantum:${quantumSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}, Compute Pressure:${computePressureSupported ? '✅' : '❌'}<br>
+      <strong>APIs Supported:</strong> getUserMedia:${gumSupported ? '✅' : '❌'}, applyConstraints:${applyConstraintsSupported ? '✅' : '❌'}, setSinkId (media element):${setSinkIdSupported ? '✅' : '❌'}, setSinkId (AudioContext):${audioContextSetSinkIdSupported ? '✅' : '❌'}, RTCPeerConnection:${peerConnectionSupported ? '✅' : '❌'}, MediaRecorder:${mediaRecorderSupported ? '✅' : '❌'}, Web Audio:${audioContextSupported ? '✅' : '❌'}, Render Quantum:${quantumSupported ? '✅' : '❌'}, Track Stats:${statsSupported ? '✅' : '❌'}, captureStream:${captureStreamSupported ? '✅' : '❌'}, Compute Pressure:${computePressureSupported ? '✅' : '❌'}<br>
       <strong>Supported Constraints:</strong> ${constraintsSummary}<br>
       <details class="ua-details">
         <summary>Raw User Agent</summary>
@@ -3315,6 +3434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'getUserMedia': !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
         'applyConstraints': typeof MediaStreamTrack !== 'undefined' && ('applyConstraints' in MediaStreamTrack.prototype),
         'setSinkId': typeof HTMLMediaElement !== 'undefined' && ('setSinkId' in HTMLMediaElement.prototype),
+        'AudioContext.setSinkId': audioContextSetSinkIdSupported,
         'RTCPeerConnection': typeof RTCPeerConnection !== 'undefined',
         'MediaRecorder': typeof MediaRecorder !== 'undefined',
         'Web Audio': !!(window.AudioContext || window.webkitAudioContext),
@@ -3342,6 +3462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'WebAudio renderSizeHint': renderSizeHintSelect ? (renderSizeHintSelect.value === 'custom' ? renderSizeHintCustomInput.value : renderSizeHintSelect.value) : undefined,
       'WebAudio renderQuantumSize': webAudioContext ? webAudioContext.renderQuantumSize : undefined,
       'Audio output sinkId': audioOutputDeviceSelect.value,
+      'WebAudio sinkId': webaudioOutputDeviceSelect.value,
       'MediaStreamTrack (Audio) Getters & Properties': trackSection,
       'RTCPeerConnection (getStats() Audio Reports)': rtpStatsSection,
       'Lifecycle Activity Log': lifecycleEvents.map(e => ({

@@ -64,6 +64,9 @@ audio.
         Quantum** (`renderSizeHint`). Displays negotiated
         `audioContext.renderQuantumSize` (samples and ms duration), sample rate,
         and base latency in a dedicated status card and interactive badge.
+        Has its own `sinkId` selector that uses `AudioContext.setSinkId()`
+        (Chrome 110+). You can change it during playback, and it supports
+        `{type: 'none'}`. The active sink shows in the WebAudio Context pane.
     *   **Rec / Stop Rec:** Records an Opus WebM snippet using `MediaRecorder`.
         The button turns solid red while recording. Play the recording with
         the same level meter as the live stream, optionally with **Loop**, and

@@ -441,11 +441,18 @@
                   <select id="audioOutputDevice">
                     <option value="undefined" selected>undefined</option>
                   </select>
-                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Routes audio playback to a specific physical output speaker via setSinkId().">i</span>
+                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Routes audio playback to a specific physical output speaker via HTMLMediaElement.setSinkId(). Can be changed during playback.">i</span>
                 </span>
               </div>
               <div class="webaudio-settings-group play-row subgroup">
                 <span class="sub-title">WebAudio:Play</span>
+                <span class="field">
+                  <label for="webaudioOutputDevice">sinkId:</label>
+                  <select id="webaudioOutputDevice">
+                    <option value="undefined" selected>undefined</option>
+                  </select>
+                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Routes AudioContext output to a specific speaker via AudioContext.setSinkId(). Can be changed during playback. 'none' renders the graph without an output device ({type: 'none'}).">i</span>
+                </span>
                 <span class="field">
                   <label for="latencyHint">latencyHint:</label>
                   <select id="latencyHint" class="latency-hint-select">
@@ -513,7 +520,7 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=d06f5b38"></script>
+  <script type="module" src="js/main.js?v=a26e8dc0"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
   <script type="module" src="js/fold-activity.js?v=f43725e2"></script>
