@@ -414,7 +414,9 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 }
 .play-row.webaudio-settings-group { --play-h: 240; }
 .sub-title { font-weight: 600; font-size: 13px; color: hsl(var(--play-h, 212) 65% 26%); min-width: 11ch; }
-#audioOutputDevice { max-width: 280px; }
+/* No width cap on the sinkId selects: they size to the longest device name and
+   only shrink (with ellipsis) when the row is narrower than that name. */
+.play-row .field { max-width: 100%; }
 #renderSizeHintCustom { width: 80px; }
 #webaudio-quantum-badge {
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; white-space: nowrap;
