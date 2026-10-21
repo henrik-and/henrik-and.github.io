@@ -93,6 +93,7 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
   align-items: start;
 }
 .col { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+.foot { max-width: var(--page-max); margin: 0 auto; padding: 0 var(--s6) var(--s8); }
 
 /* The right column: #stream-controls-container is only a wrapper, so its
    cards and #audio-devices-container can be ordered together. */
