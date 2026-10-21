@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="getUserMedia() audio test page: constraints, track settings and stats, WebRTC loopback stats, Web Audio playback and recording.">
+  <title>gum-demo</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
+  <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
+       pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
+       The import map gives each ES module imported by main.js its own hash. -->
+  <link rel="stylesheet" href="css/style.css?v=8cdd87d2">
+  <script type="importmap">
+  {
+    "imports": {
+      "./js/a11y.js": "./js/a11y.js?v=b5de2807",
+      "./js/compute-pressure.js": "./js/compute-pressure.js?v=8dafbfea",
+      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=a859f835",
+      "./js/sdp.js": "./js/sdp.js?v=137dc73c",
+      "./js/sysinfo.js": "./js/sysinfo.js?v=a14f9dfb",
+      "./js/util.js": "./js/util.js?v=2cf6c444",
+      "./js/visualizer.js": "./js/visualizer.js?v=9d614a8e",
+      "./js/wav.js": "./js/wav.js?v=f89ffdba"
+    }
+  }
+  </script>
+</head>
+<body>
+  <h1><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">MediaDevices: getUserMedia()</a> Audio Demo</h1>
+  <details id="system-info-container">
+    <summary id="system-info-summary">System Diagnostics <span id="summary-compute-pressure-badge"></span></summary>
+    <div id="system-info-details">
+      Loading diagnostics...
+    </div>
+  </details>
+  <div class="api-call-container">
+    <div class="constraints-container">
+      <div class="source-selector">
+        <span class="source-selector-label">Input source:</span>
+        <input type="radio" id="mic-source" name="input-source" value="microphone" checked>
+        <label for="mic-source" data-tooltip="Acquire live audio from local microphone via navigator.mediaDevices.getUserMedia().">Microphone</label>
+        <input type="radio" id="file-source" name="input-source" value="file">
+        <label for="file-source" data-tooltip="Simulate a MediaStreamTrack from an audio file using HTMLMediaElement.captureStream() without microphone permissions.">Audio File</label>
+      </div>
+      <div id="file-selection-container" class="file-settings-container" hidden>
+        <label for="audioFile">Audio File:</label>
+        <select id="audioFile">
+          <!-- Populated by JS -->
+        </select>
+        <label for="localFileInput">Local:</label>
+        <input type="file" id="localFileInput" accept="audio/*">
+      </div>
+      <div class="settings-and-copy-container">
+        <div class="action-buttons-container">
+          <button id="gum-button" data-tooltip="Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.">getUserMedia</button>
+          <button id="apply-constraints-button" data-tooltip="applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first." disabled>applyConstraints</button>
+        </div>
+        <div class="settings-container">
+          <div class="peerconnection-container">
+            <input type="checkbox" id="peerconnection-checkbox">
+            <label for="peerconnection-checkbox" data-tooltip="Send and receive the recorded local audio track via an RTCPeerConnection loopback (pc1 -> pc2) using Opus stereo.">PeerConnection</label>
+          </div>
+          <div class="dtx-container">
+            <input type="checkbox" id="dtx-checkbox">
+            <label for="dtx-checkbox" data-tooltip="Enable Voice Activity Detection (VAD), Discontinuous Transmission (DTX), and Comfort Noise Generation (CNG) for Opus in RTCPeerConnection by setting usedtx=1 in SDP.">VAD/DTX/CNG</label>
+          </div>
+          <div class="auto-record-container">
+            <input type="checkbox" id="auto-record-checkbox">
+            <label for="auto-record-checkbox" data-tooltip="Automatically start recording via MediaRecorder as soon as the audio track is acquired from getUserMedia().">Auto-Record</label>
+          </div>
+          <div class="auto-play-container">
+            <input type="checkbox" id="auto-play-checkbox">
+            <label for="auto-play-checkbox" data-tooltip="Automatically start rendering the audio track in loopback using HTML:Play as soon as the stream is acquired.">Auto-Play</label>
+          </div>
+          <div class="sine-tone-container">
+            <input type="checkbox" id="sine-tone-checkbox">
+            <label for="sine-tone-checkbox" data-tooltip="Replace live mic input with a continuous 440 Hz sine wave tone while keeping physical microphone capture active.">440Hz Sine</label>
+          </div>
+          <pre>constraints = {
+  audio: {</pre>
+          <div class="dynamic-constraints-group">
+            <div class="dynamic-constraints-header">// applyConstraints() scope</div>
+            <div class="setting">
+              <label for="echoCancellation">echoCancellation:</label>
+              <select id="echoCancellation">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="all">all</option>
+                  <option value="remote-only">remote-only</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:all">all</option>
+                  <option value="ideal:remote-only">remote-only</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Acoustic Echo Cancellation (AEC) removes speaker feedback from microphone input. Supports boolean, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="autoGainControl">autoGainControl:</label>
+              <select id="autoGainControl">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Automatic Gain Control (AGC) adjusts microphone input sensitivity. Supports boolean, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="noiseSuppression">noiseSuppression:</label>
+              <select id="noiseSuppression">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Noise Suppression (NS) filters background ambient noise. Supports boolean, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting" id="voiceIsolation-container" hidden>
+              <label for="voiceIsolation">voiceIsolation:</label>
+              <select id="voiceIsolation">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Booleans">
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:true">true</option>
+                  <option value="exact:false">false</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:true">true</option>
+                  <option value="ideal:false">false</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Voice Isolation uses deep learning to isolate voice from background sound. Supports boolean, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="channelCount">channelCount:</label>
+              <select id="channelCount">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:1">exact: 1</option>
+                  <option value="exact:2">exact: 2</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:1">ideal: 1</option>
+                  <option value="ideal:2">ideal: 2</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Specifies mono (1) or stereo (2) audio channels requested for capture. Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="latencyConstraint">latency:</label>
+              <select id="latencyConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Seconds)">
+                  <option value="0.005">0.005 (5ms)</option>
+                  <option value="0.01">0.01 (10ms)</option>
+                  <option value="0.02">0.02 (20ms)</option>
+                  <option value="0.05">0.05 (50ms)</option>
+                  <option value="0.1">0.1 (100ms)</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:0.01">exact: 0.01</option>
+                  <option value="exact:0.02">exact: 0.02</option>
+                  <option value="exact:0.05">exact: 0.05</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:0.01">ideal: 0.01</option>
+                  <option value="ideal:0.02">ideal: 0.02</option>
+                  <option value="ideal:0.05">ideal: 0.05</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Target audio capture hardware latency in seconds (e.g. 0.01 for 10ms, 0.02 for 20ms). Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="sampleRateConstraint">sampleRate:</label>
+              <select id="sampleRateConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Hz)">
+                  <option value="16000">16000</option>
+                  <option value="24000">24000</option>
+                  <option value="32000">32000</option>
+                  <option value="44100">44100</option>
+                  <option value="48000">48000</option>
+                  <option value="96000">96000</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:16000">exact: 16000</option>
+                  <option value="exact:44100">exact: 44100</option>
+                  <option value="exact:48000">exact: 48000</option>
+                  <option value="exact:96000">exact: 96000</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:16000">ideal: 16000</option>
+                  <option value="ideal:44100">ideal: 44100</option>
+                  <option value="ideal:48000">ideal: 48000</option>
+                  <option value="ideal:96000">ideal: 96000</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Audio capture sampling rate in Hz (e.g. 16000, 44100, 48000, 96000). Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+            <div class="setting">
+              <label for="sampleSizeConstraint">sampleSize:</label>
+              <select id="sampleSizeConstraint">
+                <option value="undefined" selected>undefined</option>
+                <optgroup label="Direct (Bits)">
+                  <option value="16">16</option>
+                  <option value="24">24</option>
+                  <option value="32">32</option>
+                </optgroup>
+                <optgroup label="Exact">
+                  <option value="exact:16">exact: 16</option>
+                  <option value="exact:24">exact: 24</option>
+                  <option value="exact:32">exact: 32</option>
+                </optgroup>
+                <optgroup label="Ideal">
+                  <option value="ideal:16">ideal: 16</option>
+                  <option value="ideal:24">ideal: 24</option>
+                  <option value="ideal:32">ideal: 32</option>
+                </optgroup>
+              </select>
+              <span class="info-icon" tabindex="0" role="img" data-tooltip="Linear PCM sample resolution in bits per sample (e.g. 16, 24, 32). Supports direct, exact, and ideal constraints.">i</span>
+            </div>
+          </div>
+          <div class="setting">
+            <label for="audioDevice">deviceId:</label>
+            <select id="audioDevice">
+              <option value="undefined" selected>undefined</option>
+            </select>
+            <span class="info-icon" tabindex="0" role="img" data-tooltip="Requests audio capture from a specific input device matching the selected deviceId.">i</span>
+          </div>
+          <pre>  },
+  video: false
+}</pre>
+        </div>
+        <button id="copy-bookmark-button" data-tooltip="Serialize current constraint selections into URL parameters and copy shareable link to clipboard using navigator.clipboard.writeText().">Copy Bookmark</button>
+      </div>
+    </div>
+  </div>
+  <div id="audio-devices-container" hidden>
+    <pre id="audio-input-device"></pre>
+    <pre id="audio-output-info" hidden></pre>
+    <pre id="webaudio-context-info" hidden></pre>
+  </div>
+  <div id="stream-controls-container" hidden>
+    <div id="visualizer-and-stop-container">
+      <div id="visualizer-container">
+        <canvas id="audio-visualizer" width="100" height="34"></canvas>
+        <div id="visualizer-db-label" hidden data-tooltip="Level meter: RMS of the audio that is played and visualized, measured in the page with an AnalyserNode (getFloatTimeDomainData) and averaged over about 250 ms. Unit: dBFS (0 dBFS = full scale). The green bar goes from -60 dBFS (empty) to 0 dBFS (full). When PeerConnection is on, this is the received pc2 track. Reference: a full-scale sine is -3.0 dBFS; the 440 Hz test tone (peak 0.2) is -17.0 dBFS. Green above -60 dBFS (RMS). The audioLevel label is based on peak values and turns green at 0.0007 (about -63 dB), so it is often green while this label is gray for quiet speech or background noise, where peaks are 10-20 dB above the RMS."></div>
+        <div id="visualizer-rms-label" hidden></div>
+      </div>
+      <button id="record-button" data-tooltip="Record the audio stream to an Opus WebM blob using the MediaRecorder API. If 440Hz Sine is on when recording starts, the tone is recorded; otherwise the microphone (or audio file). Switching the tone during a recording does not change the recorded source."><span class="record-dot"></span>Rec</button>
+      <div id="recorded-audio-container" class="recorded-audio-container" hidden>
+        <span class="recorded-label">Recorded Audio:</span>
+        <audio id="recorded-audio" controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
+        <button id="download-recorded-audio-button" class="download-button" data-tooltip="Download recorded audio as WebM file"><svg class="download-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg><span>Download</span></button>
+        <canvas id="recorded-visualizer" hidden width="200" height="50"></canvas>
+      </div>
+      <button id="stop-button" data-tooltip="Stop all active audio tracks using MediaStreamTrack.stop(), close peer connections, and reset state.">Stop Stream</button>
+    </div>
+    <div id="checkbox-container">
+      <input type="checkbox" id="mute-checkbox" />
+      <label for="mute-checkbox" data-tooltip="Mute the audio track by setting MediaStreamTrack.enabled = false without stopping hardware capture.">Track:Mute</label>
+      <input type="checkbox" id="html-play-checkbox" />
+      <label for="html-play-checkbox" data-tooltip="Play the audio track directly using an HTML <audio> element with setSinkId() output routing.">HTML:Play</label>
+      <div class="webaudio-settings-group">
+        <input type="checkbox" id="webaudio-play-checkbox" />
+        <label for="webaudio-play-checkbox" data-tooltip="Route audio through Web Audio API (AudioContext & MediaStreamAudioSourceNode) applying latencyHint, sampleRate, and renderSizeHint.">WebAudio:Play</label>
+        <label for="latencyHint">latencyHint:</label>
+        <select id="latencyHint" class="latency-hint-select">
+          <option value="undefined" selected>undefined</option>
+          <option value="interactive">interactive</option>
+          <option value="balanced">balanced</option>
+          <option value="playback">playback</option>
+        </select>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback).">i</span>
+        <label for="sampleRate">sampleRate:</label>
+        <select id="sampleRate" class="sample-rate-select">
+          <option value="undefined" selected>undefined</option>
+          <option value="44100">44100</option>
+          <option value="48000">48000</option>
+          <option value="88200">88200</option>
+          <option value="96000">96000</option>
+        </select>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext hardware/processing sample rate in Hz (e.g. 44100, 48000, 96000).">i</span>
+        <label for="renderSizeHint">renderSizeHint:</label>
+        <select id="renderSizeHint" class="render-size-hint-select">
+          <option value="undefined" selected>undefined</option>
+          <option value="default">default (128)</option>
+          <option value="hardware">hardware</option>
+          <optgroup label="Integers (Samples)">
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="480">480 (10ms @ 48kHz)</option>
+            <option value="512">512</option>
+            <option value="960">960 (20ms @ 48kHz)</option>
+            <option value="1024">1024</option>
+            <option value="2048">2048</option>
+            <option value="custom">custom integer...</option>
+          </optgroup>
+        </select>
+        <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" hidden />
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
+        <span id="webaudio-quantum-badge" hidden data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
+      </div>
+      <label for="audioOutputDevice">sinkId:</label>
+      <select id="audioOutputDevice">
+        <option value="undefined" selected>undefined</option>
+      </select>
+      <span class="info-icon" tabindex="0" role="img" data-tooltip="Routes audio playback to a specific physical output speaker via setSinkId().">i</span>
+    </div>
+    <fieldset id="track-section-container">
+      <legend id="track-section-title">MediaStreamTrack (Audio) Getters & Properties</legend>
+      <div id="track-settings-container">
+        <pre id="track-constraints"></pre>
+        <pre id="track-settings"></pre>
+        <pre id="track-properties"></pre>
+        <pre id="track-stats"></pre>
+      </div>
+      <details id="lifecycle-events-container">
+        <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)</summary>
+        <div id="lifecycle-events-log"></div>
+      </details>
+    </fieldset>
+    <fieldset id="rtp-stats-section-container" hidden>
+      <legend id="rtp-stats-section-title">
+        RTCPeerConnection (getStats() Audio Reports)
+        <span id="glitch-simulation-container">
+          <label for="simulate-glitch-select" data-tooltip="Simulates playout glitch metrics in the UI without audible distortion. Injects synthesized sample events to demonstrate health states and warning indicators.">Simulate Glitches:</label>
+          <select id="simulate-glitch-select" data-tooltip="Inject simulated glitch metrics into the getStats() playout report (UI only, no audible distortion).">
+            <option value="none">Off (Live)</option>
+            <option value="minor">Inject 1 Glitch</option>
+            <option value="degraded">Heavy Burst (Degraded)</option>
+          </select>
+          <button id="simulate-glitch-cycle-btn" data-tooltip="Run an automated 10-second UI simulation cycle (Clean -> Minor -> Degraded -> Clean) without audible audio disruptions.">Simulate Cycle</button>
+          <span class="info-icon" tabindex="0" role="img" data-tooltip="Simulates audio playout glitch statistics in the UI without causing audible disruptions. Injects synthesized sample metrics to illustrate how the UI reacts to real audio underruns.">i</span>
+        </span>
+      </legend>
+      <div id="rtp-stats-container">
+        <pre id="outbound-rtp-stats" hidden></pre>
+        <pre id="inbound-rtp-stats" hidden></pre>
+        <pre id="audio-playout-stats" hidden></pre>
+      </div>
+    </fieldset>
+    <div id="snapshot-button-container" hidden>
+      <button id="save-snapshot-button" data-tooltip="Export current settings, active audio devices, WebAudio context (renderQuantumSize & renderSizeHint), track getters, and RTCPeerConnection getStats() reports to a gUM-snapshot.json file.">Save Snapshot</button>
+    </div>
+  </div>
+  <audio id="audio-playback"></audio>
+  <audio id="file-source-audio" hidden loop></audio>
+  <p id="error-message" class="error" role="alert" hidden></p>
+  <!-- Created up front so screen readers treat it as a live region before the first toast. -->
+  <div id="toast-notification" class="toast-notification" role="status"></div>
+  <p id="bookmark-url-container"></p>
+  <p class="about-link-container"><a href="readme.html" target="_blank">About this demo</a></p>
+  <script type="module" src="js/main.js?v=ef30799d" defer></script>
+</body>
+</html>
