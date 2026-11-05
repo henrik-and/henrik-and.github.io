@@ -1,0 +1,26 @@
+/* gdm-demo additions on top of the gum-demo style sheet. */
+
+/* Longer constraint names than in gum-demo (suppressLocalAudioPlayback). */
+.setting { grid-template-columns: 22ch minmax(0, 1fr) auto; }
+.dynamic-constraints-group .setting { grid-template-columns: 28ch minmax(0, 1fr) auto; }
+
+/* The request preview is always visible (also before a stream exists). */
+#request-preview { min-height: 2.5em; }
+
+/* Supported-constraints list: one chip per name. */
+.sup-list { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.sup-list .sup-key { font-family: var(--font-mono); font-size: 12px; }
+
+/* Keep the track card (and its Lifecycle Activity Log) visible also without a
+   stream, so getDisplayMedia() errors (for example TypeError for exact) are
+   logged where you can see them. Empty panes hide themselves. */
+body:has(#stream-controls-container[hidden]) .wide { display: flex; }
+
+/* Local audio source row (always visible). */
+.local-audio-container {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  margin-top: var(--s3); padding: var(--s3) var(--s4);
+}
+.local-audio-label { font-weight: 600; font-size: 13px; color: var(--text); }
+.local-audio-container select { flex: 0 1 260px; }
+.local-audio-container audio { flex: 1 1 280px; min-width: 220px; height: 36px; }
