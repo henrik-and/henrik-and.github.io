@@ -6,15 +6,15 @@
   <meta name="description" content="getDisplayMedia() audio test page: display-capture options and audio constraints, track getConstraints/getSettings/getCapabilities, track stats, level meter and recording.">
   <title>gdm-demo</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖥️</text></svg>">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/gdm.css">
+  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/gdm.css?v=5">
 </head>
 <body>
   <header class="app-header">
     <div class="app-header-inner">
       <h1 class="app-title"><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia"><span class="api">MediaDevices: getDisplayMedia()</span> Audio Demo</a></h1>
       <span class="header-spacer"></span>
-      <a class="link-quiet" href="../gum-demo/">gum-demo</a>
+      <a class="link-quiet" href="readme.html" target="_blank">About</a>
     </div>
   </header>
 
@@ -25,23 +25,59 @@
     </details>
   </div>
 
-  <!-- Local audio source: always available, also without getDisplayMedia(),
-       so you can play audio on this page and check if it is captured. -->
+  <!-- Local audio sources: always available, also without getDisplayMedia(),
+       so you can play audio on this page and check if it is captured. The
+       three rows play out in different ways (same as echo-demo). Each row can
+       play at the same time as the others. -->
   <div class="diag">
-    <section id="local-audio-container" class="card local-audio-container" aria-label="Local audio source">
-      <span class="local-audio-label">Local Audio:</span>
-      <span class="info-icon" tabindex="0" role="img" data-tooltip="Plays an audio file in this page with an HTML audio element (looped). Use it to check what getDisplayMedia() captures: with restrictOwnAudio, this page's own audio should not be in the captured system audio. Files from echo-demo. Note: with Windows audio enhancements or spatial sound on, captured system audio has a floor of about -96 dBFS even when nothing plays.">i</span>
-      <select id="local-audio-file" aria-label="Audio file">
-        <option value="../echo-demo/audio/music_beat.wav" selected>music_beat.wav</option>
-        <option value="../echo-demo/audio/female_lead_voice_music.wav">female_lead_voice_music.wav</option>
-        <option value="../echo-demo/audio/cyndi_lauper_48k.wav">cyndi_lauper_48k.wav</option>
-        <option value="../echo-demo/audio/harvard.wav">harvard.wav</option>
-        <option value="../echo-demo/audio/concatenate_female.wav">concatenate_female.wav</option>
-        <option value="../echo-demo/audio/left_right_stereo_test.wav">left_right_stereo_test.wav</option>
-        <option value="../echo-demo/audio/stereo_knocking.wav">stereo_knocking.wav</option>
-        <option value="../echo-demo/audio/soft.mp3">soft.mp3</option>
-      </select>
-      <audio id="local-audio" controls loop preload="none" controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
+    <section id="local-audio-container" class="card local-audio-container" aria-label="Local audio sources">
+      <h2 class="local-audio-title">Local audio sources</h2>
+      <div class="local-audio-row">
+        <span class="local-audio-label">&lt;audio&gt; element:</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="Plays the file directly with an HTML audio element (looped). Use it to check what getDisplayMedia() captures: with restrictOwnAudio, this page&#39;s own audio should not be in the captured system audio. Files from echo-demo. Note: with Windows audio enhancements or spatial sound on, captured system audio has a floor of about -96 dBFS even when nothing plays.">i</span>
+        <select id="html-audio-file" aria-label="&lt;audio&gt; element: audio file">
+          <option value="../echo-demo/audio/music_beat.wav" selected>music_beat.wav</option>
+          <option value="../echo-demo/audio/female_lead_voice_music.wav">female_lead_voice_music.wav</option>
+          <option value="../echo-demo/audio/cyndi_lauper_48k.wav">cyndi_lauper_48k.wav</option>
+          <option value="../echo-demo/audio/harvard.wav">harvard.wav</option>
+          <option value="../echo-demo/audio/concatenate_female.wav">concatenate_female.wav</option>
+          <option value="../echo-demo/audio/left_right_stereo_test.wav">left_right_stereo_test.wav</option>
+          <option value="../echo-demo/audio/stereo_knocking.wav">stereo_knocking.wav</option>
+          <option value="../echo-demo/audio/soft.mp3">soft.mp3</option>
+        </select>
+        <audio id="html-audio" controls loop preload="none" controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
+      </div>
+      <div class="local-audio-row">
+        <span class="local-audio-label">Web Audio:</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="Plays the file through Web Audio: createMediaElementSource() on the audio element, connected to AudioContext.destination. The audio element itself is then silent; the AudioContext plays the audio. Note: with Windows audio enhancements or spatial sound on, captured system audio has a floor of about -96 dBFS even when nothing plays.">i</span>
+        <select id="webaudio-audio-file" aria-label="Web Audio: audio file">
+          <option value="../echo-demo/audio/music_beat.wav">music_beat.wav</option>
+          <option value="../echo-demo/audio/female_lead_voice_music.wav">female_lead_voice_music.wav</option>
+          <option value="../echo-demo/audio/cyndi_lauper_48k.wav">cyndi_lauper_48k.wav</option>
+          <option value="../echo-demo/audio/harvard.wav">harvard.wav</option>
+          <option value="../echo-demo/audio/concatenate_female.wav">concatenate_female.wav</option>
+          <option value="../echo-demo/audio/left_right_stereo_test.wav">left_right_stereo_test.wav</option>
+          <option value="../echo-demo/audio/stereo_knocking.wav">stereo_knocking.wav</option>
+          <option value="../echo-demo/audio/soft.mp3" selected>soft.mp3</option>
+        </select>
+        <audio id="webaudio-audio" controls loop preload="none" controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
+      </div>
+      <div class="local-audio-row">
+        <span class="local-audio-label">RTCPeerConnection:</span>
+        <span class="info-icon" tabindex="0" role="img" data-tooltip="Plays the file through a local RTCPeerConnection loopback: createMediaElementSource() → createMediaStreamDestination() → pc1 → pc2 (Opus, stereo) → a hidden audio element that plays the remote track. Note: with Windows audio enhancements or spatial sound on, captured system audio has a floor of about -96 dBFS even when nothing plays.">i</span>
+        <select id="pc-audio-file" aria-label="RTCPeerConnection: audio file">
+          <option value="../echo-demo/audio/music_beat.wav">music_beat.wav</option>
+          <option value="../echo-demo/audio/female_lead_voice_music.wav">female_lead_voice_music.wav</option>
+          <option value="../echo-demo/audio/cyndi_lauper_48k.wav">cyndi_lauper_48k.wav</option>
+          <option value="../echo-demo/audio/harvard.wav">harvard.wav</option>
+          <option value="../echo-demo/audio/concatenate_female.wav" selected>concatenate_female.wav</option>
+          <option value="../echo-demo/audio/left_right_stereo_test.wav">left_right_stereo_test.wav</option>
+          <option value="../echo-demo/audio/stereo_knocking.wav">stereo_knocking.wav</option>
+          <option value="../echo-demo/audio/soft.mp3">soft.mp3</option>
+        </select>
+        <audio id="pc-audio" controls loop preload="none" controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"></audio>
+      </div>
+      <audio id="pc-audio-sink" autoplay hidden></audio>
     </section>
   </div>
 
@@ -102,6 +138,7 @@
         <div class="card-head">
           <h2 class="card-title">getDisplayMedia() options</h2>
           <span class="spacer"></span>
+          <button id="copy-bookmark-button" class="btn btn-ghost btn-sm" data-tooltip="Serialize the current option and constraint selections (and the files of the local audio sources) into URL parameters and copy the shareable link to the clipboard using navigator.clipboard.writeText().">Copy Bookmark</button>
           <button id="gdm-button" class="btn btn-primary" data-tooltip="Call navigator.mediaDevices.getDisplayMedia() with the options below.">getDisplayMedia</button>
         </div>
         <div class="card-body">
@@ -230,6 +267,8 @@
           </div>
         </div>
       </section>
+
+      <p id="bookmark-url-container"></p>
     </div>
 
     <!-- ================= Right: request and result ================= -->

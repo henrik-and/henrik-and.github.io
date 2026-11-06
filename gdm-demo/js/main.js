@@ -136,6 +136,73 @@ function restoreSelections() {
   }
 }
 
+// ---------- Bookmark (URL parameters) ----------
+// Parameter names are the control ids (for example ?restrictOwnAudio=ideal:true
+// &systemAudio=include). The Local Audio file is stored as ?audioFile=<name>.
+// URL parameters override the selections saved in localStorage.
+
+const copyBookmarkButton = $('copy-bookmark-button');
+const bookmarkUrlContainer = $('bookmark-url-container');
+
+function buildBookmarkUrl() {
+  const params = new URLSearchParams();
+  for (const select of allSelects()) {
+    if (select.value !== 'undefined') params.set(select.id, select.value);
+  }
+  for (const src of LOCAL_SOURCES) {
+    const select = $(`${src.key}-audio-file`);
+    if (!select.options[select.selectedIndex].defaultSelected) params.set(src.param, fileName(select.value));
+  }
+  const query = params.toString();
+  return `${location.origin}${location.pathname}${query ? `?${query}` : ''}`;
+}
+
+function copyBookmark() {
+  const url = buildBookmarkUrl();
+  debugLog('Bookmark URL:', url);
+  navigator.clipboard.writeText(url).then(() => {
+    const originalText = copyBookmarkButton.textContent;
+    copyBookmarkButton.textContent = 'Copied!';
+    setTimeout(() => { copyBookmarkButton.textContent = originalText; }, 2000);
+  }).catch(err => console.error('Failed to copy URL: ', err));
+
+  bookmarkUrlContainer.textContent = 'Bookmark URL: ';
+  const link = document.createElement('a');
+  link.href = url;
+  link.textContent = url;
+  link.target = '_blank';
+  bookmarkUrlContainer.appendChild(link);
+  logLifecycleEvent('Bookmark', 'URL copied to the clipboard');
+}
+
+/**
+ * Applies URL parameters to the controls. Returns the set of applied
+ * parameter names.
+ */
+function applyUrlParameters() {
+  const params = new URLSearchParams(location.search);
+  const applied = new Set();
+  for (const select of allSelects()) {
+    const v = params.get(select.id);
+    if (v !== null && [...select.options].some(o => o.value === v)) {
+      select.value = v;
+      applied.add(select.id);
+    }
+  }
+  for (const src of LOCAL_SOURCES) {
+    const name = params.get(src.param);
+    if (!name) continue;
+    const select = $(`${src.key}-audio-file`);
+    const option = [...select.options].find(o => fileName(o.value) === name);
+    if (option) {
+      select.value = option.value;
+      applied.add(src.param);
+      try { localStorage.setItem(`gdm-demo.${src.key}AudioFile`, option.value); } catch { /* ignore */ }
+    }
+  }
+  return applied;
+}
+
 // ---------- Messages ----------
 
 function showError(text, notice = false) {
@@ -452,42 +519,118 @@ downloadButton.addEventListener('click', () => {
   logLifecycleEvent('MediaRecorder', `Downloaded "${name}"`);
 });
 
-// ---------- Local audio source ----------
-// An <audio> element that plays a file in this page. Independent of
-// getDisplayMedia(), so it can be started and stopped at any time.
+// ---------- Local audio sources ----------
+// Three rows that play a file in this page in different ways (same as
+// echo-demo). Independent of getDisplayMedia(), so they can be started and
+// stopped at any time, and several can play at the same time.
+//   html:     the <audio> element plays the file directly.
+//   webaudio: createMediaElementSource() -> AudioContext.destination.
+//   pc:       createMediaElementSource() -> MediaStreamDestination -> pc1 ->
+//             pc2 (Opus, stereo) -> #pc-audio-sink plays the remote track.
 
-const localAudio = $('local-audio');
-const localAudioFile = $('local-audio-file');
+const LOCAL_SOURCES = [
+  { key: 'html', name: '<audio>', param: 'audioFile' },
+  { key: 'webaudio', name: 'Web Audio', param: 'webAudioFile' },
+  { key: 'pc', name: 'RTCPeerConnection', param: 'pcAudioFile' },
+];
+const pcAudioSink = $('pc-audio-sink');
+let localAudioContext = null;
+const elementSources = new Map();  // key -> MediaElementAudioSourceNode
+let pc1 = null;
+let pc2 = null;
 
 function fileName(src) {
   return decodeURIComponent(src.split('/').pop());
 }
 
-function setLocalAudioSource() {
-  const wasPlaying = !localAudio.paused;
-  localAudio.src = localAudioFile.value;
-  if (wasPlaying) localAudio.play().catch(() => {});
+function sourceEls(src) {
+  return { audio: $(`${src.key}-audio`), select: $(`${src.key}-audio-file`) };
 }
 
-localAudioFile.addEventListener('change', () => {
-  setLocalAudioSource();
-  logLifecycleEvent('Local audio', `Source set to "${fileName(localAudioFile.value)}"`);
-  try { localStorage.setItem('gdm-demo.localAudioFile', localAudioFile.value); } catch { /* ignore */ }
-});
-localAudio.addEventListener('play', () =>
-  logLifecycleEvent('Local audio', `Playing "${fileName(localAudio.currentSrc || localAudio.src)}"`));
-localAudio.addEventListener('pause', () => logLifecycleEvent('Local audio', 'Paused'));
-localAudio.addEventListener('error', () => {
-  const err = localAudio.error;
-  logLifecycleEvent('Local audio Error', `Could not play "${fileName(localAudio.src)}" (${err ? err.code : 'unknown'})`, 'error');
-});
+async function ensureAudioContext() {
+  if (!localAudioContext) localAudioContext = new AudioContext();
+  if (localAudioContext.state === 'suspended') await localAudioContext.resume();
+  return localAudioContext;
+}
 
-function initLocalAudio() {
-  try {
-    const saved = localStorage.getItem('gdm-demo.localAudioFile');
-    if (saved && [...localAudioFile.options].some(o => o.value === saved)) localAudioFile.value = saved;
-  } catch { /* ignore */ }
-  localAudio.src = localAudioFile.value;
+/** Adds stereo=1 to the Opus fmtp line so that stereo files stay stereo. */
+function enableOpusStereo(sdp) {
+  return sdp.replace(/(a=fmtp:\d+ [^\r\n]*useinbandfec=1)(?![^\r\n]*stereo=1)/g, '$1;stereo=1');
+}
+
+async function startPeerConnectionLoopback(stream) {
+  pc1 = new RTCPeerConnection();
+  pc2 = new RTCPeerConnection();
+  pc1.onicecandidate = (e) => { if (e.candidate) pc2.addIceCandidate(e.candidate).catch(() => {}); };
+  pc2.onicecandidate = (e) => { if (e.candidate) pc1.addIceCandidate(e.candidate).catch(() => {}); };
+  const remote = new Promise((resolve) => { pc2.ontrack = (e) => resolve(e.streams[0]); });
+  for (const track of stream.getAudioTracks()) pc1.addTrack(track, stream);
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  const answer = await pc2.createAnswer();
+  answer.sdp = enableOpusStereo(answer.sdp);
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+  pcAudioSink.srcObject = await remote;
+  await pcAudioSink.play().catch(() => {});
+}
+
+/** Builds the Web Audio or RTCPeerConnection path the first time a row plays. */
+async function setUpPlayoutPath(src, audio) {
+  if (src.key === 'html' || elementSources.has(src.key)) return;
+  const ctx = await ensureAudioContext();
+  // After createMediaElementSource(), the element no longer plays out by
+  // itself; its audio goes into the AudioContext graph instead.
+  const node = ctx.createMediaElementSource(audio);
+  elementSources.set(src.key, node);
+  if (src.key === 'webaudio') {
+    node.connect(ctx.destination);
+    logLifecycleEvent('Local audio', 'Web Audio: MediaElementAudioSourceNode -> AudioContext.destination');
+  } else {
+    const dest = ctx.createMediaStreamDestination();
+    node.connect(dest);
+    await startPeerConnectionLoopback(dest.stream);
+    logLifecycleEvent('Local audio', 'RTCPeerConnection: loopback pc1 -> pc2 connected, remote track plays in a hidden audio element');
+  }
+}
+
+function initLocalAudio(fromUrl) {
+  for (const src of LOCAL_SOURCES) {
+    const { audio, select } = sourceEls(src);
+    const storageKey = `gdm-demo.${src.key}AudioFile`;
+    if (!fromUrl.has(src.param)) {
+      try {
+        // 'gdm-demo.localAudioFile' is the key from before there were 3 rows.
+        const saved = localStorage.getItem(storageKey) ??
+          (src.key === 'html' ? localStorage.getItem('gdm-demo.localAudioFile') : null);
+        if (saved && [...select.options].some(o => o.value === saved)) select.value = saved;
+      } catch { /* ignore */ }
+    }
+    audio.src = select.value;
+
+    select.addEventListener('change', () => {
+      const wasPlaying = !audio.paused;
+      audio.src = select.value;
+      if (wasPlaying) audio.play().catch(() => {});
+      logLifecycleEvent('Local audio', `${src.name}: source set to "${fileName(select.value)}"`);
+      try { localStorage.setItem(storageKey, select.value); } catch { /* ignore */ }
+    });
+    audio.addEventListener('play', async () => {
+      try {
+        await setUpPlayoutPath(src, audio);
+        if (localAudioContext && src.key !== 'html') await localAudioContext.resume();
+        logLifecycleEvent('Local audio', `${src.name}: playing "${fileName(audio.currentSrc || audio.src)}"`);
+      } catch (e) {
+        logLifecycleEvent('Local audio Error', `${src.name}: ${e.name}: ${e.message}`, 'error');
+      }
+    });
+    audio.addEventListener('pause', () => logLifecycleEvent('Local audio', `${src.name}: paused`));
+    audio.addEventListener('error', () => {
+      const err = audio.error;
+      logLifecycleEvent('Local audio Error', `${src.name}: could not play "${fileName(audio.src)}" (${err ? err.code : 'unknown'})`, 'error');
+    });
+  }
 }
 
 // ---------- System diagnostics ----------
@@ -560,7 +703,11 @@ async function populateSystemInfo() {
 function init() {
   populateConstraintSelects();
   restoreSelections();
+  const fromUrl = applyUrlParameters();
+  if (fromUrl.size) saveSelections();
+  initLocalAudio(fromUrl);
   updateRequestPreview();
+  copyBookmarkButton.addEventListener('click', copyBookmark);
   for (const select of allSelects()) {
     select.addEventListener('change', () => { updateRequestPreview(); saveSelections(); });
   }
@@ -582,10 +729,10 @@ function init() {
     gdmButton.disabled = true;
     showError('navigator.mediaDevices.getDisplayMedia() is not available in this browser or context.');
   }
-  initLocalAudio();
   initTooltipA11y();
   populateSystemInfo();
   logLifecycleEvent('Page', 'Loaded');
+  if (fromUrl.size) logLifecycleEvent('Bookmark', `Applied ${fromUrl.size} setting(s) from the URL`);
 }
 
 init();

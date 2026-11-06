@@ -15,19 +15,26 @@
    stream, so getDisplayMedia() errors (for example TypeError for exact) are
    logged where you can see them. The track card shows only with a stream. */
 body:has(#stream-controls-container[hidden]) .log-wide { display: flex; }
-/* Same gap above the log as between the other areas (--s5): no bottom padding
-   on .layout, and --s5 above the log. */
+/* Same gap above the log as between Local Audio and the options card (--s4):
+   no bottom padding on .layout, and --s4 above the log. */
 .layout { padding-bottom: 0; }
-.log-wide { padding-top: var(--s5); padding-bottom: var(--s6); }
+.log-wide { padding-top: var(--s4); padding-bottom: var(--s6); }
 
 /* Local audio source row (always visible). */
 .local-audio-container {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
+  display: grid; grid-template-columns: max-content max-content minmax(180px, 260px) minmax(220px, 1fr);
+  align-items: center; gap: var(--s2) var(--s3);
   margin-top: var(--s3); padding: var(--s3) var(--s4);
 }
-.local-audio-label { font-weight: 600; font-size: 13px; color: var(--text); }
-.local-audio-container select { flex: 0 1 260px; }
-.local-audio-container audio { flex: 1 1 280px; min-width: 220px; height: 36px; }
+.local-audio-title { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.local-audio-row { display: contents; }
+.local-audio-label { font-size: 13px; color: var(--text); white-space: nowrap; }
+.local-audio-container select { width: 100%; }
+.local-audio-container audio { width: 100%; height: 32px; }
+@media (max-width: 720px) {
+  .local-audio-container { grid-template-columns: max-content max-content minmax(0, 1fr); }
+  .local-audio-container audio { grid-column: 1 / -1; }
+}
 
 /* Compact options card: options + video on the left, audio on the right.
    The options card gets the wider column; the request preview is narrower. */
