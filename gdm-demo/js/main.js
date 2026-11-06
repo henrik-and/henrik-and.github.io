@@ -2,7 +2,7 @@
 //
 // Builds a DisplayMediaStreamOptions object from the controls, calls
 // getDisplayMedia(), and shows the audio track's getConstraints(),
-// getSettings(), getCapabilities(), properties and stats. The audio track
+// getSettings(), getCapabilities() and properties. The audio track
 // feeds a level meter and can be recorded with MediaRecorder.
 
 import { initTooltipA11y, labelInfoIcons } from './a11y.js';
@@ -27,7 +27,6 @@ const trackConstraintsEl = $('track-constraints');
 const trackSettingsEl = $('track-settings');
 const trackCapabilitiesEl = $('track-capabilities');
 const trackPropertiesEl = $('track-properties');
-const trackStatsEl = $('track-stats');
 const recordedContainer = $('recorded-audio-container');
 const recordedAudio = $('recorded-audio');
 const recordedVisualizer = $('recorded-visualizer');
@@ -49,7 +48,7 @@ const STORAGE_KEY = 'gdm-demo.selections';
 // ---------- State ----------
 let stream = null;
 let audioTrack = null;
-let statsInterval = null;
+let propertiesInterval = null;
 let previousProperties = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -317,30 +316,9 @@ function updateProperties(track) {
   previousProperties = props;
 }
 
-function updateStats(track) {
-  if (!track || track.readyState === 'ended') return;
-  if (!track.stats) {
-    trackStatsEl.textContent = 'stats:\nNot supported';
-    return;
-  }
-  const s = track.stats;
-  const raw = typeof s.toJSON === 'function' ? s.toJSON() : {};
-  const keys = ['deliveredFrames', 'deliveredFramesDuration', 'totalFrames', 'totalFramesDuration',
-    'latency', 'averageLatency', 'minimumLatency', 'maximumLatency'];
-  const out = {};
-  for (const k of keys) {
-    const v = k in raw ? raw[k] : s[k];
-    if (typeof v === 'number') out[k] = Number.isInteger(v) ? v : Number(v.toFixed(1));
-  }
-  if (typeof out.totalFrames === 'number' && typeof out.deliveredFrames === 'number') {
-    out.droppedFrames = out.totalFrames - out.deliveredFrames;
-  }
-  trackStatsEl.textContent = 'stats:\n' + JSON.stringify(out, null, 2);
-}
-
 function clearTrackPanes() {
   for (const el of [trackConstraintsEl, trackSettingsEl, trackCapabilitiesEl,
-    trackPropertiesEl, trackStatsEl]) el.textContent = '';
+    trackPropertiesEl]) el.textContent = '';
   previousProperties = null;
 }
 
@@ -381,11 +359,7 @@ async function startCapture() {
   const requestedAudio = typeof options.audio === 'object' ? options.audio : {};
   updateGetters(track, requestedAudio);
   updateProperties(track);
-  updateStats(track);
-  statsInterval = setInterval(() => {
-    updateStats(track);
-    updateProperties(track);
-  }, 1000);
+  propertiesInterval = setInterval(() => updateProperties(track), 1000);
 
   track.onmute = () => {
     logLifecycleEvent('track.onmute', 'Audio track muted', 'warning');
@@ -408,8 +382,8 @@ async function startCapture() {
 
 function stopCapture(fromEnded = false) {
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
-  clearInterval(statsInterval);
-  statsInterval = null;
+  clearInterval(propertiesInterval);
+  propertiesInterval = null;
   if (stream) {
     stream.getTracks().forEach(t => t.stop());
     if (!fromEnded) logLifecycleEvent('Stream', 'Stream stopped with MediaStreamTrack.stop()');
@@ -675,7 +649,6 @@ async function populateSystemInfo() {
     CaptureController: typeof CaptureController !== 'undefined',
     MediaRecorder: typeof MediaRecorder !== 'undefined',
     'Web Audio': !!(window.AudioContext || window.webkitAudioContext),
-    'Track Stats': typeof MediaStreamTrack !== 'undefined' && 'stats' in MediaStreamTrack.prototype,
     getCapabilities: typeof MediaStreamTrack !== 'undefined' && 'getCapabilities' in MediaStreamTrack.prototype,
   };
   const apisHtml = Object.entries(apis).map(([k, v]) => `${k}:${v ? '✅' : '❌'}`).join(', ');

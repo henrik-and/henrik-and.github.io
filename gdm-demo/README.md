@@ -31,7 +31,7 @@ Related page: [getUserMedia() Audio Demo](../gum-demo/).
 4. Look at the result:
    - The level meter at the top shows the level of the captured audio (RMS, dBFS).
    - **MediaStreamTrack (audio) getters & properties** shows `getConstraints()`,
-     `getSettings()`, `getCapabilities()`, track properties and stats.
+     `getSettings()`, `getCapabilities()` and track properties.
    - **Lifecycle Activity Log** at the bottom lists the events, including errors
      such as a `TypeError`.
 5. Optional: record the captured audio, play it back and download it.
