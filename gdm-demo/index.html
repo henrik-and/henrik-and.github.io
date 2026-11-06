@@ -91,12 +91,6 @@
           <pre id="track-properties" class="pane"></pre>
           <pre id="track-stats" class="pane"></pre>
         </div>
-        <div class="card-foot">
-          <details id="lifecycle-events-container" data-fold="lifecycle" open>
-            <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)</summary>
-            <div id="lifecycle-events-log"></div>
-          </details>
-        </div>
       </details>
     </section>
   </div>
@@ -258,6 +252,18 @@
       <div id="stream-controls-container" hidden></div>
     </div>
   </main>
+
+  <!-- Activity log at the bottom (FYI). -->
+  <div class="wide log-wide">
+    <section class="card">
+      <div class="card-body">
+        <details id="lifecycle-events-container" data-fold="lifecycle" open>
+          <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)</summary>
+          <div id="lifecycle-events-log"></div>
+        </details>
+      </div>
+    </section>
+  </div>
 
   <div id="toast-notification" class="toast-notification" role="status"></div>
   <script type="module" src="js/main.js"></script>

@@ -11,10 +11,14 @@
 .sup-list { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
 .sup-list .sup-key { font-family: var(--font-mono); font-size: 12px; }
 
-/* Keep the track card (and its Lifecycle Activity Log) visible also without a
+/* Keep the Lifecycle Activity Log (at the bottom) visible also without a
    stream, so getDisplayMedia() errors (for example TypeError for exact) are
-   logged where you can see them. Empty panes hide themselves. */
-body:has(#stream-controls-container[hidden]) .wide { display: flex; }
+   logged where you can see them. The track card shows only with a stream. */
+body:has(#stream-controls-container[hidden]) .log-wide { display: flex; }
+/* Same gap above the log as between the other areas (--s5): no bottom padding
+   on .layout, and --s5 above the log. */
+.layout { padding-bottom: 0; }
+.log-wide { padding-top: var(--s5); padding-bottom: var(--s6); }
 
 /* Local audio source row (always visible). */
 .local-audio-container {
