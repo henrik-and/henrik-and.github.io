@@ -104,11 +104,15 @@
   <main class="layout">
     <!-- ================= Left: options and constraints ================= -->
     <div class="col col-controls">
-      <section class="card">
-        <details class="fold" data-fold="options" open>
-          <summary class="card-head"><h2 class="card-title">getDisplayMedia() options</h2></summary>
-          <div class="card-body">
-            <div class="settings-container">
+      <section class="card options-card">
+        <div class="card-head">
+          <h2 class="card-title">getDisplayMedia() options</h2>
+          <span class="spacer"></span>
+          <button id="gdm-button" class="btn btn-primary" data-tooltip="Call navigator.mediaDevices.getDisplayMedia() with the options below.">getDisplayMedia</button>
+        </div>
+        <div class="card-body">
+          <div class="settings-container opts-grid">
+            <div class="opts-col">
               <pre>options = {</pre>
               <div class="setting">
                 <label for="systemAudio">systemAudio:</label>
@@ -167,7 +171,7 @@
               </div>
               <pre>  video: {</pre>
               <div class="dynamic-constraints-group">
-                <div class="dynamic-constraints-header">required by getDisplayMedia(); the video track is stopped after capture</div>
+                <div class="dynamic-constraints-header">video is always requested (audio-only is not allowed) and stopped after capture; displaySurface is optional</div>
                 <div class="setting">
                   <label for="displaySurface">displaySurface:</label>
                   <select id="displaySurface" data-kind="string">
@@ -176,13 +180,15 @@
                     <option value="window">"window"</option>
                     <option value="browser">"browser"</option>
                   </select>
-                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Preferred surface type in the picker (ideal only). System audio is only offered for a screen (monitor) on Windows/ChromeOS; tab audio for a browser tab.">i</span>
+                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Optional. Preferred surface type in the picker (ideal only). System audio is only offered for a screen (monitor) on Windows/ChromeOS; tab audio for a browser tab.">i</span>
                 </div>
               </div>
-              <pre>  },
-  audio: {</pre>
+              <pre>  },</pre>
+            </div>
+            <div class="opts-col">
+              <pre>  audio: {</pre>
               <div class="dynamic-constraints-group">
-                <div class="dynamic-constraints-header">all undefined → audio: true. exact/min → TypeError in getDisplayMedia()</div>
+                <div class="dynamic-constraints-header">all undefined → audio: true · exact/min → TypeError</div>
                 <div class="setting" id="restrictOwnAudio-container">
                   <label for="restrictOwnAudio">restrictOwnAudio:</label>
                   <select id="restrictOwnAudio" data-kind="constraint"></select>
@@ -228,9 +234,6 @@
 }</pre>
             </div>
           </div>
-        </details>
-        <div class="card-foot">
-          <button id="gdm-button" class="btn btn-primary" data-tooltip="Call navigator.mediaDevices.getDisplayMedia() with the options above.">getDisplayMedia</button>
         </div>
       </section>
     </div>

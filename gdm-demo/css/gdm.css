@@ -24,3 +24,18 @@ body:has(#stream-controls-container[hidden]) .wide { display: flex; }
 .local-audio-label { font-weight: 600; font-size: 13px; color: var(--text); }
 .local-audio-container select { flex: 0 1 260px; }
 .local-audio-container audio { flex: 1 1 280px; min-width: 220px; height: 36px; }
+
+/* Compact options card: options + video on the left, audio on the right.
+   The options card gets the wider column; the request preview is narrower. */
+.layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); }
+.opts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s5); }
+.opts-col { min-width: 0; }
+.options-card .card-head { padding-bottom: var(--s2); }
+.options-card .setting { margin: 1px 0; grid-template-columns: 20ch minmax(0, 1fr) auto; }
+.options-card .dynamic-constraints-group .setting { grid-template-columns: 28ch minmax(0, 1fr) auto; }
+.options-card .setting select { padding-top: 2px; padding-bottom: 2px; }
+.options-card .dynamic-constraints-group { margin-top: 2px; margin-bottom: 2px; }
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .opts-grid { grid-template-columns: 1fr; }
+}
