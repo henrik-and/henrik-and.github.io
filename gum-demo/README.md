@@ -48,37 +48,56 @@ audio.
         immediately audible. Can be toggled on the fly. Microphone source
         only.
 4.  **Start the Stream:** Click **getUserMedia** (or **captureStream** for an
-    audio file). A sticky live bar appears below System Diagnostics with the
-    level meter and the stream controls. It stays at the top of the window
-    when you scroll.
+    audio file) at the top of the **Source** card. A sticky live bar appears
+    below the diagnostic cards with the level meter and stream controls, staying
+    at the top of the window when you scroll.
 5.  **Dynamic Updates:** With an active microphone track, adjust constraints in
-    the `// applyConstraints() scope` box and click **applyConstraints** to
-    update track settings on the fly.
-6.  **Playback & Controls** (in the live bar):
-    *   **Track:Mute:** Toggles `track.enabled` without stopping hardware
-        capture.
-    *   **HTML:Play:** Plays stream via an HTML `<audio>` tag with `sinkId`
-        output device routing.
-    *   **WebAudio:Play:** Routes stream through Web Audio API (`AudioContext`)
-        with custom `latencyHint`, `sampleRate`, and W3C **Configurable Render
-        Quantum** (`renderSizeHint`). Displays negotiated
+    the `applyConstraints() scope` group and click **applyConstraints** at the
+    top of the **Source** card to update track settings on the fly.
+6.  **Playback, Export & URL Controls:**
+    *   **Track:Mute** (live bar): Toggles `track.enabled` without stopping
+        hardware capture.
+    *   **HTML:Play** (live bar): Plays stream via an HTML `<audio>` tag with
+        `sinkId` output device routing.
+    *   **WebAudio:Play** (live bar): Routes stream through Web Audio API
+        (`AudioContext`) with custom `latencyHint`, `sampleRate`, and W3C
+        **Configurable Render Quantum** (`renderSizeHint`). Displays negotiated
         `audioContext.renderQuantumSize` (samples and ms duration), sample rate,
         and base latency in a dedicated status card and interactive badge.
         Has its own `sinkId` selector that uses `AudioContext.setSinkId()`
         (Chrome 110+). You can change it during playback, and it supports
         `{type: 'none'}`. The active sink shows in the WebAudio Context pane.
-    *   **Rec / Stop Rec:** Records an Opus WebM snippet using `MediaRecorder`.
-        The button turns solid red while recording. Play the recording with
-        the same level meter as the live stream, optionally with **Loop**, and
-        download it as a WebM file.
-    *   **Stop Stream:** Stops the tracks and closes the loopback connection.
-    *   **Save Snapshot:** Downloads a structured `gUM-snapshot.json` file
-        capturing active settings, device selections, WebAudio quantum
-        parameters, track getters, and WebRTC statistics.
-    *   **Copy Bookmark:** Copies a shareable URL containing your selected
-        source, constraints and options.
-    *   **Debug logging:** Add `?debug=1` to the URL to show verbose
+    *   **Rec / Stop Rec** (live bar): Records an Opus WebM snippet using
+        `MediaRecorder`. The button turns solid red while recording. Play the
+        recording with the same level meter as the live stream, optionally with
+        **Loop**, and download it as a WebM file.
+    *   **Stop Stream** (live bar): Stops the tracks and closes the loopback
+        connection.
+    *   **Copy Log** (top header, always available): Copies a self-contained
+        `<details>` Markdown diagnostic report to the clipboard — including OS
+        build and browser version, `microphone` and `camera` permissions, full
+        `enumerateDevices()` inventory, track `getConstraints()` /
+        `getSettings()` / `getCapabilities()`, the 1s/3s signal health check,
+        and the millisecond Lifecycle Activity Log — ready to paste directly
+        into a Chromium issue comment, even when `getUserMedia()` fails.
+    *   **Save Snapshot** (top header, always available): Downloads a structured
+        `gUM-snapshot.json` file capturing system diagnostics, enumerated media
+        devices, selected constraints, WebAudio quantum parameters, track
+        getters/capabilities, WebRTC statistics, and the structured Lifecycle
+        Activity Log.
+    *   **Copy Bookmark** (Source card): Copies a shareable URL containing your
+        selected source, constraints and options.
+    *   **Diagnostic cold-start URL (`?diag=1`):** Add `?diag=1`
+        (`https://henrik-and.github.io/gum-demo/?diag=1`) when sharing the page
+        on a bug report. When microphone permission is still `"prompt"`, normal
+        page load opens and immediately closes a temporary `{audio: true}`
+        stream to unlock microphone labels for the `deviceId` dropdown; `?diag=1`
+        skips that automatic probe so the page loads passively without prompting
+        or touching the OS audio stack until the user clicks **getUserMedia**.
+    *   **Debug logging (`?debug=1`):** Add `?debug=1` to the URL to show verbose
         `console.log` output in DevTools. Warnings and errors are always shown.
+    *   **Classic layout:** The footer link opens the legacy single-column demo
+        at [`/gum-demo/classic/`](https://henrik-and.github.io/gum-demo/classic/).
 
 ## Key Features
 
@@ -117,9 +136,6 @@ audio.
         `muted`, `readyState`) with pulse highlights on changes.
     *   `stats:` Frame rate, delivered frames, dropped frames, and latency
         metrics via `MediaStreamTrackAudioStats`.
-    *   `Lifecycle Activity Log:` Collapsible, timestamped event log recording
-        real-time track events (`onmute`, `onunmute`, `onended`,
-        `applyConstraints`, `devicechange`, playback transitions).
 *   **RTCPeerConnection (getStats() Reports):** Real-time metrics for:
     *   `outbound-rtp (pc1):` Sent bitrate (bps), packets per second (pps),
         bytes per packet (bpp), and codec info.
@@ -163,9 +179,10 @@ audio.
 *   **Opus Recording:** In-browser recording with multi-MIME support, level
     meter during playback, Loop and Download.
 *   **System Diagnostics & CPU Compute Pressure:** Foldable card at the top of
-    the page detecting
-    browser, OS, secure context status, microphone permissions, hardware audio
-    latency, and live CPU compute pressure via the
+    the page detecting browser + Client Hints OS build (distinguishing Windows
+    11 vs Windows 10 via `navigator.userAgentData`), secure context status,
+    `microphone` and `camera` permission states, hardware audio latency, and
+    live CPU compute pressure via the
     [`Compute Pressure API`](https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API)
     (`PressureObserver`). Includes:
     *   **Live PressureObserver & 1Hz History Graph:** Visualizes real-time CPU
@@ -175,12 +192,50 @@ audio.
         simulated processor load (manual state selection or automated 10-second
         `nominal -> critical -> nominal` cycle) without placing physical load on
         the host processor.
-*   **State Snapshot Export:** Single-click JSON export of all current
-    configuration, system diagnostics, and performance data.
+*   **Lifecycle Activity Log & Diagnostic Bug Reports:** Always-available
+    collapsed card below `System Diagnostics` (with live event counter and
+    error/warning summary badge) recording a millisecond timeline from page load:
+    *   **Startup & permissions:** Page init, Client Hints full browser/OS
+        build, `microphone` and `camera` permission queries + live transitions,
+        and `PermissionsPolicy` status.
+    *   **Device inventory:** `enumerateDevices()` call latency, `'default'` /
+        `'communications'` virtual endpoint presence, device labels across
+        `audioinput`, `audiooutput`, and `videoinput` (omitting `deviceId` and
+        `groupId`), and `devicechange` updates.
+    *   **`getUserMedia()` & signal health:** Supplied constraints, acquisition
+        latency, a 5-second pending-call watchdog (distinguishing waiting on a
+        `"prompt"` dialog vs a hung OS audio open when permission is
+        `"granted"`), root-cause error hints (`NotAllowedError` browser vs OS
+        system block, `NotReadableError`, `NotFoundError`,
+        `OverconstrainedError`), `track.getCapabilities()`, and automatic
+        **1.0s / 3.0s raw microphone signal checks** separating **`0 frames /
+        muted track`** (stalled capture callback) from **`exact 0.0 digital
+        silence`** (OS privacy mute, antivirus mic shield, or hardware mute) and
+        **`live non-zero PCM`**.
+    *   **`Copy Log` & `Save Snapshot`:** Available in the top header at all
+        times (even before `getUserMedia()` or after capture fails), retaining
+        the last track's diagnostics across `Stop Stream` / `track.onended`.
 *   **Copy per pane:** Hover a readout pane (Track, getStats(), Audio Path)
     and click the small copy icon in its top-right corner to copy the pane
     text as it is at that moment. The `audio-playout (pc2)` copy also includes
     the two audible glitch metrics.
+
+## Collecting Diagnostics for a Chromium Bug Report
+
+Copy and paste the Markdown snippet below directly into a Chromium issue comment
+(`https://issues.chromium.org` / `https://g-issues.chromium.org`):
+
+```markdown
+Could you please collect a diagnostic log using this test page and paste the output into a comment here?
+
+1. Open https://henrik-and.github.io/gum-demo/?diag=1 in the affected Chrome browser.
+2. Click the green **getUserMedia** button (top-left of the **Source** card) and allow microphone access if prompted.
+3. Wait about **5 seconds**:
+   * If capture starts, speak normally into the microphone for 3–4 seconds so the signal check completes.
+   * If an error message appears or the request hangs, wait 5 seconds so the error or timeout check is recorded.
+4. Click **Copy Log** in the top-right header of the page.
+5. Paste the copied Markdown block directly into a reply on this issue (no file attachment needed).
+```
 
 ## Advanced Debugging with `chrome://webrtc-internals`
 

@@ -79,11 +79,13 @@ pre, code { font-family: var(--font-mono); font-size: 12.5px; }
 .app-title a:hover { text-decoration: underline; }
 .app-title .api { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent-text); }
 .header-spacer { flex: 1; }
+.header-actions { display: flex; align-items: center; gap: var(--s2); }
+.btn.copied { color: var(--accent-text); border-color: var(--accent-line); background: var(--accent-soft); }
 .link-quiet { color: var(--text-2); font-size: 13px; text-decoration: none; }
 .link-quiet:hover { color: var(--text); text-decoration: underline; }
 
 /* ---------- Layout ---------- */
-.diag { max-width: var(--page-max); margin: var(--s5) auto 0; padding: 0 var(--s6); }
+.diag { max-width: var(--page-max); margin: var(--s5) auto 0; padding: 0 var(--s6); display: flex; flex-direction: column; gap: var(--s3); }
 .layout {
   max-width: var(--page-max); margin: 0 auto;
   padding: var(--s4) var(--s6) var(--s6);
@@ -183,6 +185,11 @@ body:has(#stream-controls-container[hidden]) :is(.live-bar, .wide) { display: no
 }
 .spacer { flex: 1; }
 .card-body { padding: var(--s3) var(--s4) var(--s4); }
+.card-top {
+  display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
+  padding: var(--s2) var(--s4); border-bottom: 1px solid var(--border);
+  background: var(--surface-2); border-radius: var(--radius-l) var(--radius-l) 0 0;
+}
 .card-foot {
   display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
   padding: var(--s2) var(--s4); border-top: 1px solid var(--border);
@@ -466,19 +473,24 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 .fold > summary.card-head { cursor: pointer; user-select: none; list-style: none; padding-bottom: var(--s3); }
 .fold[open] > summary.card-head { padding-bottom: 0; }
 .fold > summary.card-head::-webkit-details-marker,
-#system-info-container > summary::-webkit-details-marker { display: none; }
+#system-info-container > summary::-webkit-details-marker,
+#lifecycle-events-container > summary::-webkit-details-marker { display: none; }
 .fold > summary.card-head:hover .card-title,
-#system-info-container > summary:hover { color: var(--text); }
-/* Same small arrow for the cards and System Diagnostics. */
+#system-info-container > summary:hover,
+#lifecycle-events-container > summary:hover { color: var(--text); }
+/* Same small arrow for the cards, System Diagnostics and Lifecycle Log. */
 .fold > summary.card-head::before,
-#system-info-container > summary::before {
+#system-info-container > summary::before,
+#lifecycle-events-container > summary::before {
   content: ""; flex: none; width: 0; height: 0;
   border-left: 7px solid var(--text-2); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
   transition: transform .15s;
 }
 .fold[open] > summary.card-head::before,
-#system-info-container[open] > summary::before { transform: rotate(90deg); }
-#system-info-container > summary { list-style: none; display: flex; align-items: center; gap: var(--s3); }
+#system-info-container[open] > summary::before,
+#lifecycle-events-container[open] > summary::before { transform: rotate(90deg); }
+#system-info-container > summary,
+#lifecycle-events-container > summary { list-style: none; display: flex; align-items: center; gap: var(--s3); }
 .rtp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4) 0; }
 /* Audible glitch chips: red when the value is above zero. */
 .readout-chip.glitchy { background: var(--danger-soft); border-color: #FFCDD2; color: #C62828; }
@@ -512,21 +524,29 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 
 /* Lifecycle log */
 #lifecycle-events-container { width: 100%; }
-#lifecycle-events-container summary {
-  cursor: pointer; user-select: none; font-weight: 600; font-size: 13px; color: var(--text-2);
+#lifecycle-events-container > summary {
+  cursor: pointer; user-select: none; padding: var(--s3) var(--s4);
+  font-weight: 600; font-size: 13px; color: var(--text-2);
 }
+.lifecycle-events-body { padding: 0 var(--s4) var(--s4); }
+.lifecycle-summary-badge {
+  padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+}
+.lifecycle-summary-badge.badge-error { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+.lifecycle-summary-badge.badge-warning { background: var(--warn-soft); color: #8A4F00; border: 1px solid hsl(40 80% 70%); }
 #lifecycle-events-log {
-  margin-top: var(--s2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
-  max-height: 220px; overflow-y: auto; white-space: pre-wrap;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-s);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  max-height: 260px; overflow-y: auto; white-space: pre-wrap;
+  background: var(--surface-code); border: 1px solid var(--border); border-radius: var(--radius-s);
   padding: 6px 8px;
 }
 .lifecycle-event-line { margin-bottom: 2px; padding: 1px 4px; border-radius: 3px; transition: background-color 0.2s ease; }
 .lifecycle-event-line:last-child { margin-bottom: 0; }
 .lifecycle-event-line.event-error { color: #B71C1C; background-color: #FFEBEE; border-left: 3px solid #D32F2F; }
-.lifecycle-event-line.event-warning { color: #2F652F; background-color: #EDF7DE; border-left: 3px solid #4F8A10; }
+.lifecycle-event-line.event-warning { color: #8A4F00; background-color: var(--warn-soft); border-left: 3px solid #F57F17; }
 .lifecycle-event-line.event-success { color: #1B5E20; }
 .event-timestamp { color: var(--text-3); margin-right: 4px; }
+.event-data { color: var(--text-2); font-size: 11px; }
 .event-marker { margin-right: 4px; font-size: 9px; display: inline-block; vertical-align: middle; }
 
 /* RTP card: glitch simulation and badges */
@@ -729,7 +749,7 @@ input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
   .app-header { position: static; }
   .app-title { font-size: 15px; }
   .app-title .api { font-size: 13px; }
-  .card-head, .card-body, .card-foot { padding-left: var(--s4); padding-right: var(--s4); }
+  .card-head, .card-body, .card-top, .card-foot { padding-left: var(--s4); padding-right: var(--s4); }
   .setting { grid-template-columns: 17ch minmax(0, 1fr) auto; }
   .dynamic-constraints-group { margin-left: 0; }
   .setting-device { margin-left: calc(var(--s2) + 1px); }

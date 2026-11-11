@@ -9,7 +9,7 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=4f40d29e">
+  <link rel="stylesheet" href="css/style.css?v=d6862a72">
   <script type="importmap">
   {
     "imports": {
@@ -17,7 +17,7 @@
       "./js/compute-pressure.js": "./js/compute-pressure.js?v=8dafbfea",
       "./js/fold-activity.js": "./js/fold-activity.js?v=f43725e2",
       "./js/fold-state.js": "./js/fold-state.js?v=020cd5ec",
-      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=a859f835",
+      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=57586cce",
       "./js/sdp.js": "./js/sdp.js?v=137dc73c",
       "./js/sysinfo.js": "./js/sysinfo.js?v=a14f9dfb",
       "./js/util.js": "./js/util.js?v=2cf6c444",
@@ -32,10 +32,11 @@
     <div class="app-header-inner">
       <h1 class="app-title"><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia"><span class="api">MediaDevices: getUserMedia()</span> Audio Demo</a></h1>
       <span class="header-spacer"></span>
-      <div id="snapshot-button-container" hidden>
-        <button id="save-snapshot-button" class="btn btn-sm" data-tooltip="Export current settings, active audio devices, WebAudio context (renderQuantumSize &amp; renderSizeHint), track getters, and RTCPeerConnection getStats() reports to a gUM-snapshot.json file.">Save Snapshot</button>
+      <div id="snapshot-button-container" class="header-actions">
+        <button id="copy-log-button" class="btn btn-sm" data-tooltip="Copy a Markdown diagnostic report (environment, permissions, enumerateDevices() inventory, track capabilities, and millisecond Lifecycle Activity Log) to the clipboard for pasting into a Chromium bug comment.">Copy Log</button>
+        <button id="save-snapshot-button" class="btn btn-sm" data-tooltip="Export current settings, device inventory, WebAudio context, track getters/capabilities, RTCPeerConnection getStats() reports, and Lifecycle Activity Log to a gUM-snapshot.json file.">Save Snapshot</button>
       </div>
-      <a class="link-quiet" href="readme.html?v=ab13b271" target="_blank">About</a>
+      <a class="link-quiet" href="readme.html?v=ba8ff73d" target="_blank" data-tooltip="Open documentation: constraints, loopback controls, Lifecycle Activity Log, Copy Log bug reports, and ?diag=1 / ?debug=1 URL parameters.">About</a>
     </div>
   </header>
 
@@ -44,6 +45,12 @@
       <summary id="system-info-summary">System Diagnostics <span id="summary-compute-pressure-badge"></span></summary>
       <div id="system-info-details">
         Loading diagnostics...
+      </div>
+    </details>
+    <details id="lifecycle-events-container" class="card">
+      <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)<span id="summary-lifecycle-badge" class="lifecycle-summary-badge" hidden></span></summary>
+      <div class="lifecycle-events-body">
+        <div id="lifecycle-events-log"></div>
       </div>
     </details>
   </div>
@@ -112,12 +119,6 @@
           <pre id="track-properties" class="pane"></pre>
           <pre id="track-stats" class="pane"></pre>
         </div>
-        <div class="card-foot">
-          <details id="lifecycle-events-container" data-fold="lifecycle">
-            <summary id="lifecycle-events-summary">Lifecycle Activity Log (<span id="lifecycle-events-count">0 events</span>)</summary>
-            <div id="lifecycle-events-log"></div>
-          </details>
-        </div>
       </details>
     </section>
 
@@ -155,6 +156,11 @@
     <!-- ================= Left: controls ================= -->
     <div class="col col-controls">
       <section class="card">
+        <div class="card-top">
+          <button id="gum-button" class="btn btn-primary" data-tooltip="Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.">getUserMedia</button>
+          <button id="apply-constraints-button" class="btn" data-tooltip="applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first." disabled>applyConstraints</button>
+          <button id="copy-bookmark-button" class="btn btn-ghost btn-sm push-right" data-tooltip="Serialize current constraint selections into URL parameters and copy shareable link to clipboard using navigator.clipboard.writeText().">Copy Bookmark</button>
+        </div>
         <details class="fold" data-fold="source" open>
           <summary class="card-head">
             <h2 class="card-title">Source</h2>
@@ -362,11 +368,6 @@
             </div>
           </div>
         </details>
-        <div class="card-foot">
-          <button id="gum-button" class="btn btn-primary" data-tooltip="Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.">getUserMedia</button>
-          <button id="apply-constraints-button" class="btn" data-tooltip="applyConstraints() requires an active audio MediaStreamTrack. Call getUserMedia() first." disabled>applyConstraints</button>
-          <button id="copy-bookmark-button" class="btn btn-ghost btn-sm push-right" data-tooltip="Serialize current constraint selections into URL parameters and copy shareable link to clipboard using navigator.clipboard.writeText().">Copy Bookmark</button>
-        </div>
       </section>
 
       <p id="bookmark-url-container"></p>
@@ -523,7 +524,7 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=a26e8dc0"></script>
+  <script type="module" src="js/main.js?v=b6c13c09"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
   <script type="module" src="js/fold-activity.js?v=f43725e2"></script>

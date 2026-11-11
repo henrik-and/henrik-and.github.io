@@ -9,7 +9,15 @@ import {
   getOSInfo,
   invalidateAudioHardwareInfo,
 } from './sysinfo.js';
-import { lifecycleEvents, logLifecycleEvent } from './lifecycle-log.js';
+import {
+  collectHighEntropyEnv,
+  formatDiagnosticMarkdownReport,
+  highEntropyEnv,
+  latestDeviceInventory,
+  lifecycleEvents,
+  logLifecycleEvent,
+  recordEnumeratedDevices,
+} from './lifecycle-log.js';
 import {
   computePressureHistory,
   formatComputePressureHtml,
@@ -93,8 +101,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let lastRecordedMimeType = '';
   const copyBookmarkButton = document.getElementById('copy-bookmark-button');
   const bookmarkUrlContainer = document.getElementById('bookmark-url-container');
+  const copyLogButton = document.getElementById('copy-log-button');
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
+  const initialUrlParams = new URLSearchParams(window.location.search);
+  const isDiagMode = initialUrlParams.has('diag') && initialUrlParams.get('diag') !== '0';
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const dtxCheckbox = document.getElementById('dtx-checkbox');
   const autoRecordCheckbox = document.getElementById('auto-record-checkbox');
@@ -238,12 +249,202 @@ document.addEventListener('DOMContentLoaded', async () => {
     webAudioContext: null,
     trackConstraints: null,
     trackSettings: null,
+    trackCapabilities: null,
     trackProperties: null,
     trackStats: null,
+    signalHealth: null,
     outboundRtp: null,
     inboundRtp: null,
     audioPlayout: null,
   };
+
+  // Preserved across Stop Stream / unexpected track.onended so Copy Log and
+  // Save Snapshot still retain the last capture session's track metadata.
+  let lastTrackDiagnostics = {
+    trackConstraints: null,
+    trackSettings: null,
+    trackCapabilities: null,
+    trackProperties: null,
+    trackStats: null,
+    signalHealth: null,
+  };
+
+  let micHealthProbeCleanup = null;
+
+  function stopMicSignalHealthProbe() {
+    if (micHealthProbeCleanup) {
+      micHealthProbeCleanup();
+      micHealthProbeCleanup = null;
+    }
+  }
+
+  /**
+   * Samples the raw microphone stream for 3 seconds (checkpoints at 1.0s and
+   * 3.0s) to distinguish three common post-getUserMedia failure modes:
+   *   1. 0 frames delivered / track muted (stalled OS capture callback);
+   *   2. frames delivered, but every sample is exact 0.0 (OS/antivirus privacy
+   *      mute or hardware mute switch — a live mic always has ADC noise > 0);
+   *   3. live non-zero PCM signal.
+   * Closes its silent-sink AudioContext immediately after the 3.0s check.
+   */
+  function startMicSignalHealthProbe(stream, audioTrack) {
+    stopMicSignalHealthProbe();
+    let probeCtx = null;
+    let source = null;
+    let analyser = null;
+    let pollTimer = null;
+    let t1Timer = null;
+    let t3Timer = null;
+    let stopped = false;
+
+    const cleanup = () => {
+      if (stopped) return;
+      stopped = true;
+      if (pollTimer) clearInterval(pollTimer);
+      if (t1Timer) clearTimeout(t1Timer);
+      if (t3Timer) clearTimeout(t3Timer);
+      try { if (source) source.disconnect(); } catch {}
+      if (probeCtx && probeCtx.state !== 'closed') {
+        probeCtx.close().catch(() => {});
+      }
+      probeCtx = null;
+    };
+    micHealthProbeCleanup = cleanup;
+
+    try {
+      probeCtx = createSilentAudioContext();
+      if (probeCtx.state === 'suspended') {
+        probeCtx.resume().catch(() => {});
+      }
+      source = probeCtx.createMediaStreamSource(stream);
+      analyser = probeCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0;
+      source.connect(analyser);
+    } catch (err) {
+      logLifecycleEvent('Mic Health Probe', `Could not initialize WebAudio signal probe: ${err.name} - ${err.message}`, 'warning');
+      cleanup();
+      return;
+    }
+
+    const buf = new Float32Array(analyser.fftSize);
+    let samplesChecked = 0;
+    let nonZeroSamples = 0;
+    let maxAbsSample = 0;
+    let maxFrameRms = 0;
+
+    pollTimer = setInterval(() => {
+      if (stopped || !analyser || !probeCtx || probeCtx.state !== 'running') return;
+      analyser.getFloatTimeDomainData(buf);
+      let sumSq = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const s = Math.abs(buf[i]);
+        samplesChecked++;
+        if (s > 0) {
+          nonZeroSamples++;
+          if (s > maxAbsSample) maxAbsSample = s;
+          sumSq += s * s;
+        }
+      }
+      const rms = Math.sqrt(sumSq / buf.length);
+      if (rms > maxFrameRms) maxFrameRms = rms;
+    }, 100);
+
+    const buildHealthSnapshot = (windowSec) => {
+      const st = audioTrack.stats || null;
+      const deliveredFrames = st ? st.deliveredFrames : null;
+      const totalFrames = st ? st.totalFrames : null;
+      const droppedFrames = (st && totalFrames !== null && deliveredFrames !== null)
+          ? (totalFrames - deliveredFrames)
+          : null;
+      const ctxState = probeCtx ? probeCtx.state : 'closed';
+      const maxRmsDbfs = maxFrameRms > 0 ? Number((20 * Math.log10(maxFrameRms)).toFixed(1)) : null;
+      let classification = 'ok';
+      if (audioTrack.readyState !== 'live' || deliveredFrames === 0 || (audioTrack.muted && audioTrack.enabled)) {
+        classification = 'stalled_or_muted_track';
+      } else if (ctxState === 'running' && samplesChecked > 0 && maxAbsSample === 0) {
+        classification = 'exact_digital_silence';
+      } else if (ctxState !== 'running') {
+        classification = `probe_context_${ctxState}`;
+      }
+      const snapshot = {
+        windowSec,
+        classification,
+        readyState: audioTrack.readyState,
+        muted: audioTrack.muted,
+        enabled: audioTrack.enabled,
+        deliveredFrames,
+        totalFrames,
+        droppedFrames,
+        probeContextState: ctxState,
+        samplesChecked,
+        nonZeroSamples,
+        maxAbsSample: Number(maxAbsSample.toPrecision(4)),
+        maxRmsDbfs,
+      };
+      snapshotState.signalHealth = snapshot;
+      lastTrackDiagnostics.signalHealth = snapshot;
+      return snapshot;
+    };
+
+    t1Timer = setTimeout(() => {
+      if (stopped) return;
+      const h = buildHealthSnapshot(1);
+      const framesStr = h.deliveredFrames !== null ? `deliveredFrames=${h.deliveredFrames}` : 'track.stats=n/a';
+      if (h.classification === 'stalled_or_muted_track') {
+        logLifecycleEvent(
+            'Mic Health (1.0s)',
+            `No active frames yet (readyState=${h.readyState}, muted=${h.muted}, ${framesStr})`,
+            'warning',
+            h);
+      } else if (h.classification === 'exact_digital_silence') {
+        logLifecycleEvent(
+            'Mic Health (1.0s)',
+            `All ${h.samplesChecked} samples so far are exact 0.0 (${framesStr}, muted=${h.muted})`,
+            'info',
+            h);
+      } else {
+        const dbStr = h.maxRmsDbfs !== null ? `${h.maxRmsDbfs} dBFS` : '-inf dBFS';
+        logLifecycleEvent(
+            'Mic Health (1.0s)',
+            `Receiving non-zero PCM (peak=${h.maxAbsSample}, maxRms=${dbStr}, ${framesStr})`,
+            'info');
+      }
+    }, 1000);
+
+    t3Timer = setTimeout(() => {
+      if (stopped) return;
+      const h = buildHealthSnapshot(3);
+      const framesStr = h.deliveredFrames !== null ? `deliveredFrames=${h.deliveredFrames}` : 'track.stats=n/a';
+      if (h.classification === 'stalled_or_muted_track') {
+        logLifecycleEvent(
+            'Mic Health (3.0s)',
+            `Stalled or muted capture (${framesStr}, readyState=${h.readyState}, muted=${h.muted}) — OS/driver delivered no unmuted audio`,
+            'error',
+            h);
+      } else if (h.classification === 'exact_digital_silence') {
+        logLifecycleEvent(
+            'Mic Health (3.0s)',
+            `All ${h.samplesChecked} samples are exact 0.0 (${framesStr}, muted=${h.muted}) — likely OS privacy mute, antivirus mic shield, or hardware mute`,
+            'warning',
+            h);
+      } else if (h.maxAbsSample > 0) {
+        const dbStr = h.maxRmsDbfs !== null ? `${h.maxRmsDbfs} dBFS` : '-inf dBFS';
+        logLifecycleEvent(
+            'Mic Health (3.0s)',
+            `Live non-zero PCM confirmed (peak=${h.maxAbsSample}, maxRms=${dbStr}, ${framesStr})`,
+            'success',
+            h);
+      } else {
+        logLifecycleEvent(
+            'Mic Health (3.0s)',
+            `Probe inconclusive (AudioContext state="${h.probeContextState}", ${framesStr})`,
+            'info',
+            h);
+      }
+      cleanup();
+    }, 3000);
+  }
 
   function setSimulatedGlitchMode(mode) {
     simulatedGlitchMode = mode;
@@ -783,23 +984,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     return ''; // Let the browser decide
   }
 
-  async function populateAudioInputDevices() {
-    debugLog('Populating audio input devices...');
-    
-    let devices = await navigator.mediaDevices.enumerateDevices();
-    const hasPermissions = devices.every(device => device.label);
-    if (!hasPermissions) {
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia(
-            { audio: true, video: false });
-        tempStream.getTracks().forEach(track => track.stop());
-        devices = await navigator.mediaDevices.enumerateDevices();
-      } catch (err) {
-        console.error('Error getting media permissions:', err);
-        errorMessageElement.textContent = 
-            `Error getting permissions: ${err.name} - ${err.message}`;
-        errorMessageElement.hidden = false;
-        return;
+  async function enumerateDevicesWithDiag(reason = 'refresh') {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+      logLifecycleEvent('enumerateDevices', 'navigator.mediaDevices.enumerateDevices is unavailable', 'warning');
+      return [];
+    }
+    const t0 = performance.now();
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      recordEnumeratedDevices(devices, performance.now() - t0, reason);
+      return devices;
+    } catch (err) {
+      const elapsedMs = (performance.now() - t0).toFixed(1);
+      logLifecycleEvent(
+          'enumerateDevices Error',
+          `${err.name}: ${err.message} (${elapsedMs} ms, reason=${reason})`,
+          'error',
+          { name: err.name, message: err.message });
+      return [];
+    }
+  }
+
+  async function populateAudioInputDevices({ allowPrompt = false, reason = 'refresh' } = {}) {
+    debugLog(`Populating audio input devices (reason=${reason}, allowPrompt=${allowPrompt})...`);
+
+    let devices = await enumerateDevicesWithDiag(reason);
+    const initialAudioInputs = devices.filter(device => device.kind === 'audioinput');
+    // Only check labels on audioinput devices: if the user intentionally blocked
+    // camera while allowing microphone, videoinput labels stay empty even though
+    // microphone permission is already granted.
+    const hasMicLabels = initialAudioInputs.length > 0 && initialAudioInputs.every(device => device.label);
+    if (!hasMicLabels && initialAudioInputs.length > 0 && allowPrompt) {
+      if (isDiagMode) {
+        logLifecycleEvent(
+            'Startup Probe',
+            'Skipped automatic label-unlock getUserMedia({audio: true}) because ?diag=1 is active; click getUserMedia to test capture directly');
+      } else if (lastPermissionStatus === 'denied') {
+        logLifecycleEvent(
+            'Startup Probe',
+            'Skipped automatic label-unlock getUserMedia({audio: true}) because microphone permission is "denied"',
+            'warning');
+      } else {
+        const probeStart = performance.now();
+        logLifecycleEvent('Startup Probe', 'Requesting temporary {audio: true} stream to unlock microphone labels...');
+        try {
+          const tempStream = await navigator.mediaDevices.getUserMedia(
+              { audio: true, video: false });
+          const probeMs = (performance.now() - probeStart).toFixed(1);
+          const probeTracks = tempStream.getAudioTracks();
+          const probeLabel = probeTracks[0]?.label || '(empty)';
+          tempStream.getTracks().forEach(track => track.stop());
+          logLifecycleEvent(
+              'Startup Probe',
+              `Temporary stream succeeded in ${probeMs} ms (track="${probeLabel}"), stopped immediately`,
+              'success');
+          devices = await enumerateDevicesWithDiag('post-startup-probe');
+        } catch (err) {
+          const probeMs = (performance.now() - probeStart).toFixed(1);
+          console.error('Error getting media permissions:', err);
+          errorMessageElement.textContent =
+              `Error getting permissions: ${err.name} - ${err.message}`;
+          errorMessageElement.hidden = false;
+          logLifecycleEvent(
+              'Startup Probe Error',
+              `${err.name}: ${err.message} (${probeMs} ms)`,
+              'error',
+              { name: err.name, message: err.message });
+          return devices;
+        }
       }
     }
 
@@ -818,14 +1070,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       audioDeviceSelect.appendChild(option);
     });
 
-    if ([...audioDeviceSelect.options].some(option => 
+    if ([...audioDeviceSelect.options].some(option =>
         option.value === selectedDeviceId)) {
       audioDeviceSelect.value = selectedDeviceId;
     }
     debugLog(`populateAudioInputDevices: selectedDeviceId after populating is "${audioDeviceSelect.value}"`);
+    return devices;
   }
 
-  async function populateAudioOutputDevices() {
+  async function populateAudioOutputDevices(existingDevices = null) {
     if (!mediaElementSetSinkIdSupported) {
       audioOutputDeviceSelect.disabled = true;
       audioOutputDeviceSelect.title = 'HTMLMediaElement.setSinkId() is not supported by this browser.';
@@ -838,7 +1091,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     debugLog('Populating audio output devices...');
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    const devices = existingDevices || await enumerateDevicesWithDiag('output-refresh');
     const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
 
     const fillSelect = (select, extraOptions = []) => {
@@ -1011,6 +1264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     debugLog('MediaStreamTrack properties:', currentProperties);
     snapshotState.trackProperties = currentProperties;
+    lastTrackDiagnostics.trackProperties = currentProperties;
 
     // Build the HTML string for the properties display.
     const header = 'properties:\n';
@@ -1131,6 +1385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
     snapshotState.trackConstraints = displayConstraints;
+    lastTrackDiagnostics.trackConstraints = displayConstraints;
 
     const header = 'getConstraints():\n';
     const content = renderAlignedRows(displayConstraints, trackRowKeys(audioTrack), (key, text) =>
@@ -1206,6 +1461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       displaySettings.deviceId = `${displaySettings.deviceId.substring(0, 8)}..${displaySettings.deviceId.substring(displaySettings.deviceId.length - 8)}`;
     }
     snapshotState.trackSettings = displaySettings;
+    lastTrackDiagnostics.trackSettings = displaySettings;
 
     const header = 'getSettings():\n';
     const content = renderAlignedRows(displaySettings, trackRowKeys(audioTrack), (key, text) => {
@@ -1252,6 +1508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       extendedStats.averageLatency = currentStats.averageLatency.toFixed(1);
 
       snapshotState.trackStats = extendedStats;
+      lastTrackDiagnostics.trackStats = extendedStats;
       trackStatsElement.textContent = 'stats:\n' + JSON.stringify(extendedStats, null, 2);
 
       // Update previousStats for the next call, storing only the necessary fields.
@@ -1856,13 +2113,58 @@ document.addEventListener('DOMContentLoaded', async () => {
       audio: Object.keys(audioConstraints).length === 0 ? true : audioConstraints,
       video: false
     };
+    stopMicSignalHealthProbe();
+    lastTrackDiagnostics = {
+      trackConstraints: null,
+      trackSettings: null,
+      trackCapabilities: null,
+      trackProperties: null,
+      trackStats: null,
+      signalHealth: null,
+    };
     debugLog('--- getUserMedia() START ---');
     debugLog('Supplied constraints to getUserMedia():', JSON.stringify(constraints, null, 2));
 
+    const gumCallStartMs = performance.now();
+    let gumWatchdogTimer = null;
+    if (micSourceRadio.checked) {
+      const displayReq = structuredClone(constraints);
+      if (displayReq.audio && typeof displayReq.audio === 'object') {
+        delete displayReq.audio.deviceId;
+        if (Object.keys(displayReq.audio).length === 0) {
+          displayReq.audio = true;
+        }
+      }
+      logLifecycleEvent(
+          'getUserMedia',
+          `Calling getUserMedia() (micPerm="${lastPermissionStatus}", camPerm="${lastCameraPermissionStatus}", visibility="${document.visibilityState}")`,
+          'info',
+          { constraints: displayReq });
+      gumWatchdogTimer = setTimeout(() => {
+        const waitReason = lastPermissionStatus === 'prompt'
+            ? 'microphone permission is "prompt" (browser prompt awaiting user action or hidden)'
+            : `microphone permission is "${lastPermissionStatus}" (OS audio stack, driver, or security software may be blocking device open)`;
+        logLifecycleEvent(
+            'getUserMedia Watchdog',
+            `Still waiting after 5.0s — ${waitReason}`,
+            'warning',
+            { visibilityState: document.visibilityState, hasFocus: document.hasFocus() });
+      }, 5000);
+    }
+
     try {
       let stream;
+      let gumAcquireMs = null;
       if (micSourceRadio.checked) {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } finally {
+          if (gumWatchdogTimer) {
+            clearTimeout(gumWatchdogTimer);
+            gumWatchdogTimer = null;
+          }
+        }
+        gumAcquireMs = (performance.now() - gumCallStartMs).toFixed(1);
         debugLog('navigator.mediaDevices.getUserMedia() succeeded.');
       } else {
         if (currentFileSourceType === 'predefined') {
@@ -1934,18 +2236,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const [audioTrack] = stream.getAudioTracks();
+      const rawSettings = audioTrack.getSettings ? audioTrack.getSettings() : {};
+      const rawCapabilities = (micSourceRadio.checked && audioTrack.getCapabilities)
+          ? structuredClone(audioTrack.getCapabilities())
+          : null;
+      if (rawCapabilities) {
+        delete rawCapabilities.deviceId;
+        delete rawCapabilities.groupId;
+      }
+      snapshotState.trackCapabilities = rawCapabilities;
+      lastTrackDiagnostics.trackCapabilities = rawCapabilities;
+
       debugLog('Created audioTrack:', audioTrack.label, `(id: ${audioTrack.id}, readyState: ${audioTrack.readyState})`);
       debugLog('audioTrack.getConstraints() returns:', audioTrack.getConstraints ? audioTrack.getConstraints() : 'N/A');
-      debugLog('audioTrack.getSettings() returns:', audioTrack.getSettings());
+      debugLog('audioTrack.getSettings() returns:', rawSettings);
+      debugLog('audioTrack.getCapabilities() returns:', rawCapabilities);
       debugLog('--- getUserMedia() END ---');
-      logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia' : 'captureStream', `Acquired audio track "${audioTrack.label || 'Audio track'}" (id: ${audioTrack.id.substring(0, 8)}..)`, 'success');
+      const acquireTiming = gumAcquireMs !== null ? ` in ${gumAcquireMs} ms` : '';
+      logLifecycleEvent(
+          micSourceRadio.checked ? 'getUserMedia' : 'captureStream',
+          `Acquired "${audioTrack.label || 'Audio track'}"${acquireTiming} (readyState=${audioTrack.readyState}, muted=${audioTrack.muted})`,
+          'success',
+          micSourceRadio.checked ? {
+            sampleRate: rawSettings.sampleRate,
+            channelCount: rawSettings.channelCount,
+            latency: rawSettings.latency,
+            echoCancellation: rawSettings.echoCancellation,
+            autoGainControl: rawSettings.autoGainControl,
+            noiseSuppression: rawSettings.noiseSuppression,
+            voiceIsolation: rawSettings.voiceIsolation,
+          } : null);
+      if (micSourceRadio.checked && audioTrack.muted) {
+        logLifecycleEvent(
+            'getUserMedia',
+            'Track started with muted=true (no audio frames arriving from OS/hardware yet)',
+            'warning');
+      }
       const requestedKeys = micSourceRadio.checked ? Object.keys(audioConstraints) : [];
       const statusMap = micSourceRadio.checked
-        ? computeConstraintStatusMap(audioConstraints, audioTrack.getSettings ? audioTrack.getSettings() : {})
+        ? computeConstraintStatusMap(audioConstraints, rawSettings)
         : {};
       updateTrackConstraints(audioTrack, requestedKeys);
       updateTrackSettings(audioTrack, statusMap);
       updateTrackProperties(audioTrack);
+      if (micSourceRadio.checked) {
+        startMicSignalHealthProbe(localStream, audioTrack);
+      }
       rmsAudioLevels = [];
       latestRmsAudioLevel = null;
       statsInterval = setInterval(() => {
@@ -2020,17 +2356,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       visualizeAudio(streamForPlaybackAndVisualizer);
       // Output devices are hidden by enumerateDevices() until mic permission is
       // granted, so refresh both lists now that getUserMedia() has succeeded.
-      await populateAudioInputDevices();
-      await populateAudioOutputDevices();
-      await populateSystemInfo();
+      const refreshedDevices = await populateAudioInputDevices({ allowPrompt: false, reason: 'post-getUserMedia' });
+      await populateAudioOutputDevices(refreshedDevices);
+      await populateSystemInfo(refreshedDevices);
 
       // Display the properties of the audio device that the track is actively using.
       // This is the source of truth, especially when 'undefined' is selected for deviceId,
       // as the browser will choose a default device. We get the deviceId from the
       // track's settings to ensure we display information about the device that is
       // actually in use.
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === audioTrack.getSettings().deviceId);
+      const devices = refreshedDevices;
+      const selectedDevice = devices.find(device => device.kind === 'audioinput' && device.deviceId === rawSettings.deviceId);
       if (selectedDevice && micSourceRadio.checked) {
         renderMicSourceInfo(selectedDevice, sineToneCheckbox && sineToneCheckbox.checked);
       } else if (!micSourceRadio.checked) {
@@ -2127,6 +2463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       updateActionButtonsTooltips();
     } catch (err) {
+      const failElapsedMs = (performance.now() - gumCallStartMs).toFixed(1);
       console.error(err);
       let errorMsg = '';
       if (err.name === 'OverconstrainedError' && err.constraint) {
@@ -2136,9 +2473,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         errorMsg = `Error: ${err.name}`;
       }
+      let hint = '';
+      if (micSourceRadio.checked) {
+        if (err.name === 'NotAllowedError') {
+          if (/system/i.test(err.message || '')) {
+            hint = 'OS-level microphone privacy setting or system policy blocked Chrome';
+          } else if (/dismiss/i.test(err.message || '')) {
+            hint = 'Browser permission prompt was dismissed';
+          } else {
+            hint = 'Site microphone permission denied in browser or blocked by policy';
+          }
+        } else if (err.name === 'NotReadableError') {
+          hint = 'OS/driver could not start capture (check OS privacy per-app setting, antivirus mic shield, exclusive-mode app lock, or audio driver)';
+        } else if (err.name === 'NotFoundError') {
+          hint = 'No matching audio input device enabled in OS sound settings';
+        } else if (err.name === 'OverconstrainedError') {
+          hint = `Hardware could not satisfy constraint "${err.constraint || 'unknown'}"`;
+        } else if (err.name === 'SecurityError') {
+          hint = 'Insecure context or Permissions-Policy blocked getUserMedia()';
+        }
+      }
       errorMessageElement.textContent = errorMsg;
       errorMessageElement.hidden = false;
-      logLifecycleEvent(micSourceRadio.checked ? 'getUserMedia Error' : 'captureStream Error', errorMsg, 'error');
+      logLifecycleEvent(
+          micSourceRadio.checked ? 'getUserMedia Error' : 'captureStream Error',
+          `${errorMsg} (${failElapsedMs} ms)${hint ? ` — ${hint}` : ''}`,
+          'error',
+          {
+            name: err.name,
+            message: err.message || '',
+            constraint: err.constraint || undefined,
+            elapsedMs: Number(failElapsedMs),
+            micPermission: lastPermissionStatus,
+            cameraPermission: lastCameraPermissionStatus,
+          });
       gumButton.disabled = false;
       applyConstraintsButton.disabled = true;
       copyBookmarkButton.disabled = false;
@@ -2315,6 +2683,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fileSourceAudio.src = '';
     closePeerConnection();
     stopSineToneGenerator();
+    stopMicSignalHealthProbe();
     latestRmsAudioLevel = null;
     stopVisualizer();
     if (webAudioContext) {
@@ -2353,7 +2722,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     canvasCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
     streamControlsContainer.hidden = true;
     audioDevicesContainer.hidden = true;
-    snapshotButtonContainer.hidden = true;
     audioOutputInfoElement.hidden = true;
     audioOutputInfoElement.textContent = '';
     if (webaudioContextInfoElement) {
@@ -2741,7 +3109,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           await audioPlayback.play();
           await updateAudioOutputInfo(audioPlayback.sinkId);
           audioOutputInfoElement.hidden = false;
-          logLifecycleEvent('HTML:Play', `Playback started (sinkId: ${audioOutputDeviceSelect.value || 'default'})`);
+          const sinkLabel = audioOutputDeviceSelect.value === 'undefined'
+              ? 'default'
+              : (audioOutputDeviceSelect.selectedOptions[0]?.text || 'selected output');
+          logLifecycleEvent('HTML:Play', `Playback started (sink: ${sinkLabel})`);
         } catch (err) {
           console.error('Error setting audio output device:', err);
           errorMessageElement.textContent = `Error setting sinkId: ${err.name} - ${err.message}`;
@@ -2848,7 +3219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               ? `, renderSizeHint: ${contextOptions.renderSizeHint}`
               : '';
           const sinkLog = audioContextSetSinkIdSupported
-              ? `, sinkId: ${webaudioOutputDeviceSelect.value === WEBAUDIO_SINK_NONE ? "{type: 'none'}" : (webAudioContext.sinkId || 'default')}`
+              ? `, sink: ${webaudioOutputDeviceSelect.value === WEBAUDIO_SINK_NONE ? "{type: 'none'}" : (webaudioOutputDeviceSelect.value === 'undefined' ? 'default' : (webaudioOutputDeviceSelect.selectedOptions[0]?.text || 'selected output'))}`
               : '';
           logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${quantumLog}${hintLog}${sinkLog})`);
         } catch (err) {
@@ -3075,11 +3446,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    await populateAudioInputDevices();
-    await populateAudioOutputDevices();
-    await populateSystemInfo();
+    const refreshedDevices = await populateAudioInputDevices({ allowPrompt: false, reason: 'devicechange' });
+    await populateAudioOutputDevices(refreshedDevices);
+    await populateSystemInfo(refreshedDevices);
     debugLog('devicechange: device lists and System Diagnostics updated.');
-    logLifecycleEvent('devicechange', `Device lists and system diagnostics refreshed`);
   });
 
   copyBookmarkButton.addEventListener('click', () => {
@@ -3171,10 +3541,82 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   let lastPermissionStatus = 'Unknown';
+  let lastCameraPermissionStatus = 'Unknown';
   let micPermissionStatusObject = null;
+  let cameraPermissionStatusObject = null;
 
+  function getPermissionsPolicySummary() {
+    const policy = document.permissionsPolicy || document.featurePolicy;
+    if (!policy || typeof policy.allowsFeature !== 'function') return null;
+    const parts = [];
+    for (const feature of ['microphone', 'camera']) {
+      try {
+        parts.push(`${feature}=${policy.allowsFeature(feature) ? 'allowed' : 'blocked'}`);
+      } catch {
+        // Ignore unsupported feature names.
+      }
+    }
+    return parts.length ? parts.join(', ') : null;
+  }
 
-  async function populateSystemInfo() {
+  async function queryMediaPermissions(logInitial = false) {
+    if (!navigator.permissions || !navigator.permissions.query) {
+      if (logInitial) {
+        logLifecycleEvent('Permissions', 'navigator.permissions.query is not supported');
+      }
+      return;
+    }
+
+    try {
+      const micStatus = await navigator.permissions.query({ name: 'microphone' });
+      lastPermissionStatus = micStatus.state;
+      if (!micPermissionStatusObject) {
+        micPermissionStatusObject = micStatus;
+        micStatus.addEventListener('change', async () => {
+          const prev = lastPermissionStatus;
+          lastPermissionStatus = micStatus.state;
+          const level = micStatus.state === 'denied' ? 'warning' : 'info';
+          logLifecycleEvent('Permissions', `microphone permission changed: "${prev}" -> "${micStatus.state}"`, level);
+          const refreshed = await populateAudioInputDevices({ allowPrompt: false, reason: 'permission-change' });
+          await populateAudioOutputDevices(refreshed);
+          await populateSystemInfo(refreshed);
+        });
+      }
+    } catch (e) {
+      lastPermissionStatus = `Error: ${e.message}`;
+    }
+
+    try {
+      const camStatus = await navigator.permissions.query({ name: 'camera' });
+      lastCameraPermissionStatus = camStatus.state;
+      if (!cameraPermissionStatusObject) {
+        cameraPermissionStatusObject = camStatus;
+        camStatus.addEventListener('change', async () => {
+          const prev = lastCameraPermissionStatus;
+          lastCameraPermissionStatus = camStatus.state;
+          logLifecycleEvent('Permissions', `camera permission changed: "${prev}" -> "${camStatus.state}"`);
+          await populateSystemInfo();
+        });
+      }
+    } catch (e) {
+      lastCameraPermissionStatus = `Error: ${e.message}`;
+    }
+
+    if (logInitial) {
+      const policyStr = getPermissionsPolicySummary();
+      const splitNote = (lastPermissionStatus === 'granted' && lastCameraPermissionStatus === 'denied')
+          ? ' (camera blocked while microphone allowed)'
+          : '';
+      const level = lastPermissionStatus === 'denied' ? 'warning' : 'info';
+      logLifecycleEvent(
+          'Permissions',
+          `microphone="${lastPermissionStatus}", camera="${lastCameraPermissionStatus}"${splitNote}` +
+          (policyStr ? `, policy=[${policyStr}]` : ''),
+          level);
+    }
+  }
+
+  async function populateSystemInfo(existingDevices = null) {
     const infoDiv = document.getElementById('system-info-details');
     if (!infoDiv) return;
 
@@ -3194,33 +3636,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const captureStreamSupported = typeof HTMLMediaElement !== 'undefined' && ('captureStream' in HTMLMediaElement.prototype || 'mozCaptureStream' in HTMLMediaElement.prototype);
     const computePressureSupported = typeof PressureObserver !== 'undefined';
 
-    let permissionStatus = 'Unknown';
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const status = await navigator.permissions.query({ name: 'microphone' });
-        permissionStatus = status.state; // 'granted', 'prompt', 'denied'
-        lastPermissionStatus = permissionStatus;
-
-        // Auto-refresh when user updates permissions. Only attach once; each
-        // query() returns a new PermissionStatus object, and attaching to every
-        // one would multiply refreshes on a single permission change.
-        if (!micPermissionStatusObject) {
-          micPermissionStatusObject = status;
-          status.addEventListener('change', () => {
-            populateSystemInfo();
-            populateAudioInputDevices();
-            populateAudioOutputDevices();
-          });
-        }
-      } catch (e) {
-        permissionStatus = `Error: ${e.message}`;
-        lastPermissionStatus = permissionStatus;
-      }
-    }
+    await queryMediaPermissions(false);
+    const permissionStatus = lastPermissionStatus;
+    const camPermissionStatus = lastCameraPermissionStatus;
 
     let permissionClass = 'status-warn';
     if (permissionStatus === 'granted') permissionClass = 'status-ok';
     if (permissionStatus === 'denied') permissionClass = 'status-bad';
+
+    let camPermissionClass = 'status-warn';
+    if (camPermissionStatus === 'granted') camPermissionClass = 'status-ok';
+    if (camPermissionStatus === 'denied') camPermissionClass = 'status-bad';
 
     // 1. System Resources
     const cores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : null;
@@ -3239,7 +3665,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. Detected Audio Devices
     let audioInputsCount = 0;
     let audioOutputsCount = 0;
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    if (existingDevices) {
+      audioInputsCount = existingDevices.filter(d => d.kind === 'audioinput').length;
+      audioOutputsCount = existingDevices.filter(d => d.kind === 'audiooutput').length;
+    } else if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         audioInputsCount = devices.filter(d => d.kind === 'audioinput').length;
@@ -3286,11 +3715,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     ].join(', ');
 
     const quantumSupported = typeof AudioContext !== 'undefined' && ('renderQuantumSize' in AudioContext.prototype);
+    const osLabel = (highEntropyEnv && highEntropyEnv.osDetail) ? highEntropyEnv.osDetail : os;
+    const browserLabel = (highEntropyEnv && highEntropyEnv.fullBrands)
+        ? `${browser.name} ${browser.version} (${escapeHtml(highEntropyEnv.fullBrands)})`
+        : `${browser.name} ${browser.version}`;
 
     infoDiv.innerHTML = `
-      <strong>Browser:</strong> ${browser.name} ${browser.version} (${os})<br>
+      <strong>Browser:</strong> ${browserLabel} — ${escapeHtml(osLabel)}<br>
       <strong>Secure Context:</strong> ${isSecure ? '<span class="status-ok">Yes</span>' : '<span class="status-bad">No (getUserMedia will fail)</span>'}<br>
-      <strong>Microphone Permission:</strong> <span class="${permissionClass}">${escapeHtml(permissionStatus)}</span><br>
+      <strong>Permissions:</strong> Microphone: <span class="${permissionClass}">${escapeHtml(permissionStatus)}</span>, Camera: <span class="${camPermissionClass}">${escapeHtml(camPermissionStatus)}</span><br>
       <strong>Origin:</strong> ${protocol}//${host}<br>
       <strong>System Resources:</strong> ${systemResources}<br>
       <strong>Hardware Audio:</strong> Sample Rate: ${hwSampleRate}, Base Latency: ${hwBaseLatency}, Output Latency: ${hwOutputLatency}, Render Quantum: ${hwRenderQuantum}<br>
@@ -3338,71 +3771,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  /**
-   * Handles the click event of the 'Save Snapshot' button. It gathers all the displayed track
-   * and device information, formats it into a structured JSON object, and triggers a download
-   * for the user.
-   */
-  async function handleSaveSnapshot() {
-    // Build the MediaStreamTrack getters and properties sub-object.
-    const trackSection = {
-      'getConstraints()': snapshotState.trackConstraints,
-      'getSettings()': snapshotState.trackSettings,
-      'properties': snapshotState.trackProperties,
-      'stats': snapshotState.trackStats,
-    };
-    for (const key in trackSection) {
-      const value = trackSection[key];
-      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
-        delete trackSection[key];
-      }
-    }
-
-    // Build the RTCPeerConnection audio reports sub-object.
-    const rtpStatsSection = {
-      'outbound-rtp (pc1)': snapshotState.outboundRtp,
-      'inbound-rtp (pc2)': snapshotState.inboundRtp,
-      'audio-playout (pc2)': snapshotState.audioPlayout,
-    };
-    for (const key in rtpStatsSection) {
-      const value = rtpStatsSection[key];
-      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
-        delete rtpStatsSection[key];
-      }
-    }
-
-    // For audio file sources, add the current playback position at snapshot time.
-    let activeAudioSource = snapshotState.audioSource;
-    if (activeAudioSource && activeAudioSource.type === 'Audio File' && fileSourceAudio.duration) {
-      activeAudioSource = {
-        ...activeAudioSource,
-        time: `${fileSourceAudio.currentTime.toFixed(2)}s / ${fileSourceAudio.duration.toFixed(2)}s`,
-      };
-    }
-
+  async function buildSystemDiagnosticsObject() {
     const browser = getBrowserInfo();
     const os = getOSInfo();
     const hwInfo = (window.AudioContext || window.webkitAudioContext)
         ? getAudioHardwareInfo()
         : { hwSampleRate: 'N/A', hwBaseLatency: 'N/A', hwOutputLatency: 'N/A', hwRenderQuantum: 'N/A' };
 
-    let audioInputsCount = 0;
-    let audioOutputsCount = 0;
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        audioInputsCount = devices.filter(d => d.kind === 'audioinput').length;
-        audioOutputsCount = devices.filter(d => d.kind === 'audiooutput').length;
-      } catch (e) {
-        console.warn('Enumerate devices in snapshot error:', e);
-      }
+    if (latestDeviceInventory.length === 0 && navigator.mediaDevices?.enumerateDevices) {
+      await enumerateDevicesWithDiag('export');
     }
+    const audioInputsCount = latestDeviceInventory.filter(d => d.kind === 'audioinput').length;
+    const audioOutputsCount = latestDeviceInventory.filter(d => d.kind === 'audiooutput').length;
+    const videoInputsCount = latestDeviceInventory.filter(d => d.kind === 'videoinput').length;
 
-    const systemDiagnostics = {
+    const diag = {
       'Browser': `${browser.name} ${browser.version} (${os})`,
       'Secure Context': window.isSecureContext,
       'Microphone Permission': lastPermissionStatus || 'Unknown',
+      'Camera Permission': lastCameraPermissionStatus || 'Unknown',
       'Origin': `${window.location.protocol}//${window.location.host}`,
+      'Visibility / Focus': {
+        'visibilityState': document.visibilityState,
+        'hasFocus': document.hasFocus(),
+      },
       'System Resources': {
         'Logical Cores': navigator.hardwareConcurrency || 'N/A',
         'Device Memory (GB)': navigator.deviceMemory || 'N/A',
@@ -3416,6 +3808,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Detected Devices': {
         'Audio Inputs (mics)': audioInputsCount,
         'Audio Outputs (speakers)': audioOutputsCount,
+        'Video Inputs (cameras)': videoInputsCount,
       },
       'Compute Pressure (CPU)': {
         'Supported': typeof PressureObserver !== 'undefined',
@@ -3446,11 +3839,134 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Supported Constraints': navigator.mediaDevices?.getSupportedConstraints?.() || {},
       'User Agent': navigator.userAgent,
     };
+    const policySummary = getPermissionsPolicySummary();
+    if (policySummary) diag['Permissions Policy'] = policySummary;
+    if (highEntropyEnv) {
+      diag['Client Hints'] = {
+        'OS': highEntropyEnv.osDetail,
+        'Brands': highEntropyEnv.fullBrands,
+      };
+    }
+    return diag;
+  }
+
+  function buildCurrentSelectedConstraintsSummary() {
+    if (!micSourceRadio.checked) {
+      return { inputSource: 'file', audioFile: audioFileSelect.value };
+    }
+    const c = buildAudioConstraints();
+    const summary = {
+      audio: Object.keys(c).length === 0 ? true : c,
+      video: false,
+    };
+    if (audioDeviceSelect.value !== 'undefined') {
+      summary.selectedDeviceLabel = audioDeviceSelect.selectedOptions[0]?.text || 'specific device';
+    }
+    return summary;
+  }
+
+  /**
+   * Copies a self-contained Markdown diagnostic report to the clipboard for
+   * pasting directly into a Chromium issue comment.
+   */
+  async function handleCopyDiagnosticLog() {
+    await queryMediaPermissions(false);
+    const systemDiagnostics = await buildSystemDiagnosticsObject();
+    const markdown = formatDiagnosticMarkdownReport({
+      systemDiagnostics,
+      permissions: {
+        microphone: lastPermissionStatus,
+        camera: lastCameraPermissionStatus,
+        permissionsPolicy: getPermissionsPolicySummary(),
+      },
+      selectedConstraints: buildCurrentSelectedConstraintsSummary(),
+      trackConstraints: snapshotState.trackConstraints || lastTrackDiagnostics.trackConstraints,
+      trackSettings: snapshotState.trackSettings || lastTrackDiagnostics.trackSettings,
+      trackCapabilities: snapshotState.trackCapabilities || lastTrackDiagnostics.trackCapabilities,
+      trackProperties: snapshotState.trackProperties || lastTrackDiagnostics.trackProperties,
+      trackStats: snapshotState.trackStats || lastTrackDiagnostics.trackStats,
+      signalHealth: snapshotState.signalHealth || lastTrackDiagnostics.signalHealth,
+    });
+
+    let ok = true;
+    try {
+      await navigator.clipboard.writeText(markdown);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = markdown;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    }
+
+    if (copyLogButton) {
+      copyLogButton.textContent = ok ? 'Copied!' : 'Copy failed';
+      copyLogButton.classList.toggle('copied', ok);
+      clearTimeout(copyLogButton._resetTimer);
+      copyLogButton._resetTimer = setTimeout(() => {
+        copyLogButton.textContent = 'Copy Log';
+        copyLogButton.classList.remove('copied');
+      }, 1500);
+    }
+  }
+
+  /**
+   * Handles the click event of the 'Save Snapshot' button. It gathers all the displayed track
+   * and device information, formats it into a structured JSON object, and triggers a download
+   * for the user.
+   */
+  async function handleSaveSnapshot() {
+    // Build the MediaStreamTrack getters and properties sub-object (falls back
+    // to lastTrackDiagnostics when exported after Stop Stream / track.onended).
+    const trackSection = {
+      'getConstraints()': snapshotState.trackConstraints || lastTrackDiagnostics.trackConstraints,
+      'getSettings()': snapshotState.trackSettings || lastTrackDiagnostics.trackSettings,
+      'getCapabilities()': snapshotState.trackCapabilities || lastTrackDiagnostics.trackCapabilities,
+      'properties': snapshotState.trackProperties || lastTrackDiagnostics.trackProperties,
+      'stats': snapshotState.trackStats || lastTrackDiagnostics.trackStats,
+      'signalHealthProbe': snapshotState.signalHealth || lastTrackDiagnostics.signalHealth,
+    };
+    for (const key in trackSection) {
+      const value = trackSection[key];
+      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
+        delete trackSection[key];
+      }
+    }
+
+    // Build the RTCPeerConnection audio reports sub-object.
+    const rtpStatsSection = {
+      'outbound-rtp (pc1)': snapshotState.outboundRtp,
+      'inbound-rtp (pc2)': snapshotState.inboundRtp,
+      'audio-playout (pc2)': snapshotState.audioPlayout,
+    };
+    for (const key in rtpStatsSection) {
+      const value = rtpStatsSection[key];
+      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
+        delete rtpStatsSection[key];
+      }
+    }
+
+    // For audio file sources, add the current playback position at snapshot time.
+    let activeAudioSource = snapshotState.audioSource;
+    if (activeAudioSource && activeAudioSource.type === 'Audio File' && fileSourceAudio.duration) {
+      activeAudioSource = {
+        ...activeAudioSource,
+        time: `${fileSourceAudio.currentTime.toFixed(2)}s / ${fileSourceAudio.duration.toFixed(2)}s`,
+      };
+    }
+
+    await queryMediaPermissions(false);
+    const systemDiagnostics = await buildSystemDiagnosticsObject();
 
     // Create the main snapshot object.
     const snapshot = {
       'System Diagnostics': systemDiagnostics,
+      'Enumerated Media Devices': latestDeviceInventory,
       'Input Source Type': micSourceRadio.checked ? 'Microphone' : 'Audio File',
+      'Selected Constraints': buildCurrentSelectedConstraintsSummary(),
       'Auto-Record': autoRecordCheckbox ? autoRecordCheckbox.checked : false,
       'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
       'Auto-Play Mode': autoPlayModeName(),
@@ -3466,17 +3982,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       'MediaStreamTrack (Audio) Getters & Properties': trackSection,
       'RTCPeerConnection (getStats() Audio Reports)': rtpStatsSection,
       'Lifecycle Activity Log': lifecycleEvents.map(e => ({
+        seq: e.seq,
+        tMs: e.tMs,
+        relSec: e.relSec,
+        isoTime: e.isoTime,
         time: e.time,
         level: e.level,
         category: e.category,
         message: e.message,
+        ...(e.data ? { data: e.data } : {}),
       })),
     };
 
     // Clean up the snapshot by removing any sections that are empty or null.
     for (const key in snapshot) {
       const value = snapshot[key];
-      if (value === null || value === '' || (typeof value === 'object' && Object.keys(value).length === 0)) {
+      if (value === null || value === '' || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0)) {
         delete snapshot[key];
       }
     }
@@ -3499,6 +4020,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     URL.revokeObjectURL(url); // Release the created object URL.
   }
 
+  if (copyLogButton) {
+    copyLogButton.addEventListener('click', handleCopyDiagnosticLog);
+  }
   saveSnapshotButton.addEventListener('click', handleSaveSnapshot);
 
   document.addEventListener('click', (e) => {
@@ -3602,12 +4126,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Initialize the application by populating system info, devices, compute pressure, and then applying URL parameters.
+  // Initialize the application by recording startup environment, permissions,
+  // devices, compute pressure, and URL parameters.
   initPaneCopyButtons();
   initTooltipA11y();
+  const initBrowser = getBrowserInfo();
+  const initOs = getOSInfo();
+  const initHw = (window.AudioContext || window.webkitAudioContext)
+      ? getAudioHardwareInfo()
+      : null;
+  logLifecycleEvent(
+      'Page Init',
+      `${initBrowser.name} ${initBrowser.version} (${initOs}), secureContext=${window.isSecureContext}, visibility="${document.visibilityState}"` +
+      (initHw ? `, defaultAudio=[${initHw.hwSampleRate}, baseLatency=${initHw.hwBaseLatency}]` : ''),
+      window.isSecureContext ? 'info' : 'error',
+      window.location.search ? { query: window.location.search } : null);
+
+  collectHighEntropyEnv().then((hints) => {
+    if (hints && (hints.osDetail || hints.fullBrands)) {
+      logLifecycleEvent('Environment', `${hints.fullBrands || `${initBrowser.name} ${initBrowser.version}`} on ${hints.osDetail || initOs}`);
+      populateSystemInfo();
+    }
+  });
+
   await initComputePressureObserver();
-  populateSystemInfo();
-  await populateAudioInputDevices();
-  await populateAudioOutputDevices();
+  await queryMediaPermissions(true);
+  const wantStartupMicPrompt = initialUrlParams.get('inputSource') !== 'file';
+  const startupDevices = await populateAudioInputDevices({ allowPrompt: wantStartupMicPrompt, reason: 'startup' });
+  await populateAudioOutputDevices(startupDevices);
+  await populateSystemInfo(startupDevices);
   applyUrlParameters();
 });
