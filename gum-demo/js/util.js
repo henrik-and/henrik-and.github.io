@@ -8,6 +8,18 @@ export const DEBUG = (() => {
 })();
 export const debugLog = DEBUG ? console.log.bind(console) : () => {};
 
+// Light benchmark mode (?light or ?light=1): disables non-audio background
+// activity (AnalyserNode level meters, Compute Pressure observer + 1 Hz canvas,
+// post-getUserMedia PCM health probe, 1 Hz track/RTP stats polling, MutationObservers,
+// startup AudioContext/getUserMedia probes, and CSS animations) for clean CPU profiling.
+export const LIGHT_MODE = (() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('light') && params.get('light') !== '0' && params.get('light') !== 'false';
+})();
+if (LIGHT_MODE && typeof document !== 'undefined') {
+  document.documentElement.classList.add('light-mode');
+}
+
 /**
  * Escapes text for safe insertion into HTML. Use for any value that does not
  * originate from this page (device/track labels, file names, error messages).

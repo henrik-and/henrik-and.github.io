@@ -1,7 +1,7 @@
 // Lifecycle Activity Log: always-on diagnostic timeline, device inventory
 // tracker, and Markdown bug-report formatter for Chromium issue triage.
 
-import { debugLog, escapeHtml } from './util.js';
+import { LIGHT_MODE, debugLog, escapeHtml } from './util.js';
 
 export const lifecycleEvents = [];
 
@@ -82,6 +82,7 @@ function updateSummaryBadge() {
  * @param {Object|null} [data=null] Optional structured diagnostic details.
  */
 export function logLifecycleEvent(category, message, level = 'info', data = null) {
+  if (LIGHT_MODE) return;
   const now = new Date();
   const tMs = Math.round(performance.now() * 10) / 10;
   const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
@@ -190,6 +191,7 @@ export async function collectHighEntropyEnv() {
  * @param {string} reason
  */
 export function recordEnumeratedDevices(devices, durationMs, reason) {
+  if (LIGHT_MODE) return;
   const inventory = devices.map((d, idx) => ({
     index: idx,
     kind: d.kind,

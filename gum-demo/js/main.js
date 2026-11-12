@@ -1,6 +1,6 @@
 'use strict';
 
-import { createSilentAudioContext, debugLog, escapeHtml } from './util.js';
+import { LIGHT_MODE, createSilentAudioContext, debugLog, escapeHtml } from './util.js';
 import { insertStereoSupportForOpus, insertDtxSupportForOpus } from './sdp.js';
 import { getAudioFileMetadata } from './wav.js';
 import {
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const saveSnapshotButton = document.getElementById('save-snapshot-button');
   const snapshotButtonContainer = document.getElementById('snapshot-button-container');
   const initialUrlParams = new URLSearchParams(window.location.search);
-  const isDiagMode = initialUrlParams.has('diag') && initialUrlParams.get('diag') !== '0';
+  const isDiagMode = LIGHT_MODE || (initialUrlParams.has('diag') && initialUrlParams.get('diag') !== '0');
   const peerConnectionCheckbox = document.getElementById('peerconnection-checkbox');
   const dtxCheckbox = document.getElementById('dtx-checkbox');
   const autoRecordCheckbox = document.getElementById('auto-record-checkbox');
@@ -288,6 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    * Closes its silent-sink AudioContext immediately after the 3.0s check.
    */
   function startMicSignalHealthProbe(stream, audioTrack) {
+    if (LIGHT_MODE) return;
     stopMicSignalHealthProbe();
     let probeCtx = null;
     let source = null;
@@ -495,6 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateAudioFileProgress() {
+    if (LIGHT_MODE) return;
     const progressBar = document.getElementById('audio-file-progress');
     const timeDisplay = document.getElementById('audio-file-time');
     
@@ -900,7 +902,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       dtxCheckbox.dispatchEvent(new Event('change'));
     }
 
-    if (params.has('autoRecord') && params.get('autoRecord') === 'true' && autoRecordCheckbox) {
+    if (!LIGHT_MODE && params.has('autoRecord') && params.get('autoRecord') === 'true' && autoRecordCheckbox) {
       autoRecordCheckbox.checked = true;
       autoRecordCheckbox.dispatchEvent(new Event('change'));
     }
@@ -1280,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const textContent = escapeHtml(`"${key}": ${valueStr}${isLast ? '' : ','}`);
       // Compare the current property value with the previous one.
       // If it has changed, wrap the line in a span with the 'highlight' class.
-      if (previousTrackProperties && previousTrackProperties[key] !== value) {
+      if (!LIGHT_MODE && previousTrackProperties && previousTrackProperties[key] !== value) {
         content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
       } else {
         content += `${leadingSpaces}${textContent}\n`;
@@ -1293,13 +1295,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Store the current properties to compare against in the next update.
     previousTrackProperties = currentProperties;
 
-    // Set a timer to remove the highlight effect after a specified duration.
-    setTimeout(() => {
-      const highlightedElements = trackPropertiesElement.querySelectorAll('.highlight');
-      highlightedElements.forEach(el => {
-        el.classList.add('fade-out');
-      });
-    }, 5000);
+    if (!LIGHT_MODE) {
+      // Set a timer to remove the highlight effect after a specified duration.
+      setTimeout(() => {
+        const highlightedElements = trackPropertiesElement.querySelectorAll('.highlight');
+        highlightedElements.forEach(el => {
+          el.classList.add('fade-out');
+        });
+      }, 5000);
+    }
   }
 
   const TRACK_ROW_TAIL_KEYS = ['deviceId', 'groupId'];
@@ -1393,7 +1397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     trackConstraintsElement.innerHTML = header + content;
     trackConstraintsElement.hidden = false;
 
-    if (highlightedKeys.length > 0) {
+    if (!LIGHT_MODE && highlightedKeys.length > 0) {
       setTimeout(() => {
         const elements = trackConstraintsElement.querySelectorAll('.highlight');
         elements.forEach(el => el.classList.add('fade-out'));
@@ -1472,7 +1476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     trackSettingsElement.innerHTML = header + content;
 
-    if (Object.keys(statusMap).length > 0) {
+    if (!LIGHT_MODE && Object.keys(statusMap).length > 0) {
       setTimeout(() => {
         const elements = trackSettingsElement.querySelectorAll('.highlight-green, .highlight-red');
         elements.forEach(el => el.classList.add('fade-out'));
@@ -2127,7 +2131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const gumCallStartMs = performance.now();
     let gumWatchdogTimer = null;
-    if (micSourceRadio.checked) {
+    if (micSourceRadio.checked && !LIGHT_MODE) {
       const displayReq = structuredClone(constraints);
       if (displayReq.audio && typeof displayReq.audio === 'object') {
         delete displayReq.audio.deviceId;
@@ -2215,7 +2219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Start recording immediately at time zero if Auto-Record is enabled.
       // Runs after the sine tone setup so the recorder picks the right source.
-      if (autoRecordCheckbox && autoRecordCheckbox.checked) {
+      if (!LIGHT_MODE && autoRecordCheckbox && autoRecordCheckbox.checked) {
         startRecording(true);
       }
 
@@ -2279,15 +2283,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateTrackConstraints(audioTrack, requestedKeys);
       updateTrackSettings(audioTrack, statusMap);
       updateTrackProperties(audioTrack);
-      if (micSourceRadio.checked) {
-        startMicSignalHealthProbe(localStream, audioTrack);
-      }
       rmsAudioLevels = [];
       latestRmsAudioLevel = null;
-      statsInterval = setInterval(() => {
-        updateTrackStats(audioTrack);
-        updateRtpStats();
-      }, 1000);
+      if (!LIGHT_MODE) {
+        if (micSourceRadio.checked) {
+          startMicSignalHealthProbe(localStream, audioTrack);
+        }
+        statsInterval = setInterval(() => {
+          updateTrackStats(audioTrack);
+          updateRtpStats();
+        }, 1000);
+      }
       audioTrack.onmute = (event) => {
         debugLog('Audio track muted:', event);
         logLifecycleEvent('track.onmute', `Warning: Audio track muted - ${event.type}`, 'warning');
@@ -2353,12 +2359,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       streamControlsContainer.hidden = false;
       audioDevicesContainer.hidden = false;
       snapshotButtonContainer.hidden = false;
-      visualizeAudio(streamForPlaybackAndVisualizer);
+      if (!LIGHT_MODE) {
+        visualizeAudio(streamForPlaybackAndVisualizer);
+      }
       // Output devices are hidden by enumerateDevices() until mic permission is
       // granted, so refresh both lists now that getUserMedia() has succeeded.
       const refreshedDevices = await populateAudioInputDevices({ allowPrompt: false, reason: 'post-getUserMedia' });
       await populateAudioOutputDevices(refreshedDevices);
-      await populateSystemInfo(refreshedDevices);
+      if (!LIGHT_MODE) {
+        await populateSystemInfo(refreshedDevices);
+      }
 
       // Display the properties of the audio device that the track is actively using.
       // This is the source of truth, especially when 'undefined' is selected for deviceId,
@@ -2386,6 +2396,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         snapshotState.audioSource = fileSourceInfo;
 
+        const progressHtml = LIGHT_MODE ? '' : (
+            `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
+            `<progress id="audio-file-progress" value="0" max="100"></progress>`);
         audioInputDeviceElement.innerHTML = `Active audio source:\n` +
             `  type: Audio File\n` +
             `  label: ${escapeHtml(filename)}\n` +
@@ -2395,10 +2408,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             `  sampleRate: <span id="info-samplerate">Loading...</span>\n` +
             `  channels: <span id="info-channels">Loading...</span>\n` +
             `<span id="info-extra-wav"></span>` +
-            `<span id="audio-file-time">time: 0.00s / ${duration}</span>` +
-            `<progress id="audio-file-progress" value="0" max="100"></progress>`;
+            progressHtml;
         audioInputDeviceElement.hidden = false;
-        updateAudioFileProgress();
+        if (!LIGHT_MODE) {
+          updateAudioFileProgress();
+        }
 
         // Fetch and update metadata
         getAudioFileMetadata(fileSourceAudio.src).then(metadata => {
@@ -2573,12 +2587,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Update getConstraints() with yellow requested change markers
       updateTrackConstraints(audioTrack, requestedKeys);
 
-      // Visual feedback on button
-      const originalText = applyConstraintsButton.textContent;
-      applyConstraintsButton.textContent = 'Applied!';
-      setTimeout(() => {
-        applyConstraintsButton.textContent = originalText;
-      }, 1500);
+      // Visual feedback on button (skipped in light mode to avoid post-click timers)
+      if (!LIGHT_MODE) {
+        const originalText = applyConstraintsButton.textContent;
+        applyConstraintsButton.textContent = 'Applied!';
+        setTimeout(() => {
+          applyConstraintsButton.textContent = originalText;
+        }, 1500);
+      }
     } catch (err) {
       console.error('audioTrack.applyConstraints() promise rejected:', err);
       debugLog('--- applyConstraints() FAILED ---');
@@ -2864,6 +2880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function startRecording(isAuto = false) {
+    if (LIGHT_MODE) return;
     if (!localStream) {
       console.error('Cannot record: No active stream.');
       return;
@@ -3452,19 +3469,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     debugLog('devicechange: device lists and System Diagnostics updated.');
   });
 
-  copyBookmarkButton.addEventListener('click', () => {
-    // Create a new URLSearchParams object to build the query string.
+  function buildStateUrl({ light = LIGHT_MODE, includeDefaultMicSource = true } = {}) {
     const params = new URLSearchParams();
-    // Helper function to add a parameter to the search params if its value is not 'undefined'.
+    if (light) {
+      params.set('light', '1');
+    }
     const addParam = (name, selectElement) => {
+      if (!selectElement) return;
       const value = selectElement.value;
-      if (value !== 'undefined') {
+      if (value && value !== 'undefined') {
         params.set(name, value);
       }
     };
 
     if (micSourceRadio.checked) {
-      // Add the current constraint values to the search parameters.
       addParam('echoCancellation', echoCancellationSelect);
       addParam('autoGainControl', autoGainControlSelect);
       addParam('noiseSuppression', noiseSuppressionSelect);
@@ -3472,17 +3490,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         addParam('voiceIsolation', voiceIsolationSelect);
       }
       addParam('channelCount', channelCountSelect);
-      if (latencyConstraintSelect) {
-        addParam('latency', latencyConstraintSelect);
-      }
-      if (sampleRateConstraintSelect) {
-        addParam('sampleRate', sampleRateConstraintSelect);
-      }
-      if (sampleSizeConstraintSelect) {
-        addParam('sampleSize', sampleSizeConstraintSelect);
-      }
+      addParam('latency', latencyConstraintSelect);
+      addParam('sampleRate', sampleRateConstraintSelect);
+      addParam('sampleSize', sampleSizeConstraintSelect);
       addParam('deviceId', audioDeviceSelect);
-      params.set('inputSource', 'microphone');
+      if (includeDefaultMicSource) {
+        params.set('inputSource', 'microphone');
+      }
     } else {
       params.set('inputSource', 'file');
       params.set('audioFile', audioFileSelect.value);
@@ -3491,29 +3505,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (peerConnectionCheckbox.checked) {
       params.set('peerConnection', 'true');
     }
-
     if (dtxCheckbox.checked) {
       params.set('dtx', 'true');
     }
-
-    if (autoRecordCheckbox && autoRecordCheckbox.checked) {
+    if (!light && autoRecordCheckbox && autoRecordCheckbox.checked) {
       params.set('autoRecord', 'true');
     }
-
     if (autoPlayCheckbox && autoPlayCheckbox.checked) {
       params.set('autoPlay', 'true');
       if (autoPlayModeName() === 'WebAudio:Play') params.set('autoPlayMode', 'webaudio');
     }
-
     if (sineToneCheckbox && sineToneCheckbox.checked) {
       params.set('sineTone', 'true');
     }
 
-    // Construct the full bookmarkable URL, only adding a '?' if there are parameters.
     const queryString = params.toString();
-    const bookmarkUrl = queryString
+    return queryString
       ? `${window.location.origin}${window.location.pathname}?${queryString}`
       : `${window.location.origin}${window.location.pathname}`;
+  }
+
+  const lightModeEnterLink = document.getElementById('light-mode-enter-link');
+  const lightModeExitLink = document.getElementById('light-mode-exit-link');
+  if (lightModeEnterLink) {
+    lightModeEnterLink.addEventListener('click', () => {
+      lightModeEnterLink.href = buildStateUrl({ light: true, includeDefaultMicSource: false });
+    });
+  }
+  if (lightModeExitLink) {
+    lightModeExitLink.addEventListener('click', () => {
+      lightModeExitLink.href = buildStateUrl({ light: false, includeDefaultMicSource: false });
+    });
+  }
+
+  copyBookmarkButton.addEventListener('click', () => {
+    const bookmarkUrl = buildStateUrl({ light: LIGHT_MODE, includeDefaultMicSource: true });
     debugLog('Bookmark URL:', bookmarkUrl);
     
     // Use the Clipboard API to copy the URL to the user's clipboard.
@@ -3617,6 +3643,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateSystemInfo(existingDevices = null) {
+    if (LIGHT_MODE) return;
     const infoDiv = document.getElementById('system-info-details');
     if (!infoDiv) return;
 
@@ -4052,7 +4079,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   const systemInfoContainer = document.getElementById('system-info-container');
-  if (systemInfoContainer) {
+  if (!LIGHT_MODE && systemInfoContainer) {
     systemInfoContainer.addEventListener('toggle', () => {
       if (systemInfoContainer.open) {
         setTimeout(renderComputePressureGraph, 20);
@@ -4060,11 +4087,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  window.addEventListener('resize', () => {
-    if (systemInfoContainer && systemInfoContainer.open) {
-      renderComputePressureGraph();
-    }
-  });
+  if (!LIGHT_MODE) {
+    window.addEventListener('resize', () => {
+      if (systemInfoContainer && systemInfoContainer.open) {
+        renderComputePressureGraph();
+      }
+    });
+  }
 
   /**
    * Adds a small Copy button to every readout pane (<pre class="pane">). The
@@ -4130,6 +4159,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // devices, compute pressure, and URL parameters.
   initPaneCopyButtons();
   initTooltipA11y();
+  if (LIGHT_MODE) {
+    await queryMediaPermissions(false);
+    const startupDevices = await populateAudioInputDevices({ allowPrompt: false, reason: 'startup' });
+    await populateAudioOutputDevices(startupDevices);
+    applyUrlParameters();
+    return;
+  }
+
   const initBrowser = getBrowserInfo();
   const initOs = getOSInfo();
   const initHw = (window.AudioContext || window.webkitAudioContext)

@@ -770,3 +770,53 @@ input:focus-visible + label[data-tooltip]:not([data-tooltip=""])::after {
 body:has(#file-source:checked) :is(.option-group:has(#sine-tone-checkbox), #track-constraints) { display: none; }
 body:has(#file-source:checked) .for-mic,
 body:not(:has(#file-source:checked)) .for-file { display: none; }
+
+/* ---------- Light benchmark mode (?light / ?light=1) ----------
+   Strips non-audio UI, canvas visualizers, periodic stats panes, backdrop
+   blur, sticky compositor layers, and CSS animations/transitions so Renderer
+   and GPU processes stay idle during pure audio CPU profiling. */
+.for-light,
+.light-mode-badge { display: none; }
+html.light-mode .for-normal { display: none !important; }
+html.light-mode .for-light { display: inline; }
+html.light-mode .light-mode-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line);
+}
+html.light-mode .light-mode-badge a { color: inherit; font-weight: 500; text-decoration: underline; }
+html.light-mode *,
+html.light-mode *::before,
+html.light-mode *::after {
+  animation: none !important;
+  transition: none !important;
+}
+html.light-mode .app-header,
+html.light-mode .live-bar {
+  position: static;
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+html.light-mode .card,
+html.light-mode :is(.highlight, .highlight-red, .highlight-green) {
+  box-shadow: none;
+}
+html.light-mode :is(
+  .diag,
+  #snapshot-button-container,
+  .live-bar .meter,
+  .live-bar .readouts,
+  #record-button,
+  #record-button + .bar-sep,
+  #recorded-audio-container,
+  .pane-wrap:has(> #track-stats),
+  #track-stats,
+  #rtp-stats-section-container,
+  .check:has(#auto-record-checkbox)
+) { display: none !important; }
+html.light-mode #stop-button { margin-left: auto; }
+html.light-mode .live-bar #stop-button { margin-left: 0; }
+html.light-mode .live-bar .bar-sep { margin-left: auto; }

@@ -1,6 +1,6 @@
 // Compute Pressure API (CPU): observer, simulation, status badge and history graph.
 
-import { debugLog, escapeHtml } from './util.js';
+import { LIGHT_MODE, debugLog, escapeHtml } from './util.js';
 import { logLifecycleEvent } from './lifecycle-log.js';
 
 let computePressureObserver = null;
@@ -301,6 +301,7 @@ export function updateComputePressureUI() {
 }
 
 export async function initComputePressureObserver() {
+  if (LIGHT_MODE) return;
   // 1Hz timeline update timer to keep the history graph rolling smoothly.
   setInterval(() => {
     if (latestComputePressure.state !== 'Unknown') {

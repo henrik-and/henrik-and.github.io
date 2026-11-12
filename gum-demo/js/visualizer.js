@@ -1,7 +1,7 @@
 // Level meters (bar and dBFS readout) for the live stream and for recorded
 // audio playback, and the pc2 audioLevel label.
 
-import { createSilentAudioContext } from './util.js';
+import { LIGHT_MODE, createSilentAudioContext } from './util.js';
 
 const visualizerCanvas = document.querySelector('#audio-visualizer');
 const canvasCtx = visualizerCanvas.getContext('2d');
@@ -113,6 +113,7 @@ function createLevelMeter(canvas, label) {
 const liveMeter = createLevelMeter(visualizerCanvas, visualizerDbLabel);
 
 export function visualizeAudio(stream) {
+  if (LIGHT_MODE) return;
   stopVisualizer();
   audioContext = createSilentAudioContext();
   const source = audioContext.createMediaStreamSource(stream);
@@ -149,7 +150,7 @@ export function hasRecordedLevelMeter() {
 // Draws the level of recorded audio playback from analyser until
 // stopRecordedLevelMeter() is called.
 export function startRecordedLevelMeter(recordedAnalyser) {
-  if (!recordedMeter) return;
+  if (LIGHT_MODE || !recordedMeter) return;
   stopRecordedLevelMeter();
   const data = new Float32Array(recordedAnalyser.fftSize);
   const draw = (now = performance.now()) => {

@@ -9,19 +9,19 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=d6862a72">
+  <link rel="stylesheet" href="css/style.css?v=39ccd4a5">
   <script type="importmap">
   {
     "imports": {
       "./js/a11y.js": "./js/a11y.js?v=b5de2807",
-      "./js/compute-pressure.js": "./js/compute-pressure.js?v=8dafbfea",
-      "./js/fold-activity.js": "./js/fold-activity.js?v=f43725e2",
+      "./js/compute-pressure.js": "./js/compute-pressure.js?v=8442155d",
+      "./js/fold-activity.js": "./js/fold-activity.js?v=209dd6ae",
       "./js/fold-state.js": "./js/fold-state.js?v=020cd5ec",
-      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=57586cce",
+      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=887a8812",
       "./js/sdp.js": "./js/sdp.js?v=137dc73c",
       "./js/sysinfo.js": "./js/sysinfo.js?v=a14f9dfb",
-      "./js/util.js": "./js/util.js?v=2cf6c444",
-      "./js/visualizer.js": "./js/visualizer.js?v=33b8ca41",
+      "./js/util.js": "./js/util.js?v=1494de53",
+      "./js/visualizer.js": "./js/visualizer.js?v=1a02a84d",
       "./js/wav.js": "./js/wav.js?v=f89ffdba"
     }
   }
@@ -31,12 +31,13 @@
   <header class="app-header">
     <div class="app-header-inner">
       <h1 class="app-title"><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia"><span class="api">MediaDevices: getUserMedia()</span> Audio Demo</a></h1>
+      <span id="light-mode-badge" class="light-mode-badge" data-tooltip="Light benchmark mode (?light): level meters, Compute Pressure, PCM signal probe, 1 Hz stats polling, MutationObservers, and CSS animations are disabled so CPU profiles capture only the audio pipeline.">Light mode · <a id="light-mode-exit-link" href="./">Full UI</a></span>
       <span class="header-spacer"></span>
       <div id="snapshot-button-container" class="header-actions">
         <button id="copy-log-button" class="btn btn-sm" data-tooltip="Copy a Markdown diagnostic report (environment, permissions, enumerateDevices() inventory, track capabilities, and millisecond Lifecycle Activity Log) to the clipboard for pasting into a Chromium bug comment.">Copy Log</button>
         <button id="save-snapshot-button" class="btn btn-sm" data-tooltip="Export current settings, device inventory, WebAudio context, track getters/capabilities, RTCPeerConnection getStats() reports, and Lifecycle Activity Log to a gUM-snapshot.json file.">Save Snapshot</button>
       </div>
-      <a class="link-quiet" href="readme.html?v=ba8ff73d" target="_blank" data-tooltip="Open documentation: constraints, loopback controls, Lifecycle Activity Log, Copy Log bug reports, and ?diag=1 / ?debug=1 URL parameters.">About</a>
+      <a class="link-quiet" href="readme.html?v=ba8ff73d" target="_blank" data-tooltip="Open documentation: constraints, loopback controls, Lifecycle Activity Log, Copy Log bug reports, and ?light / ?diag=1 / ?debug=1 URL parameters.">About</a>
     </div>
   </header>
 
@@ -424,7 +425,7 @@
     <div class="col col-live">
       <section class="card placeholder-card">
         <div class="card-body">
-          <span class="for-mic">Choose constraints and press <b>getUserMedia</b>.</span><span class="for-file">Choose an audio file and press <b>captureStream</b>.</span> The level meter and stream controls appear in the bar at the top, with track and RTP stats below it.
+          <span class="for-mic">Choose constraints and press <b>getUserMedia</b>.</span><span class="for-file">Choose an audio file and press <b>captureStream</b>.</span> <span class="for-normal">The level meter and stream controls appear in the bar at the top, with track and RTP stats below it.</span><span class="for-light">Light mode (<code>?light</code>): level meters, Compute Pressure, PCM signal probe, periodic stats polling, and CSS animations are disabled so CPU profiles capture only the audio pipeline.</span>
         </div>
       </section>
 
@@ -518,15 +519,15 @@
   </main>
 
   <footer class="foot">
-    <a class="link-quiet" href="classic/">Classic layout</a>
+    <a class="link-quiet" href="classic/">Classic layout</a><span class="for-normal"> · <a id="light-mode-enter-link" class="link-quiet" href="?light=1" data-tooltip="Open minimal ?light benchmark mode (disables level meters, Compute Pressure, PCM signal probe, periodic stats polling, and CSS animations for clean CPU profiling).">Light mode</a></span>
   </footer>
 
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=b6c13c09"></script>
+  <script type="module" src="js/main.js?v=ececfd0d"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
-  <script type="module" src="js/fold-activity.js?v=f43725e2"></script>
+  <script type="module" src="js/fold-activity.js?v=209dd6ae"></script>
 </body>
 </html>

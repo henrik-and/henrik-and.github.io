@@ -87,6 +87,20 @@ audio.
         Activity Log.
     *   **Copy Bookmark** (Source card): Copies a shareable URL containing your
         selected source, constraints and options.
+    *   **Light benchmark mode (`?light` / `?light=1`):** Add `?light`
+        (`https://henrik-and.github.io/gum-demo/?light`) — or click **Light
+        mode** in the footer (and **Full UI** in the header badge to return,
+        preserving selected constraints) — when profiling Chrome audio CPU usage
+        (for example with ETW / `pprof`). Disables all non-audio background
+        activity — the `AnalyserNode` + `requestAnimationFrame` level meters,
+        `Compute Pressure` (`PressureObserver` + 1 Hz canvas), the 3-second
+        post-`getUserMedia` raw PCM health probe, 1 Hz
+        `MediaStreamTrackAudioStats` and `RTCPeerConnection.getStats()` polling,
+        `MediaRecorder` controls, `MutationObserver` fold badges, startup
+        `AudioContext` / `{audio: true}` probes, `backdrop-filter` / `sticky`
+        compositor layers, and all CSS animations/transitions — while keeping
+        every audio source, constraint, `applyConstraints()`, playback mode,
+        `PeerConnection` loopback, and static track/device readout intact.
     *   **Diagnostic cold-start URL (`?diag=1`):** Add `?diag=1`
         (`https://henrik-and.github.io/gum-demo/?diag=1`) when sharing the page
         on a bug report. When microphone permission is still `"prompt"`, normal
@@ -219,6 +233,27 @@ audio.
     and click the small copy icon in its top-right corner to copy the pane
     text as it is at that moment. The `audio-playout (pc2)` copy also includes
     the two audible glitch metrics.
+*   **Light Benchmark Mode (`?light`):** Zero-overhead mode for browser/OS CPU
+    profiling that eliminates hidden `AudioContext` instances, `PressureObserver`
+    polling, `requestAnimationFrame` canvas loops, `setInterval`/`setTimeout`
+    timers, `MutationObserver`s, and CSS animations while keeping all audio
+    constraints, `PeerConnection` loopback, playback sinks, and static track
+    readouts active.
+
+## Clean Audio CPU Profiling (`?light`)
+
+When measuring the CPU cost of audio capture or processing constraints (such as
+`voiceIsolation`, `echoCancellation`, `noiseSuppression`, or `PeerConnection`
+Opus loopback) with ETW, `pprof`, or Perfetto:
+
+1.  Open [`https://henrik-and.github.io/gum-demo/?light`](https://henrik-and.github.io/gum-demo/?light)
+    (or preselect constraints directly, e.g.
+    [`?light=1&voiceIsolation=true`](https://henrik-and.github.io/gum-demo/?light=1&voiceIsolation=true)).
+2.  Click **getUserMedia** and verify the static `getSettings()` readout.
+3.  Record your CPU trace — the page runs **0** background timers, **0**
+    `requestAnimationFrame` callbacks, **0** `PressureObserver`/`MutationObserver`
+    instances, and **0** hidden `AudioContext`s unless **WebAudio:Play** or
+    **440Hz Sine** is explicitly enabled.
 
 ## Collecting Diagnostics for a Chromium Bug Report
 
