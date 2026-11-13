@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Browser audio playout and system loopback level check with lossless WAV recording.">
+  <title>Audio playout diagnostic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD,ROND@20..48,400,0..1,-50..200,0..100&display=block">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-bar">
+    <div class="app-bar-inner">
+      <div class="brand-group">
+        <span class="google-symbols brand-icon" aria-hidden="true">graphic_eq</span>
+        <h1 class="app-title">Audio playout diagnostic</h1>
+        <span id="env-badge" class="tonal-chip neutral">Detecting browser&hellip;</span>
+      </div>
+      <div class="app-bar-actions">
+        <button id="copy-report-btn" type="button" class="btn btn-outlined" title="Copy environment details and saved readings as Markdown">
+          <span class="google-symbols" aria-hidden="true">content_copy</span>
+          <span>Copy report</span>
+        </button>
+        <button id="theme-toggle-btn" type="button" class="btn btn-icon" aria-label="Toggle dark mode" title="Toggle light or dark theme">
+          <span id="theme-icon" class="google-symbols" aria-hidden="true">dark_mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <section class="hw-strip" aria-label="Audio hardware parameters">
+      <div class="hw-item">
+        <span class="hw-label">Sample rate</span>
+        <span id="hw-rate" class="hw-value">&mdash;</span>
+      </div>
+      <div class="hw-item">
+        <span class="hw-label">Max channels</span>
+        <span id="hw-channels" class="hw-value">&mdash;</span>
+      </div>
+      <div class="hw-item">
+        <span class="hw-label">Base latency</span>
+        <span id="hw-base-latency" class="hw-value">&mdash;</span>
+      </div>
+      <div class="hw-item">
+        <span class="hw-label">Output latency</span>
+        <span id="hw-output-latency" class="hw-value">&mdash;</span>
+      </div>
+    </section>
+
+    <div id="alert-banner" class="alert-banner" role="alert" hidden>
+      <span class="google-symbols" aria-hidden="true">error</span>
+      <span id="alert-text"></span>
+    </div>
+
+    <div class="grid-two">
+      <!-- Step 1: Playout -->
+      <section class="card" aria-labelledby="step1-heading">
+        <div class="card-header">
+          <h2 id="step1-heading" class="card-title">1. Playout</h2>
+          <span id="playout-status-chip" class="tonal-chip neutral">Stopped</span>
+        </div>
+
+        <div class="form-stack">
+          <div class="field-row">
+            <label for="signal-select" class="field-label">Test signal</label>
+            <select id="signal-select" class="select-input">
+              <option value="tone440" selected>440 Hz sine (&minus;15.0 dBFS RMS)</option>
+              <option value="../echo-demo/audio/harvard.wav">Speech (harvard.wav)</option>
+            </select>
+          </div>
+
+          <div class="field-row">
+            <span class="field-label" id="api-group-label">Playout path</span>
+            <div class="segmented-group" role="group" aria-labelledby="api-group-label">
+              <button type="button" class="seg-btn" data-api="html" aria-pressed="true">&lt;audio&gt; element</button>
+              <button type="button" class="seg-btn" data-api="webaudio" aria-pressed="false">Web Audio</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button id="play-toggle-btn" type="button" class="btn btn-filled">
+            <span id="play-toggle-icon" class="google-symbols" aria-hidden="true">play_arrow</span>
+            <span id="play-toggle-label">Start playout</span>
+          </button>
+        </div>
+
+        <audio id="html-player" loop hidden></audio>
+      </section>
+
+      <!-- Step 2: System Audio Measurement & WAV Capture -->
+      <section class="card" aria-labelledby="step2-heading">
+        <div class="card-header">
+          <h2 id="step2-heading" class="card-title">2. System audio level &amp; WAV capture</h2>
+          <span id="capture-status-chip" class="tonal-chip neutral">Idle</span>
+        </div>
+
+        <div class="capture-preset-row">
+          <button id="cap-toggle-btn" type="button" class="btn btn-outlined">
+            <span id="cap-toggle-icon" class="google-symbols" aria-hidden="true">desktop_windows</span>
+            <span id="cap-toggle-label">Capture system audio</span>
+          </button>
+          <span class="helper-text">Pick your screen, check <strong>Share with system audio</strong>, and keep OS volume constant across browsers.</span>
+        </div>
+
+        <!-- Stereo dBFS meters -->
+        <div class="meter-panel">
+          <div class="meter-row">
+            <span class="meter-ch-label">L</span>
+            <div class="meter-track" aria-hidden="true">
+              <div id="meter-bar-l" class="meter-fill"></div>
+            </div>
+            <span id="meter-val-l" class="meter-readout">&minus;&infin; dBFS</span>
+          </div>
+          <div class="meter-row">
+            <span class="meter-ch-label">R</span>
+            <div class="meter-track" aria-hidden="true">
+              <div id="meter-bar-r" class="meter-fill"></div>
+            </div>
+            <span id="meter-val-r" class="meter-readout">&minus;&infin; dBFS</span>
+          </div>
+          <div class="meter-scale-row" aria-hidden="true">
+            <span class="meter-scale-spacer"></span>
+            <div class="meter-scale-labels">
+              <span>&minus;60</span>
+              <span>&minus;45</span>
+              <span>&minus;30</span>
+              <span>&minus;15</span>
+              <span>0 dBFS</span>
+            </div>
+            <span class="meter-readout-spacer"></span>
+          </div>
+
+          <div class="stats-inline">
+            <span>Peak: <strong id="stat-peak" class="num">&minus;&infin; dBFS</strong></span>
+            <span>Track: <code id="stat-track-info" class="mono-inline">&mdash;</code></span>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button id="save-reading-btn" type="button" class="btn btn-outlined" disabled>
+            <span class="google-symbols" aria-hidden="true">bookmark_add</span>
+            <span>Save reading</span>
+          </button>
+          <button id="record-wav-btn" type="button" class="btn btn-outlined" disabled>
+            <span id="record-wav-icon" class="google-symbols" aria-hidden="true">fiber_manual_record</span>
+            <span id="record-wav-label">Record 5s WAV</span>
+          </button>
+        </div>
+
+        <div id="wav-result-row" class="wav-result-row" hidden>
+          <audio id="wav-preview" controls></audio>
+          <a id="wav-download-link" class="btn btn-outlined" download="system-audio-5s.wav">
+            <span class="google-symbols" aria-hidden="true">download</span>
+            <span>Download WAV</span>
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Saved Readings Table -->
+    <section class="card table-card" aria-labelledby="readings-heading">
+      <div class="card-header">
+        <h2 id="readings-heading" class="card-title">Saved readings</h2>
+        <div class="table-actions">
+          <button id="clear-readings-btn" type="button" class="btn btn-text" hidden>
+            <span class="google-symbols" aria-hidden="true">delete</span>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="data-table" id="readings-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Playout path</th>
+              <th scope="col">Test signal</th>
+              <th scope="col" class="num-col">L RMS (dBFS)</th>
+              <th scope="col" class="num-col">R RMS (dBFS)</th>
+              <th scope="col" class="num-col">Peak (dBFS)</th>
+              <th scope="col">Source</th>
+            </tr>
+          </thead>
+          <tbody id="readings-tbody">
+            <tr id="empty-readings-row">
+              <td colspan="7" class="empty-table-msg">No readings yet. Start playout, capture system audio, then click <strong>Save reading</strong> or <strong>Record 5s WAV</strong>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
