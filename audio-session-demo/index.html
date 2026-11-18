@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Open audio output streams on chosen devices and playback paths, with a timestamped action log to match Chrome's WASAPI session-volume logs.">
+  <title>Audio output session demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Symbols:opsz,wght,FILL,GRAD,ROND@20..48,400,0..1,-50..200,0..100&display=block">
+  <link rel="stylesheet" href="../audio-playout-demo/css/style.css">
+  <link rel="stylesheet" href="css/session.css">
+</head>
+<body>
+  <header class="app-bar">
+    <div class="app-bar-inner">
+      <div class="brand-group">
+        <span class="google-symbols brand-icon" aria-hidden="true">speaker_group</span>
+        <h1 class="app-title">Audio output session demo</h1>
+        <span id="env-badge" class="tonal-chip neutral">Detecting browser&hellip;</span>
+      </div>
+      <div class="app-bar-actions">
+        <button id="copy-report-btn" type="button" class="btn btn-outlined" title="Copy the device list and the action log as Markdown, to paste next to the chrome_debug.log excerpt">
+          <span class="google-symbols" aria-hidden="true">content_copy</span>
+          <span>Copy report</span>
+        </button>
+        <button id="theme-toggle-btn" type="button" class="btn btn-icon" aria-label="Toggle dark mode" title="Toggle light or dark theme">
+          <span id="theme-icon" class="google-symbols" aria-hidden="true">dark_mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div id="alert-banner" class="alert-banner" role="alert" hidden>
+      <span class="google-symbols" aria-hidden="true">error</span>
+      <span id="alert-text"></span>
+    </div>
+
+    <section class="card" aria-labelledby="devices-heading">
+      <div class="card-header">
+        <h2 id="devices-heading" class="card-title">Output devices</h2>
+        <span id="devices-chip" class="tonal-chip neutral">Not loaded</span>
+      </div>
+      <p class="helper-text">
+        Device names are only shown after a microphone permission grant. The microphone is released right away.
+        Chrome logs the session volume each time it opens a physical output stream
+        (<code class="mono-inline">LogAudioSessionVolumes</code>). <strong>Create &amp; play</strong>,
+        <strong>Switch device</strong> to another device, and <strong>Destroy</strong> followed by
+        <strong>Create &amp; play</strong> are the actions meant to open new streams.
+      </p>
+      <div class="card-actions">
+        <button id="grant-labels-btn" type="button" class="btn btn-filled" title="Ask for microphone permission once so that enumerateDevices() returns device names. The microphone is stopped right away.">
+          <span class="google-symbols" aria-hidden="true">mic</span>
+          <span>Show device names</span>
+        </button>
+        <button id="refresh-devices-btn" type="button" class="btn btn-outlined" title="Read the output device list again (also done automatically on devicechange)">
+          <span class="google-symbols" aria-hidden="true">refresh</span>
+          <span>Refresh</span>
+        </button>
+        <button id="add-player-btn" type="button" class="btn btn-outlined" title="Add another independent player (up to 4), e.g. to play to two devices at the same time">
+          <span class="google-symbols" aria-hidden="true">add</span>
+          <span>Add player</span>
+        </button>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" id="devices-table">
+          <thead>
+            <tr>
+              <th scope="col">Label</th>
+              <th scope="col">deviceId</th>
+              <th scope="col">groupId</th>
+            </tr>
+          </thead>
+          <tbody id="devices-tbody">
+            <tr><td colspan="3" class="empty-table-msg">No devices loaded yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div id="players" class="players-grid"></div>
+
+    <section class="card table-card" aria-labelledby="log-heading">
+      <div class="card-header">
+        <h2 id="log-heading" class="card-title">Action log</h2>
+        <div class="table-actions">
+          <button id="clear-log-btn" type="button" class="btn btn-text" title="Remove all entries from the action log, also the stored copy, and start again at run 1">
+            <span class="google-symbols" aria-hidden="true">delete</span>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+      <div class="persist-note" role="note">
+        <span class="google-symbols" aria-hidden="true">history</span>
+        <span>This log is <strong>kept across page reloads and browser restarts</strong> (stored in this browser profile,
+        so start the build with the same <code class="mono-inline">--user-data-dir</code>). Each page load adds a
+        <em>Page loaded (run N)</em> entry. Click <strong>Clear</strong> before a new test.</span>
+      </div>
+      <p class="helper-text">
+        The <em>Chrome time</em> column uses the same format as the <code class="mono-inline">chrome_debug.log</code>
+        prefix (<code class="mono-inline">MMDD/HHMMSS.mmm</code>, local time). Log lines from Chrome arrive a few ms after the action.
+      </p>
+      <div class="table-scroll">
+        <table class="data-table" id="log-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Chrome time</th>
+              <th scope="col">Player</th>
+              <th scope="col">Action</th>
+              <th scope="col">Path</th>
+              <th scope="col">Device</th>
+              <th scope="col">Details</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            <tr><td colspan="7" class="empty-table-msg">No actions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="cmd-heading">
+      <div class="card-header">
+        <h2 id="cmd-heading" class="card-title">Find the matching Chrome log lines</h2>
+        <button id="copy-cmd-btn" type="button" class="btn btn-text" title="Copy the PowerShell command">
+          <span class="google-symbols" aria-hidden="true">content_copy</span>
+          <span>Copy</span>
+        </button>
+      </div>
+      <p class="helper-text">
+        Start the build with <code class="mono-inline">--user-data-dir=C:\tmp\cr-sessvol --enable-logging --vmodule=media_stream_manager=1</code>,
+        then run this in PowerShell. It shows the constructor line (device name, params, role) and the session line of each stream;
+        both carry the same <code class="mono-inline">WAOS[id=...]</code>.
+      </p>
+      <pre id="ps-cmd" class="code-block">Select-String -Path C:\tmp\cr-sessvol\chrome_debug.log -Pattern 'WAOS\[id=.*(WASAPIAudioOutputStream\(|LogAudioSessionVolumes)' | ForEach-Object { $_.Line }</pre>
+    </section>
+  </main>
+
+  <template id="player-template">
+    <section class="card player-card">
+      <div class="card-header">
+        <h2 class="card-title player-title">Player</h2>
+        <span class="tonal-chip neutral player-status">Idle</span>
+      </div>
+      <div class="form-stack">
+        <div class="field-row">
+          <label class="field-label" title="Where this player plays. default and communications follow the Windows default devices; communications uses Chrome's communications session (session=[communications] in the log).">Output device</label>
+          <select class="select-input player-device" title="Output device for Create &amp; play, and the target for Switch device"></select>
+        </div>
+        <div class="field-row">
+          <label class="field-label" title="How the page produces audio. Different paths use different code in Chrome and different buffer sizes (see params in the constructor log line). The Windows session is the same for all paths.">Playback path</label>
+          <select class="select-input player-path">
+            <option value="html">&lt;audio&gt; element</option>
+            <option value="webaudio-playback">Web Audio (latencyHint: playback)</option>
+            <option value="webaudio-interactive">Web Audio (latencyHint: interactive)</option>
+            <option value="webrtc">WebRTC loopback (remote track in &lt;audio&gt;)</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label class="field-label" title="Sine frequency, so that several players can be told apart by ear">Tone</label>
+          <select class="select-input player-freq">
+            <option value="330">330 Hz</option>
+            <option value="440">440 Hz</option>
+            <option value="550">550 Hz</option>
+            <option value="660">660 Hz</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label class="field-label" title="Chrome's own volume for this player: HTMLMediaElement.volume for &lt;audio&gt; and WebRTC, a GainNode for Web Audio. Chrome scales the samples itself. It is not the Windows per-app slider and does not change session_volume in the log.">Page volume <span class="player-volume-value num">0.30</span></label>
+          <input class="player-volume" type="range" min="0" max="1" step="0.05" value="0.3"
+                 title="Chrome's own volume for this player (not the Windows session volume)">
+        </div>
+      </div>
+      <div class="card-actions player-actions">
+        <button type="button" class="btn btn-filled act-create" title="Create a new player on the selected device and path and start playing. Chrome opens an output stream, which logs LogAudioSessionVolumes.">
+          <span class="google-symbols" aria-hidden="true">play_arrow</span><span>Create &amp; play</span>
+        </button>
+        <button type="button" class="btn btn-outlined act-pause" disabled title="Pause playback (&lt;audio&gt;.pause() or AudioContext.suspend()). Does not reliably make Chrome open a new stream.">
+          <span class="google-symbols" aria-hidden="true">pause</span><span>Pause</span>
+        </button>
+        <button type="button" class="btn btn-outlined act-resume" disabled title="Resume playback after Pause">
+          <span class="google-symbols" aria-hidden="true">play_circle</span><span>Resume</span>
+        </button>
+        <button type="button" class="btn btn-outlined act-switch" disabled title="Move the running player to the device selected above (setSinkId). Switching to another device makes Chrome open a stream on that device.">
+          <span class="google-symbols" aria-hidden="true">swap_horiz</span><span>Switch device</span>
+        </button>
+        <button type="button" class="btn btn-danger-outlined act-destroy" disabled title="Stop and release the player (element source cleared, AudioContext closed, peer connections closed)">
+          <span class="google-symbols" aria-hidden="true">delete</span><span>Destroy</span>
+        </button>
+        <button type="button" class="btn btn-text act-remove" title="Remove this player card">
+          <span class="google-symbols" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <p class="helper-text player-sink">sinkId: &mdash;</p>
+      <div class="player-countdown" role="status" aria-live="polite" hidden
+           title="In tests on Windows, Create &amp; play about 3.5 s after Destroy reused the previous output stream (no new log line), while about 20 s later a new stream was opened. The 20 s is from those tests, not a documented Chrome value.">
+        <span class="google-symbols" aria-hidden="true">timer</span>
+        <span class="player-countdown-text"></span>
+      </div>
+    </section>
+  </template>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
