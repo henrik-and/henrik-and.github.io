@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <!-- Speaker with sound waves, plus a small level slider: output session demo. -->
   <rect width="64" height="64" rx="14" fill="#0b57d0"/>
-  <path d="M12 26h8l11-9v30l-11-9h-8z" fill="#ffffff"/>
-  <path d="M37 24a10 10 0 0 1 0 16" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-  <path d="M42 18a18 18 0 0 1 0 28" fill="none" stroke="#a8c7fa" stroke-width="4" stroke-linecap="round"/>
+  <path d="M8 26h7l10-9v30l-10-9h-7z" fill="#ffffff"/>
+  <path d="M30 25a9 9 0 0 1 0 14" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M35 19a16 16 0 0 1 0 26" fill="none" stroke="#a8c7fa" stroke-width="4" stroke-linecap="round"/>
   <rect x="50" y="14" width="4" height="36" rx="2" fill="#a8c7fa"/>
   <circle cx="52" cy="38" r="5" fill="#ffffff"/>
 </svg>
