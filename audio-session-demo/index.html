@@ -138,6 +138,73 @@
       </p>
       <pre id="ps-cmd" class="code-block">Select-String -Path C:\tmp\cr-sessvol\chrome_debug.log -Pattern 'WAOS\[id=.*(WASAPIAudioOutputStream\(|LogAudioSessionVolumes)' | ForEach-Object { $_.Line }</pre>
     </section>
+    <section class="card" aria-labelledby="uma-heading">
+      <div class="card-header">
+        <h2 id="uma-heading" class="card-title">UMA histograms (Windows, needs a build with CL 8830670)</h2>
+        <button id="copy-uma-btn" type="button" class="btn btn-text" title="Copy the chrome://histograms address. Web pages cannot open chrome:// pages directly; paste it into the address bar.">
+          <span class="google-symbols" aria-hidden="true">content_copy</span>
+          <span>Copy address</span>
+        </button>
+      </div>
+      <p class="helper-text">
+        Open <code id="uma-url" class="mono-inline">chrome://histograms/#Media.Audio.Output.Win.Session</code> in a new tab
+        (paste it into the address bar) and reload that tab after each test step. Each histogram gets one sample each time Chrome
+        opens an output stream, i.e. once per new <code class="mono-inline">LogAudioSessionVolumes</code> log line.
+        A Create &amp; play that reuses the previous stream (see the countdown) adds no sample.
+      </p>
+      <div class="table-scroll">
+        <table class="data-table" id="uma-table">
+          <thead>
+            <tr>
+              <th scope="col">Histogram</th>
+              <th scope="col">Recorded</th>
+              <th scope="col">Values</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionVolumeState</code></td>
+              <td>Every opened shared-mode stream</td>
+              <td>0 Default (all 1.0, not muted) · 1 Muted · 2 Session volume reduced (mixer slider) · 3 Channel volume reduced (hidden in the mixer) · 4 Both reduced · 5 Query failed</td>
+            </tr>
+            <tr>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionAttenuationOfQuietestChannel</code></td>
+              <td>Only when the state is 2, 3 or 4</td>
+              <td>Attenuation of the quietest channel in whole dB (0 = less than 0.5 dB, 100 = 100 dB or more)</td>
+            </tr>
+            <tr>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionChannelVolumesUnequal</code></td>
+              <td>Only when a channel volume is below 1.0 (state 3 or 4)</td>
+              <td>false = all channels reduced equally (likely saved state) · true = channels differ (balance-like)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 class="card-title uma-subtitle">What to expect</h3>
+      <div class="table-scroll">
+        <table class="data-table" id="uma-expect-table">
+          <thead>
+            <tr>
+              <th scope="col">Setting before the stream is opened</th>
+              <th scope="col">Session&shy;Volume&shy;State</th>
+              <th scope="col">Session&shy;Attenuation&shy;Of&shy;Quietest&shy;Channel (dB)</th>
+              <th scope="col">Session&shy;Channel&shy;Volumes&shy;Unequal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Mixer slider 100%, not muted</td><td>0</td><td>not recorded</td><td>not recorded</td></tr>
+            <tr><td>Mixer slider 50%</td><td>2</td><td>6</td><td>not recorded</td></tr>
+            <tr><td>Mixer slider 10%</td><td>2</td><td>20</td><td>not recorded</td></tr>
+            <tr><td>Chrome muted in the mixer</td><td>1</td><td>not recorded</td><td>not recorded</td></tr>
+            <tr><td>Per-channel volume 0.0158 on both channels (registry value 4, as in crbug.com/584258005)</td><td>3</td><td>36</td><td>false</td></tr>
+            <tr><td>Page volume changed (this page)</td><td>unchanged: page volume is Chrome's own volume, not the Windows session</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="helper-text">
+        The mixer slider can't be set exactly, so e.g. 45% shows up as 7 dB. Per-channel volumes can't be set from the Windows UI.
+      </p>
+    </section>
   </main>
 
   <template id="player-template">

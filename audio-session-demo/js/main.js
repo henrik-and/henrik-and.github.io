@@ -614,6 +614,10 @@ function init() {
     logAction(null, 'Log cleared (run 1)', 'new log started');
   });
   $('copy-report-btn').addEventListener('click', copyReport);
+  $('copy-uma-btn').addEventListener('click', async () => {
+    await navigator.clipboard.writeText($('uma-url').textContent);
+    showToast('chrome://histograms address copied');
+  });
   $('copy-cmd-btn').addEventListener('click', async () => {
     await navigator.clipboard.writeText($('ps-cmd').textContent);
     showToast('PowerShell command copied');

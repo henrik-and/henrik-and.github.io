@@ -80,3 +80,30 @@
   background: var(--status-success-bg);
   color: var(--status-success-fg);
 }
+
+.uma-subtitle {
+  margin: 16px 0 8px;
+  font-size: 14px;
+}
+
+/* The UMA tables hold prose and long histogram names; let them wrap
+   instead of overflowing the card. */
+#uma-table th,
+#uma-table td,
+#uma-expect-table th,
+#uma-expect-table td {
+  white-space: normal;
+  height: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  vertical-align: top;
+}
+
+#uma-table code,
+#uma-expect-table th {
+  overflow-wrap: anywhere;
+}
+
+#uma-table td:first-child {
+  width: 34%;
+}
