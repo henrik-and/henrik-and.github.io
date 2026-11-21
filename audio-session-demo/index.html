@@ -168,14 +168,19 @@
               <td>Not muted: 0 Default (all 1.0) · 1 Session volume reduced (mixer slider) · 2 Channel volume reduced (hidden in the mixer) · 3 Both reduced. Muted: 4 Default · 5 Session volume reduced · 6 Channel volume reduced · 7 Both reduced. 8 Query failed. Windows keeps the volumes while muted, so mute doesn't hide them.</td>
             </tr>
             <tr>
-              <td><code class="mono-inline">Media.Audio.Output.Win.SessionAttenuationOfQuietestChannel</code></td>
-              <td>Only when a volume is reduced: states 1–3 and 5–7 (muted or not)</td>
-              <td>Attenuation of the quietest channel in whole dB (0 = less than 0.5 dB, 100 = 100 dB or more)</td>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionAttenuation.SessionVolume</code></td>
+              <td>When the session volume (mixer slider) is below 0.99, muted or not (states 1, 3, 5, 7)</td>
+              <td>Attenuation of the slider in whole dB (0 = less than 0.5 dB, 100 = 100 dB or more)</td>
             </tr>
             <tr>
-              <td><code class="mono-inline">Media.Audio.Output.Win.SessionChannelVolumesUnequal</code></td>
-              <td>Only when a channel volume is below 1.0 (states 2, 3, 6, 7) and the session has 2 or more channels</td>
-              <td>false = all channels reduced equally (likely saved state) · true = channels differ (balance-like)</td>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionAttenuation.UniformChannelVolume</code></td>
+              <td>When the per-channel volumes are below 0.99 and all equal (within 0.005), or the session is mono (states 2, 3, 6, 7)</td>
+              <td>Attenuation of the per-channel volume only, in whole dB. The slider is not included, so −18 / −36 dB stay exact</td>
+            </tr>
+            <tr>
+              <td><code class="mono-inline">Media.Audio.Output.Win.SessionAttenuation.UnequalChannelVolume</code></td>
+              <td>When the per-channel volumes are below 0.99 and differ (balance-like)</td>
+              <td>Attenuation of the quietest channel only, in whole dB</td>
             </tr>
           </tbody>
         </table>
@@ -187,23 +192,26 @@
             <tr>
               <th scope="col">Setting before the stream is opened</th>
               <th scope="col">Session&shy;Volume&shy;State</th>
-              <th scope="col">Session&shy;Attenuation&shy;Of&shy;Quietest&shy;Channel (dB)</th>
-              <th scope="col">Session&shy;Channel&shy;Volumes&shy;Unequal</th>
+              <th scope="col">Session&shy;Attenuation.&shy;Session&shy;Volume (dB)</th>
+              <th scope="col">Session&shy;Attenuation.&shy;Uniform&shy;Channel&shy;Volume (dB)</th>
             </tr>
           </thead>
           <tbody>
             <tr><td>Mixer slider 100%, not muted</td><td>0</td><td>not recorded</td><td>not recorded</td></tr>
             <tr><td>Mixer slider 50%</td><td>1</td><td>6</td><td>not recorded</td></tr>
-            <tr><td>Mixer slider 10%</td><td>1</td><td>20</td><td>not recorded</td></tr>
+            <tr><td>Mixer slider 42% (measured)</td><td>1</td><td>8</td><td>not recorded</td></tr>
             <tr><td>Chrome muted in the mixer (slider 100%)</td><td>4</td><td>not recorded</td><td>not recorded</td></tr>
             <tr><td>Chrome muted in the mixer, slider 50%</td><td>5</td><td>6</td><td>not recorded</td></tr>
-            <tr><td>Per-channel volume 0.0158 on both channels (registry value 4, as in crbug.com/584258005)</td><td>2</td><td>36</td><td>false</td></tr>
+            <tr><td>Per-channel volume −18 dB on both channels (measured)</td><td>2</td><td>not recorded</td><td>18</td></tr>
+            <tr><td>Same, and Chrome muted (measured)</td><td>6</td><td>not recorded</td><td>18</td></tr>
+            <tr><td>Per-channel volume −36 dB on both channels (as in crbug.com/584258005)</td><td>2</td><td>not recorded</td><td>36</td></tr>
+            <tr><td>Per-channel −18 dB and slider 50%</td><td>3</td><td>6</td><td>18</td></tr>
             <tr><td>Page volume changed (this page)</td><td>unchanged: page volume is Chrome's own volume, not the Windows session</td><td></td><td></td></tr>
           </tbody>
         </table>
       </div>
       <p class="helper-text">
-        The mixer slider can't be set exactly, so e.g. 45% shows up as 7 dB. Per-channel volumes can't be set from the Windows UI.
+        The mixer slider can't be set exactly, so e.g. 42% shows up as 8 dB. Per-channel volumes can't be set from the Windows UI; the "measured" rows used a test script that writes them (see the bug summary, Appendix E.2c). A volume counts as reduced below 0.99.
       </p>
     </section>
   </main>
