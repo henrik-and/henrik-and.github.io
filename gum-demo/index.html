@@ -9,15 +9,16 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=39ccd4a5">
+  <link rel="stylesheet" href="css/style.css?v=aee32e53">
   <script type="importmap">
   {
     "imports": {
       "./js/a11y.js": "./js/a11y.js?v=b5de2807",
       "./js/compute-pressure.js": "./js/compute-pressure.js?v=8442155d",
+      "./js/far-end.js": "./js/far-end.js?v=efe26466",
       "./js/fold-activity.js": "./js/fold-activity.js?v=209dd6ae",
       "./js/fold-state.js": "./js/fold-state.js?v=020cd5ec",
-      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=887a8812",
+      "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=b65637c3",
       "./js/sdp.js": "./js/sdp.js?v=137dc73c",
       "./js/sysinfo.js": "./js/sysinfo.js?v=a14f9dfb",
       "./js/util.js": "./js/util.js?v=1494de53",
@@ -156,6 +157,64 @@
   <main class="layout">
     <!-- ================= Left: controls ================= -->
     <div class="col col-controls">
+      <section id="far-end-card" class="card card-farend">
+        <!-- Closed by default and no data-fold attribute so it stays collapsed
+             on reload unless expanded by the user or ?farEndOpen=1. -->
+        <details id="far-end-details" class="fold">
+          <summary class="card-head">
+            <h2 class="card-title">Far-end audio</h2>
+            <span class="farend-subtitle">echo source</span>
+            <span class="spacer"></span>
+            <span id="farend-status-badge" class="farend-status" data-state="idle">Idle</span>
+          </summary>
+          <div class="card-body farend-body">
+            <div class="farend-grid">
+              <div class="farend-row">
+                <label for="farend-device">Output device:</label>
+                <div class="farend-device-controls">
+                  <select id="farend-device"></select>
+                  <button type="button" id="farend-unlock-btn" class="btn btn-ghost btn-sm" hidden data-tooltip="Request microphone permission once so enumerateDevices() exposes speaker names, then stop the temporary mic track immediately.">Show names</button>
+                </div>
+                <span class="info-icon" tabindex="0" role="img" data-tooltip="Output speaker for Create &amp; play and Switch device (HTMLMediaElement.setSinkId or AudioContext.setSinkId).">i</span>
+              </div>
+              <div class="farend-row">
+                <label for="farend-path">Playback path:</label>
+                <select id="farend-path">
+                  <option value="html" selected>&lt;audio&gt; element</option>
+                  <option value="webaudio-playback">Web Audio (latencyHint: playback)</option>
+                  <option value="webaudio-interactive">Web Audio (latencyHint: interactive)</option>
+                  <option value="webrtc">WebRTC loopback (remote track in &lt;audio&gt;)</option>
+                </select>
+                <span class="info-icon" tabindex="0" role="img" data-tooltip="How Chrome renders far-end audio to drive EchoCanceller3 reverse-stream analysis. &lt;audio&gt; element loops an HTMLAudioElement with zero AudioContext overhead.">i</span>
+              </div>
+              <div class="farend-row">
+                <label for="farend-file">WAV file:</label>
+                <select id="farend-file"></select>
+                <span class="info-icon" tabindex="0" role="img" data-tooltip="Looped far-end audio file from /echo-demo/audio/ (or a local audio file) played out to speakers as an acoustic echo stimulus.">i</span>
+              </div>
+              <div id="farend-local-row" class="farend-row" hidden>
+                <label for="farend-local-input">Local file:</label>
+                <input type="file" id="farend-local-input" accept=".wav,audio/*">
+                <span></span>
+              </div>
+              <div class="farend-row">
+                <label for="farend-volume">Page volume: <span id="farend-volume-value" class="farend-vol-num">0.60</span></label>
+                <input type="range" id="farend-volume" min="0" max="1" step="0.05" value="0.6">
+                <span class="info-icon" tabindex="0" role="img" data-tooltip="Chrome's own output gain for this player (HTMLMediaElement.volume or Web Audio GainNode), independent of the OS mixer.">i</span>
+              </div>
+            </div>
+            <div class="farend-actions">
+              <button type="button" id="farend-create-btn" class="btn btn-primary btn-sm" data-tooltip="Create the far-end player on the selected device and playback path and start looping the WAV file.">Create &amp; play</button>
+              <button type="button" id="farend-pause-btn" class="btn btn-sm" disabled data-tooltip="Pause far-end playback (&lt;audio&gt;.pause() or AudioContext.suspend()).">Pause</button>
+              <button type="button" id="farend-resume-btn" class="btn btn-sm" disabled data-tooltip="Resume far-end playback after Pause.">Resume</button>
+              <button type="button" id="farend-switch-btn" class="btn btn-sm" disabled data-tooltip="Move the running far-end player to the output device selected above via setSinkId().">Switch device</button>
+              <button type="button" id="farend-destroy-btn" class="btn btn-danger btn-sm" disabled data-tooltip="Stop and release the far-end player (clears HTMLAudioElement, closes AudioContext and peer connections).">Destroy</button>
+            </div>
+            <div id="farend-sink-info" class="farend-sink">sinkId: —</div>
+          </div>
+        </details>
+      </section>
+
       <section class="card">
         <div class="card-top">
           <button id="gum-button" class="btn btn-primary" data-tooltip="Acquire a local audio MediaStream using the navigator.mediaDevices.getUserMedia() API and configured constraints.">getUserMedia</button>
@@ -525,7 +584,7 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=ececfd0d"></script>
+  <script type="module" src="js/main.js?v=a93116ab"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
   <script type="module" src="js/fold-activity.js?v=209dd6ae"></script>

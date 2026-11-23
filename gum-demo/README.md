@@ -47,6 +47,15 @@ audio.
         Headset/HFP mode) to make audio glitches and buffer starvation dropouts
         immediately audible. Can be toggled on the fly. Microphone source
         only.
+    *   **Far-end audio (`echo source`):** Collapsed by default above the
+        **getUserMedia** / **Source** card (click its header or pass
+        `?farEndOpen=1` to expand). Opens an independent looped far-end render stream using `.wav` files from
+        `/echo-demo/audio/` (or a local file) via `<audio>` element, Web Audio
+        (`playback` / `interactive`), or WebRTC loopback, with `setSinkId()`
+        speaker selection, page volume (default `0.60`), and `Create & play` /
+        `Pause` / `Resume` / `Switch device` / `Destroy` controls so
+        `EchoCanceller3` reverse-stream processing runs during `getUserMedia()`
+        capture.
 4.  **Start the Stream:** Click **getUserMedia** (or **captureStream** for an
     audio file) at the top of the **Source** card. A sticky live bar appears
     below the diagnostic cards with the level meter and stream controls, staying

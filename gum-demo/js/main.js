@@ -38,6 +38,13 @@ import {
   visualizeAudio,
 } from './visualizer.js';
 import { initTooltipA11y, labelInfoIcons } from './a11y.js';
+import {
+  appendFarEndBookmarkParams,
+  applyFarEndUrlParams,
+  getFarEndSnapshot,
+  initFarEndPlayer,
+  populateFarEndDevices,
+} from './far-end.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const supportedConstraints = navigator.mediaDevices?.getSupportedConstraints?.() || {};
@@ -920,6 +927,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       sineToneCheckbox.dispatchEvent(new Event('change'));
     }
 
+    applyFarEndUrlParams(params);
+
     debugLog(`applyUrlParameters: echoCancellation from URL is "${params.get('echoCancellation')}"`);
     debugLog(`applyUrlParameters: autoGainControl from URL is "${params.get('autoGainControl')}"`);
     debugLog(`applyUrlParameters: noiseSuppression from URL is "${params.get('noiseSuppression')}"`);
@@ -1081,6 +1090,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function populateAudioOutputDevices(existingDevices = null) {
+    debugLog('Populating audio output devices...');
+    const devices = existingDevices || await enumerateDevicesWithDiag('output-refresh');
+    populateFarEndDevices(devices);
     if (!mediaElementSetSinkIdSupported) {
       audioOutputDeviceSelect.disabled = true;
       audioOutputDeviceSelect.title = 'HTMLMediaElement.setSinkId() is not supported by this browser.';
@@ -1092,8 +1104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!mediaElementSetSinkIdSupported && !audioContextSetSinkIdSupported) {
       return;
     }
-    debugLog('Populating audio output devices...');
-    const devices = existingDevices || await enumerateDevicesWithDiag('output-refresh');
     const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
 
     const fillSelect = (select, extraOptions = []) => {
@@ -3518,6 +3528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sineToneCheckbox && sineToneCheckbox.checked) {
       params.set('sineTone', 'true');
     }
+    appendFarEndBookmarkParams(params);
 
     const queryString = params.toString();
     return queryString
@@ -3907,6 +3918,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         permissionsPolicy: getPermissionsPolicySummary(),
       },
       selectedConstraints: buildCurrentSelectedConstraintsSummary(),
+      farEndAudio: getFarEndSnapshot({ omitIds: true }),
       trackConstraints: snapshotState.trackConstraints || lastTrackDiagnostics.trackConstraints,
       trackSettings: snapshotState.trackSettings || lastTrackDiagnostics.trackSettings,
       trackCapabilities: snapshotState.trackCapabilities || lastTrackDiagnostics.trackCapabilities,
@@ -3998,6 +4010,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Auto-Play': autoPlayCheckbox ? autoPlayCheckbox.checked : false,
       'Auto-Play Mode': autoPlayModeName(),
       'Active audio source': activeAudioSource,
+      'Active far-end audio': getFarEndSnapshot(),
       'Active audio output device': snapshotState.audioOutput,
       'Active WebAudio Context': snapshotState.webAudioContext,
       'WebAudio latencyHint': latencyHintSelect.value,
@@ -4157,6 +4170,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize the application by recording startup environment, permissions,
   // devices, compute pressure, and URL parameters.
+  initFarEndPlayer({
+    onUnlockDevices: async () => {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        tempStream.getTracks().forEach(t => t.stop());
+        const refreshed = await populateAudioInputDevices({ allowPrompt: false, reason: 'farend-unlock-labels' });
+        await populateAudioOutputDevices(refreshed);
+        if (!LIGHT_MODE) {
+          await populateSystemInfo(refreshed);
+        }
+      } catch (err) {
+        errorMessageElement.textContent =
+            `Error getting permissions for device names: ${err.name} - ${err.message}`;
+        errorMessageElement.hidden = false;
+      }
+    },
+    onError: (msg) => {
+      errorMessageElement.classList.remove('notice');
+      errorMessageElement.textContent = msg;
+      errorMessageElement.hidden = !msg;
+    },
+  });
   initPaneCopyButtons();
   initTooltipA11y();
   if (LIGHT_MODE) {

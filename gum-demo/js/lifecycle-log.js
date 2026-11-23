@@ -252,6 +252,7 @@ export function formatDiagnosticMarkdownReport({
   systemDiagnostics = {},
   permissions = {},
   selectedConstraints = {},
+  farEndAudio = null,
   trackConstraints = null,
   trackSettings = null,
   trackCapabilities = null,
@@ -319,6 +320,7 @@ export function formatDiagnosticMarkdownReport({
   const captureDump = {
     selectedConstraints: omitDeviceIds(selectedConstraints),
   };
+  if (farEndAudio) captureDump.farEndAudio = farEndAudio;
   if (signalHealth) captureDump.signalHealthProbe = signalHealth;
   if (trackProperties) captureDump.trackProperties = trackProperties;
   if (trackConstraints) captureDump.trackGetConstraints = omitDeviceIds(trackConstraints);
