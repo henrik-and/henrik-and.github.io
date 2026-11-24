@@ -81,6 +81,23 @@ function updateSummaryBadge() {
  * @param {'info'|'success'|'warning'|'error'} [level='info']
  * @param {Object|null} [data=null] Optional structured diagnostic details.
  */
+/**
+ * Logs mute/unmute events on a received (remote) WebRTC track. Chrome creates
+ * the track muted, unmutes it on the first received RTP packet, and mutes it
+ * again only when renegotiation removes the receive direction. It does not
+ * follow the sender's microphone mute or the local speaker.
+ */
+export function watchRemoteTrackMute(track, label) {
+  if (!track) return;
+  logLifecycleEvent('remote track', `${label}: remote track received (muted=${track.muted})`);
+  track.addEventListener('mute', () => {
+    logLifecycleEvent('remote track.onmute', `${label}: remote track muted (receive direction removed)`, 'warning');
+  });
+  track.addEventListener('unmute', () => {
+    logLifecycleEvent('remote track.onunmute', `${label}: remote track unmuted (first RTP packet received)`, 'success');
+  });
+}
+
 export function logLifecycleEvent(category, message, level = 'info', data = null) {
   if (LIGHT_MODE) return;
   const now = new Date();

@@ -8,7 +8,7 @@
 
 import { createSilentAudioContext, debugLog } from './util.js';
 import { insertStereoSupportForOpus } from './sdp.js';
-import { logLifecycleEvent } from './lifecycle-log.js';
+import { logLifecycleEvent, watchRemoteTrackMute } from './lifecycle-log.js';
 
 export const ECHO_DEMO_WAV_FILES = [
   'concatenate_female.wav',
@@ -296,7 +296,10 @@ async function createWebRtcPlayer(wavSource, deviceId, vol) {
   pc1.onicecandidate = (e) => e.candidate && pc2.addIceCandidate(e.candidate);
   pc2.onicecandidate = (e) => e.candidate && pc1.addIceCandidate(e.candidate);
   const remoteStreamPromise = new Promise((resolve) => {
-    pc2.ontrack = (e) => resolve(e.streams[0] || new MediaStream([e.track]));
+    pc2.ontrack = (e) => {
+      watchRemoteTrackMute(e.track, 'Far-end WebRTC');
+      resolve(e.streams[0] || new MediaStream([e.track]));
+    };
   });
   dest.stream.getTracks().forEach(t => pc1.addTrack(t, dest.stream));
 

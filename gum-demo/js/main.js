@@ -17,6 +17,7 @@ import {
   lifecycleEvents,
   logLifecycleEvent,
   recordEnumeratedDevices,
+  watchRemoteTrackMute,
 } from './lifecycle-log.js';
 import {
   computePressureHistory,
@@ -97,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const fileSourceAudio = document.querySelector('#file-source-audio');
   const trackSettingsElement = document.querySelector('#track-settings');
   const trackPropertiesElement = document.querySelector('#track-properties');
+  const remoteTrackPropertiesElement = document.querySelector('#remote-track-properties');
   const trackStatsElement = document.querySelector('#track-stats');
   const trackConstraintsElement = document.querySelector('#track-constraints');
   const audioInputDeviceElement = document.querySelector('#audio-input-device');
@@ -215,6 +217,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
+  // Received (remote) track of the pc1 -> pc2 loopback, when it exists.
+  let remoteAudioTrack = null;
+  let previousRemoteTrackProperties = null;
   let pc1, pc2;
   let previousOutboundRtpStats = null;
   let previousInboundRtpStats = null;
@@ -271,6 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     outboundRtp: null,
     inboundRtp: null,
     audioPlayout: null,
+    remoteTrackProperties: null,
   };
 
   // Preserved across Stop Stream / unexpected track.onended so Copy Log and
@@ -592,6 +598,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const remoteStreamPromise = new Promise((resolve) => {
       pc2.ontrack = (event) => {
         debugLog('pc2 received remote track.');
+        watchRemoteTrackMute(event.track, 'Loopback');
+        setRemoteAudioTrack(event.track);
         resolve(event.streams[0]);
       };
     });
@@ -639,6 +647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       pc2 = null;
       debugLog('pc2 closed.');
     }
+    setRemoteAudioTrack(null);
   }
 
   /**
@@ -1405,52 +1414,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function updateTrackProperties(audioTrack) {
-    // Create a plain object of the current track properties we want to display.
-    const currentProperties = {
-      id: audioTrack.id, kind: audioTrack.kind, label: audioTrack.label,
-      enabled: audioTrack.enabled, muted: audioTrack.muted, readyState: audioTrack.readyState,
+  /** Returns the MediaStreamTrack properties shown in the properties panes. */
+  function getTrackProperties(track) {
+    return {
+      id: track.id, kind: track.kind, label: track.label,
+      enabled: track.enabled, muted: track.muted, readyState: track.readyState,
     };
-    debugLog('MediaStreamTrack properties:', currentProperties);
-    snapshotState.trackProperties = currentProperties;
-    lastTrackDiagnostics.trackProperties = currentProperties;
+  }
 
-    // Build the HTML string for the properties display.
-    const header = 'properties:\n';
+  /**
+   * Renders properties into a pane as JSON-like text, highlighting values that
+   * changed since `previous` (the highlight fades after 5 s).
+   */
+  function renderPropertiesPane(element, header, properties, previous) {
     let content = '{\n';
-    // Get an array of [key, value] pairs to use .forEach() and track the index.
-    const entries = Object.entries(currentProperties);
-    // [key, value] comes from the array's contents, e.g., ["enabled", "true"]
-    // 'index' is the position in the array, e.g., 2.
+    const entries = Object.entries(properties);
     entries.forEach(([key, value], index) => {
       const isLast = index === entries.length - 1;
       const valueStr = typeof value === 'string' ? `"${value}"` : value;
-      const leadingSpaces = '  ';
       const textContent = escapeHtml(`"${key}": ${valueStr}${isLast ? '' : ','}`);
-      // Compare the current property value with the previous one.
-      // If it has changed, wrap the line in a span with the 'highlight' class.
-      if (!LIGHT_MODE && previousTrackProperties && previousTrackProperties[key] !== value) {
-        content += `${leadingSpaces}<span class="highlight">${textContent}</span>\n`;
+      if (!LIGHT_MODE && previous && previous[key] !== value) {
+        content += `  <span class="highlight">${textContent}</span>\n`;
       } else {
-        content += `${leadingSpaces}${textContent}\n`;
+        content += `  ${textContent}\n`;
       }
     });
     content += '}';
-
-    // Update the element's content with the newly generated HTML.
-    trackPropertiesElement.innerHTML = header + content;
-    // Store the current properties to compare against in the next update.
-    previousTrackProperties = currentProperties;
+    element.innerHTML = header + content;
 
     if (!LIGHT_MODE) {
-      // Set a timer to remove the highlight effect after a specified duration.
       setTimeout(() => {
-        const highlightedElements = trackPropertiesElement.querySelectorAll('.highlight');
-        highlightedElements.forEach(el => {
-          el.classList.add('fade-out');
-        });
+        element.querySelectorAll('.highlight').forEach(el => el.classList.add('fade-out'));
       }, 5000);
     }
+  }
+
+  function updateTrackProperties(audioTrack) {
+    const currentProperties = getTrackProperties(audioTrack);
+    debugLog('MediaStreamTrack properties:', currentProperties);
+    snapshotState.trackProperties = currentProperties;
+    lastTrackDiagnostics.trackProperties = currentProperties;
+    renderPropertiesPane(trackPropertiesElement, 'properties:\n', currentProperties, previousTrackProperties);
+    previousTrackProperties = currentProperties;
+  }
+
+  /** Shows the properties of the received (pc2) loopback track, or hides the pane. */
+  function updateRemoteTrackProperties() {
+    if (!remoteAudioTrack) {
+      remoteTrackPropertiesElement.textContent = '';
+      snapshotState.remoteTrackProperties = null;
+      previousRemoteTrackProperties = null;
+      return;
+    }
+    const currentProperties = getTrackProperties(remoteAudioTrack);
+    snapshotState.remoteTrackProperties = currentProperties;
+    renderPropertiesPane(remoteTrackPropertiesElement, 'remote track properties (pc2):\n',
+        currentProperties, previousRemoteTrackProperties);
+    previousRemoteTrackProperties = currentProperties;
+  }
+
+  /** Tracks the received (pc2) loopback track and refreshes its pane on changes. */
+  function setRemoteAudioTrack(track) {
+    remoteAudioTrack = track;
+    if (track) {
+      for (const type of ['mute', 'unmute', 'ended']) {
+        track.addEventListener(type, () => {
+          if (remoteAudioTrack === track) updateRemoteTrackProperties();
+        });
+      }
+    }
+    updateRemoteTrackProperties();
   }
 
   const TRACK_ROW_TAIL_KEYS = ['deviceId', 'groupId'];
@@ -4168,6 +4201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'outbound-rtp (pc1)': snapshotState.outboundRtp,
       'inbound-rtp (pc2)': snapshotState.inboundRtp,
       'audio-playout (pc2)': snapshotState.audioPlayout,
+      'remote track properties (pc2)': snapshotState.remoteTrackProperties,
     };
     for (const key in rtpStatsSection) {
       const value = rtpStatsSection[key];
