@@ -12,6 +12,7 @@ import { logLifecycleEvent } from './lifecycle-log.js';
 
 export const ECHO_DEMO_WAV_FILES = [
   'concatenate_female.wav',
+  'far_end_speech.wav',
   'harvard.wav',
   'female_lead_voice_music.wav',
   'cyndi_lauper_48k.wav',
@@ -27,10 +28,25 @@ const DEFAULT_VOLUME = 0.6;
 
 const PATH_LABELS = {
   'html': '<audio> element',
+  'webaudio-rtc-480': 'RTC WebAudio (balanced, 48kHz, AudioWorklet, q=480)',
+  'webaudio-rtc-128': 'RTC WebAudio (balanced, 48kHz, AudioWorklet, q=128)',
   'webaudio-playback': 'Web Audio (playback)',
   'webaudio-interactive': 'Web Audio (interactive)',
   'webrtc': 'WebRTC loopback',
 };
+
+export function resolveWorkletModuleUrl() {
+  try {
+    const mapEl = document.querySelector('script[type="importmap"]');
+    if (mapEl) {
+      const mapped = JSON.parse(mapEl.textContent || '{}')?.imports?.['./js/worklet-processor.js'];
+      if (mapped) {
+        return new URL(mapped, document.baseURI).href;
+      }
+    }
+  } catch {}
+  return new URL('./worklet-processor.js', import.meta.url).href;
+}
 
 const mediaElementSetSinkIdSupported =
     typeof HTMLMediaElement !== 'undefined' && ('setSinkId' in HTMLMediaElement.prototype);
@@ -55,9 +71,11 @@ const state = {
   audioEl: null,
   ctx: null,
   sourceNode: null,
+  workletNode: null,
   gain: null,
   rtc: null,
   activeSinkId: undefined,
+  sinkDetailSuffix: '',
   onUnlockDevices: null,
   onError: null,
 };
@@ -149,17 +167,20 @@ function setStatus(text, kind) {
   badge.dataset.state = kind;
 }
 
-function updateSinkText(sinkId) {
+function updateSinkText(sinkId, detailSuffix = state.sinkDetailSuffix) {
   state.activeSinkId = sinkId;
+  state.sinkDetailSuffix = sinkId === undefined ? '' : (detailSuffix || '');
   const { sinkInfo } = getElements();
   if (!sinkInfo) return;
+  let base;
   if (sinkId === undefined) {
-    sinkInfo.textContent = 'sinkId: —';
+    base = 'sinkId: —';
   } else if (sinkId === '') {
-    sinkInfo.textContent = 'sinkId: (empty = default)';
+    base = 'sinkId: (empty = default)';
   } else {
-    sinkInfo.textContent = `sinkId: ${sinkId}`;
+    base = `sinkId: ${sinkId}`;
   }
+  sinkInfo.textContent = state.sinkDetailSuffix ? `${base} · ${state.sinkDetailSuffix}` : base;
 }
 
 function updateButtons() {
@@ -222,6 +243,13 @@ function clearErrorIfShown() {
 }
 
 async function destroyResources() {
+  if (state.workletNode) {
+    try {
+      state.workletNode.port.postMessage({ type: 'stop' });
+      state.workletNode.disconnect();
+    } catch {}
+    state.workletNode = null;
+  }
   if (state.sourceNode) {
     try {
       state.sourceNode.stop();
@@ -249,6 +277,7 @@ async function destroyResources() {
     await state.rtc.srcCtx.close().catch(() => {});
     state.rtc = null;
   }
+  state.sinkDetailSuffix = '';
 }
 
 async function createWebRtcPlayer(wavSource, deviceId, vol) {
@@ -319,7 +348,52 @@ async function createPlayer() {
       }
       await audio.play();
       state.audioEl = audio;
-      updateSinkText(mediaElementSetSinkIdSupported ? audio.sinkId : undefined);
+      updateSinkText(mediaElementSetSinkIdSupported ? audio.sinkId : undefined, '');
+    } else if (state.path === 'webaudio-rtc-480' || state.path === 'webaudio-rtc-128') {
+      // Real-time communication WebAudio setup (as used by Google Meet):
+      // latencyHint: 'balanced' (maps to kRtc), sampleRate: 48000, explicit
+      // sinkId in AudioContextOptions (updates AEC reference & logs
+      // OutputDeviceStatus), renderSizeHint 480 (10 ms) or 128, and DualThread
+      // AudioWorkletNode.
+      const requestedQuantum = state.path === 'webaudio-rtc-480' ? 480 : 128;
+      const ctxOpts = {
+        latencyHint: 'balanced',
+        sampleRate: 48000,
+        renderSizeHint: requestedQuantum,
+      };
+      if (audioContextSetSinkIdSupported) {
+        ctxOpts.sinkId = contextSinkId(state.deviceId);
+      }
+      const ctx = new AudioContext(ctxOpts);
+      ctx.addEventListener('error', () => {
+        setStatus('Render error', 'error');
+        reportError('AudioContext render error (onerror)', new Error('AudioContext encountered a hardware render error'));
+      });
+      await ctx.audioWorklet.addModule(resolveWorkletModuleUrl());
+      const decoded = await fetchDecodedAudioBuffer(ctx, wavSource);
+      const channels = [];
+      for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
+        channels.push(decoded.getChannelData(ch).slice());
+      }
+      const workletNode = new AudioWorkletNode(ctx, 'rtc-buffer-player', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [decoded.numberOfChannels],
+        processorOptions: { channels },
+      });
+      const gain = new GainNode(ctx, { gain: vol });
+      workletNode.connect(gain).connect(ctx.destination);
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      state.ctx = ctx;
+      state.workletNode = workletNode;
+      state.gain = gain;
+      const q = ctx.renderQuantumSize ?? 128;
+      const qMs = ((q / ctx.sampleRate) * 1000).toFixed(2);
+      updateSinkText(
+          typeof ctx.sinkId === 'string' ? ctx.sinkId : undefined,
+          `${ctx.sampleRate} Hz · quantum ${q} (${qMs} ms) · DualThread AudioWorklet`);
     } else if (state.path.startsWith('webaudio')) {
       const latencyHint = state.path === 'webaudio-playback' ? 'playback' : 'interactive';
       const ctxOpts = { latencyHint };
@@ -336,7 +410,9 @@ async function createPlayer() {
       state.ctx = ctx;
       state.sourceNode = bufSource;
       state.gain = gain;
-      updateSinkText(typeof ctx.sinkId === 'string' ? ctx.sinkId : undefined);
+      updateSinkText(
+          typeof ctx.sinkId === 'string' ? ctx.sinkId : undefined,
+          `${ctx.sampleRate} Hz · SingleThread`);
     } else if (state.path === 'webrtc') {
       await createWebRtcPlayer(wavSource, state.deviceId, vol);
     }

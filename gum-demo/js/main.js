@@ -44,6 +44,7 @@ import {
   getFarEndSnapshot,
   initFarEndPlayer,
   populateFarEndDevices,
+  resolveWorkletModuleUrl,
 } from './far-end.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -76,10 +77,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       typeof AudioContext !== 'undefined' && ('setSinkId' in AudioContext.prototype);
   // Select value for the AudioContext {type: 'none'} sink.
   const WEBAUDIO_SINK_NONE = '__none__';
+  const webaudioPresetSelect = document.querySelector('#webaudioPreset');
   const latencyHintSelect = document.querySelector('#latencyHint');
   const sampleRateSelect = document.querySelector('#sampleRate');
   const renderSizeHintSelect = document.querySelector('#renderSizeHint');
   const renderSizeHintCustomInput = document.querySelector('#renderSizeHintCustom');
+  const webaudioWorkletCheckbox = document.querySelector('#webaudio-worklet-checkbox');
   const webaudioQuantumBadge = document.querySelector('#webaudio-quantum-badge');
   
   const visualizerCanvas = document.querySelector('#audio-visualizer');
@@ -122,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Optional: without it Auto-Play uses HTML:Play.
   const autoPlayModeSelect = document.getElementById('auto-play-mode');
   const autoPlayModeName = () =>
-    autoPlayModeSelect && autoPlayModeSelect.value === 'webaudio' ? 'WebAudio:Play' : 'HTML:Play';
+    autoPlayModeSelect && autoPlayModeSelect.value.startsWith('webaudio') ? 'WebAudio:Play' : 'HTML:Play';
   // The select is locked together with the Auto-Play checkbox (while a stream runs).
   const syncAutoPlayMode = () => {
     if (autoPlayModeSelect && autoPlayCheckbox) {
@@ -202,8 +205,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   let fileProgressFrameRequest;
   let webAudioContext;
   let webAudioSource;
-  // renderSizeHint passed to the active AudioContext, or undefined.
+  let webAudioWorkletNode = null;
+  // renderSizeHint / latencyHint / constructor-sink metadata for active AudioContext.
   let webAudioRenderSizeHint;
+  let webAudioLatencyHintUsed;
+  let webAudioSinkPassedInCtor = false;
+  let cachedWebAudioSinkDisplay = '';
   let statsInterval;
   let previousStats = null;
   let previousTrackProperties = null;
@@ -914,8 +921,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoRecordCheckbox.dispatchEvent(new Event('change'));
     }
 
-    if (params.get('autoPlayMode') === 'webaudio' && autoPlayModeSelect) {
-      autoPlayModeSelect.value = 'webaudio';
+    if (params.has('autoPlayMode') && autoPlayModeSelect) {
+      const modeVal = params.get('autoPlayMode');
+      if ([...autoPlayModeSelect.options].some(o => o.value === modeVal)) {
+        autoPlayModeSelect.value = modeVal;
+      }
     }
     if (params.has('autoPlay') && params.get('autoPlay') === 'true' && autoPlayCheckbox) {
       autoPlayCheckbox.checked = true;
@@ -925,6 +935,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (params.has('sineTone') && params.get('sineTone') === 'true' && sineToneCheckbox) {
       sineToneCheckbox.checked = true;
       sineToneCheckbox.dispatchEvent(new Event('change'));
+    }
+
+    if (params.has('webaudioPreset') && webaudioPresetSelect) {
+      const presetVal = params.get('webaudioPreset');
+      if (presetVal === 'rtc-480' || presetVal === 'rtc-128') {
+        webaudioPresetSelect.value = presetVal;
+        applyWebAudioPreset(presetVal);
+      }
+    } else {
+      setSelectValue('latencyHint', latencyHintSelect);
+      setSelectValue('webaudioSampleRate', sampleRateSelect);
+      if (params.has('renderSizeHint') && renderSizeHintSelect) {
+        const rsh = params.get('renderSizeHint');
+        if ([...renderSizeHintSelect.options].some(o => o.value === rsh && rsh !== 'custom')) {
+          renderSizeHintSelect.value = rsh;
+        } else if (renderSizeHintCustomInput && /^\d+$/.test(rsh)) {
+          renderSizeHintSelect.value = 'custom';
+          renderSizeHintCustomInput.value = rsh;
+          renderSizeHintCustomInput.hidden = false;
+        }
+      }
+      if (params.get('webaudioWorklet') === 'true' && webaudioWorkletCheckbox) {
+        webaudioWorkletCheckbox.checked = true;
+      }
+      syncWebAudioPresetFromControls();
+    }
+    if (params.has('webaudioSinkId') && webaudioOutputDeviceSelect) {
+      setSelectValue('webaudioSinkId', webaudioOutputDeviceSelect);
     }
 
     applyFarEndUrlParams(params);
@@ -1158,8 +1196,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function applyWebAudioPreset(preset) {
+    if (preset !== 'rtc-480' && preset !== 'rtc-128') return;
+    if (latencyHintSelect) latencyHintSelect.value = 'balanced';
+    if (sampleRateSelect) sampleRateSelect.value = '48000';
+    if (renderSizeHintSelect) {
+      renderSizeHintSelect.value = preset === 'rtc-480' ? '480' : '128';
+    }
+    if (renderSizeHintCustomInput) renderSizeHintCustomInput.hidden = true;
+    if (webaudioWorkletCheckbox) webaudioWorkletCheckbox.checked = true;
+  }
+
+  function syncWebAudioPresetFromControls() {
+    if (!webaudioPresetSelect) return;
+    const isBalanced = latencyHintSelect && latencyHintSelect.value === 'balanced';
+    const is48k = sampleRateSelect && sampleRateSelect.value === '48000';
+    const isWorklet = !!(webaudioWorkletCheckbox && webaudioWorkletCheckbox.checked);
+    const rsh = renderSizeHintSelect ? renderSizeHintSelect.value : 'undefined';
+    if (isBalanced && is48k && isWorklet && rsh === '480') {
+      webaudioPresetSelect.value = 'rtc-480';
+    } else if (isBalanced && is48k && isWorklet && rsh === '128') {
+      webaudioPresetSelect.value = 'rtc-128';
+    } else {
+      webaudioPresetSelect.value = 'custom';
+    }
+  }
+
+  function setWebAudioSettingsLocked(locked) {
+    if (webaudioPresetSelect) webaudioPresetSelect.disabled = locked;
+    latencyHintSelect.disabled = locked;
+    sampleRateSelect.disabled = locked;
+    if (renderSizeHintSelect) renderSizeHintSelect.disabled = locked;
+    if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = locked;
+    if (webaudioWorkletCheckbox) webaudioWorkletCheckbox.disabled = locked;
+  }
+
+  async function closeWebAudioPlaybackContext() {
+    if (webAudioWorkletNode) {
+      try {
+        webAudioWorkletNode.port.postMessage({ type: 'stop' });
+        webAudioWorkletNode.disconnect();
+      } catch {}
+      webAudioWorkletNode = null;
+    }
+    if (webAudioSource) {
+      try { webAudioSource.disconnect(); } catch {}
+      webAudioSource = null;
+    }
+    if (webAudioContext) {
+      try {
+        await webAudioContext.close();
+      } catch {}
+      webAudioContext = null;
+    }
+    cachedWebAudioSinkDisplay = '';
+  }
+
   /** Renders the WebAudio Context pane and its snapshot state from webAudioContext. */
-  async function renderWebAudioContextInfo() {
+  async function renderWebAudioContextInfo({ refreshSink = true } = {}) {
     if (!webAudioContext || !webaudioContextInfoElement) return;
     const ctx = webAudioContext;
     const qSize = ctx.renderQuantumSize;
@@ -1170,21 +1264,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? ` (renderSizeHint: ${webAudioRenderSizeHint})`
         : ' (renderSizeHint: default)';
     const baseLatencyDisplay = `${(ctx.baseLatency * 1000).toFixed(1)} ms`;
-    const sinkDisplay = await describeAudioContextSink(ctx.sinkId);
+    const outputLatencyDisplay = typeof ctx.outputLatency === 'number'
+        ? `${(ctx.outputLatency * 1000).toFixed(1)} ms`
+        : 'n/a';
+    const modeDisplay = webAudioWorkletNode
+        ? 'DualThread (AudioWorkletNode)'
+        : 'SingleThread';
+    const latencyHintDisplay = webAudioLatencyHintUsed || 'interactive (default)';
+    if (refreshSink || !cachedWebAudioSinkDisplay) {
+      cachedWebAudioSinkDisplay = await describeAudioContextSink(ctx.sinkId);
+    }
     // The context may have been closed while enumerateDevices() was pending.
     if (ctx !== webAudioContext) return;
+    const sinkCtorSuffix = webAudioSinkPassedInCtor ? ' (passed in constructor)' : '';
+    const sinkDisplay = `${cachedWebAudioSinkDisplay}${sinkCtorSuffix}`;
+
+    let playbackStatsObj = undefined;
+    let playbackStatsLine = '';
+    if (ctx.playbackStats) {
+      const ps = ctx.playbackStats;
+      const avgMs = `${(ps.averageLatency * 1000).toFixed(1)} ms`;
+      const minMs = `${(ps.minimumLatency * 1000).toFixed(1)} ms`;
+      const maxMs = `${(ps.maximumLatency * 1000).toFixed(1)} ms`;
+      const underrunMs = `${(ps.underrunDuration * 1000).toFixed(1)} ms`;
+      const totalSec = `${ps.totalDuration.toFixed(1)} s`;
+      playbackStatsObj = {
+        averageLatency: avgMs,
+        minimumLatency: minMs,
+        maximumLatency: maxMs,
+        underrunEvents: ps.underrunEvents,
+        underrunDuration: underrunMs,
+        totalDuration: totalSec,
+      };
+      playbackStatsLine =
+          `\n  playbackStats: avg=${avgMs} (min ${minMs} / max ${maxMs}), ` +
+          `underruns=${ps.underrunEvents} (${underrunMs}), total=${totalSec}`;
+    }
+
     snapshotState.webAudioContext = {
+      mode: modeDisplay,
+      latencyHint: latencyHintDisplay,
       sampleRate: `${ctx.sampleRate} Hz`,
       baseLatency: baseLatencyDisplay,
+      outputLatency: outputLatencyDisplay,
       renderQuantumSize: quantumDisplay,
       renderSizeHint: webAudioRenderSizeHint !== undefined ? String(webAudioRenderSizeHint) : 'default',
       sinkId: sinkDisplay,
+      ...(playbackStatsObj ? { playbackStats: playbackStatsObj } : {}),
     };
     webaudioContextInfoElement.textContent = `WebAudio Context:\n` +
+        `  mode: ${modeDisplay}\n` +
+        `  latencyHint: ${latencyHintDisplay}\n` +
         `  sampleRate: ${ctx.sampleRate} Hz\n` +
         `  baseLatency: ${baseLatencyDisplay}\n` +
+        `  outputLatency: ${outputLatencyDisplay}\n` +
         `  renderQuantumSize: ${quantumDisplay}${hintDisplay}\n` +
-        `  sinkId: ${sinkDisplay}`;
+        `  sinkId: ${sinkDisplay}` +
+        playbackStatsLine;
     webaudioContextInfoElement.hidden = false;
   }
 
@@ -2302,6 +2438,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         statsInterval = setInterval(() => {
           updateTrackStats(audioTrack);
           updateRtpStats();
+          if (webAudioContext && webAudioContext.state !== 'closed') {
+            renderWebAudioContextInfo({ refreshSink: false });
+          }
         }, 1000);
       }
       audioTrack.onmute = (event) => {
@@ -2462,6 +2601,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       audioPlayback.srcObject = streamForPlaybackAndVisualizer;
       if (autoPlayCheckbox && autoPlayCheckbox.checked) {
+        if (autoPlayModeSelect) {
+          if (autoPlayModeSelect.value === 'webaudio-rtc-480') {
+            if (webaudioPresetSelect) webaudioPresetSelect.value = 'rtc-480';
+            applyWebAudioPreset('rtc-480');
+          } else if (autoPlayModeSelect.value === 'webaudio-rtc-128') {
+            if (webaudioPresetSelect) webaudioPresetSelect.value = 'rtc-128';
+            applyWebAudioPreset('rtc-128');
+          }
+        }
         const target = autoPlayModeName() === 'WebAudio:Play' ? webaudioPlayCheckbox : htmlPlayCheckbox;
         if (target !== htmlPlayCheckbox) htmlPlayCheckbox.checked = false;
         target.checked = true;
@@ -2713,9 +2861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     latestRmsAudioLevel = null;
     stopVisualizer();
     if (webAudioContext) {
-      webAudioContext.close();
-      webAudioContext = null;
-      webAudioSource = null;
+      closeWebAudioPlaybackContext();
     }
     if (rmsAudioLevels.length > 0) {
       // Trim leading zeros.
@@ -2771,14 +2917,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       syncAutoPlayMode();
     }
     audioOutputDeviceSelect.disabled = false;
-    latencyHintSelect.disabled = false;
-    sampleRateSelect.disabled = false;
-    if (renderSizeHintSelect) {
-      renderSizeHintSelect.disabled = false;
-    }
-    if (renderSizeHintCustomInput) {
-      renderSizeHintCustomInput.disabled = false;
-    }
+    setWebAudioSettingsLocked(false);
     if (webaudioQuantumBadge) {
       webaudioQuantumBadge.hidden = true;
       webaudioQuantumBadge.textContent = '';
@@ -3163,6 +3302,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (webaudioPlayCheckbox.checked) {
         try {
           let contextOptions = {};
+          const useWorklet = !!(webaudioWorkletCheckbox && webaudioWorkletCheckbox.checked);
+          const isRtcPreset = !!(webaudioPresetSelect && webaudioPresetSelect.value.startsWith('rtc-'));
           if (!webAudioContext || webAudioContext.state === 'closed') {
             const latencyHint = latencyHintSelect.value;
             const sampleRate = sampleRateSelect.value;
@@ -3189,51 +3330,66 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
               }
             }
+            // RTC presets pass sinkId directly in AudioContextOptions (even ''
+            // for default) so Chrome logs OutputDeviceStatus at start and
+            // updates the echo cancellation reference on first start.
+            const explicitSinkSelected = webaudioOutputDeviceSelect.value !== 'undefined';
+            webAudioSinkPassedInCtor = audioContextSetSinkIdSupported && (isRtcPreset || explicitSinkSelected);
+            if (webAudioSinkPassedInCtor) {
+              contextOptions.sinkId = webAudioSinkIdFromSelect();
+            }
             debugLog('AudioContext contextOptions:', contextOptions);
             webAudioContext = new AudioContext(contextOptions);
             webAudioRenderSizeHint = contextOptions.renderSizeHint;
+            webAudioLatencyHintUsed = contextOptions.latencyHint;
             debugLog('AudioContext base latency:', webAudioContext.baseLatency);
             debugLog('AudioContext renderQuantumSize:', webAudioContext.renderQuantumSize);
-            debugLog(webAudioContext.renderQuantumSize);
             if (audioContextSetSinkIdSupported) {
               // Fires after setSinkId() resolves, also for later live changes.
               webAudioContext.addEventListener('sinkchange', async () => {
                 debugLog('AudioContext "sinkchange" event, sinkId:', webAudioContext && webAudioContext.sinkId);
-                await renderWebAudioContextInfo();
+                await renderWebAudioContextInfo({ refreshSink: true });
               });
             }
+            webAudioContext.addEventListener('error', () => {
+              logLifecycleEvent('WebAudio:Play', 'AudioContext render error (onerror)', 'error');
+            });
           }
 
-          if (audioContextSetSinkIdSupported) {
+          if (audioContextSetSinkIdSupported && !webAudioSinkPassedInCtor) {
             const sinkIdToSet = webAudioSinkIdFromSelect();
             await webAudioContext.setSinkId(sinkIdToSet);
             debugLog('AudioContext output device set to:', sinkIdToSet || 'default');
           }
 
           webAudioSource = webAudioContext.createMediaStreamSource(streamForPlaybackAndVisualizer);
-          webAudioSource.connect(webAudioContext.destination);
+          if (useWorklet) {
+            await webAudioContext.audioWorklet.addModule(resolveWorkletModuleUrl());
+            webAudioWorkletNode = new AudioWorkletNode(webAudioContext, 'rtc-passthrough-processor');
+            webAudioSource.connect(webAudioWorkletNode).connect(webAudioContext.destination);
+          } else {
+            webAudioSource.connect(webAudioContext.destination);
+          }
 
           if (webAudioContext.state === 'suspended') {
             await webAudioContext.resume();
           }
-          await renderWebAudioContextInfo();
-          latencyHintSelect.disabled = true;
-          sampleRateSelect.disabled = true;
-          if (renderSizeHintSelect) renderSizeHintSelect.disabled = true;
-          if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = true;
+          await renderWebAudioContextInfo({ refreshSink: true });
+          setWebAudioSettingsLocked(true);
 
           if (webaudioQuantumBadge) {
             const qSize = webAudioContext.renderQuantumSize;
+            const modeTag = useWorklet ? ' · DualThread' : '';
             if (qSize !== undefined) {
               const ms = ((qSize / webAudioContext.sampleRate) * 1000).toFixed(2);
-              webaudioQuantumBadge.textContent = `quantum: ${qSize}`;
+              webaudioQuantumBadge.textContent = `quantum: ${qSize}${modeTag}`;
               webaudioQuantumBadge.setAttribute(
                   'data-tooltip',
-                  `Negotiated audioContext.renderQuantumSize: ${qSize} samples (${ms} ms at ${webAudioContext.sampleRate} Hz).`
+                  `Negotiated audioContext.renderQuantumSize: ${qSize} samples (${ms} ms at ${webAudioContext.sampleRate} Hz)${useWorklet ? ' in DualThread AudioWorklet mode' : ''}.`
               );
               webaudioQuantumBadge.hidden = false;
             } else {
-              webaudioQuantumBadge.textContent = 'quantum: 128 (legacy)';
+              webaudioQuantumBadge.textContent = `quantum: 128 (legacy)${modeTag}`;
               webaudioQuantumBadge.setAttribute('data-tooltip', 'renderQuantumSize not supported in this browser; running at standard 128-sample quantum.');
               webaudioQuantumBadge.hidden = false;
             }
@@ -3245,20 +3401,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           const hintLog = contextOptions.renderSizeHint !== undefined
               ? `, renderSizeHint: ${contextOptions.renderSizeHint}`
               : '';
+          const modeLog = `, mode: ${useWorklet ? 'DualThread (AudioWorklet)' : 'SingleThread'}`;
+          const latLog = contextOptions.latencyHint ? `, latencyHint: ${contextOptions.latencyHint}` : '';
           const sinkLog = audioContextSetSinkIdSupported
-              ? `, sink: ${webaudioOutputDeviceSelect.value === WEBAUDIO_SINK_NONE ? "{type: 'none'}" : (webaudioOutputDeviceSelect.value === 'undefined' ? 'default' : (webaudioOutputDeviceSelect.selectedOptions[0]?.text || 'selected output'))}`
+              ? `, sink: ${webaudioOutputDeviceSelect.value === WEBAUDIO_SINK_NONE ? "{type: 'none'}" : (webaudioOutputDeviceSelect.value === 'undefined' ? 'default' : (webaudioOutputDeviceSelect.selectedOptions[0]?.text || 'selected output'))}${webAudioSinkPassedInCtor ? ' (ctor)' : ''}`
               : '';
-          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${quantumLog}${hintLog}${sinkLog})`);
+          logLifecycleEvent('WebAudio:Play', `AudioContext playback started (sampleRate: ${webAudioContext.sampleRate}Hz, baseLatency: ${(webAudioContext.baseLatency * 1000).toFixed(1)}ms${latLog}${modeLog}${quantumLog}${hintLog}${sinkLog})`);
         } catch (err) {
           console.error('WebAudio Playback setup failed:', err);
           errorMessageElement.textContent = `WebAudio Error: ${err.name} - ${err.message}`;
           errorMessageElement.hidden = false;
           webaudioPlayCheckbox.checked = false;
           updateWebAudioPlayTooltip();
-          latencyHintSelect.disabled = false;
-          sampleRateSelect.disabled = false;
-          if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
-          if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
+          setWebAudioSettingsLocked(false);
           if (webaudioQuantumBadge) {
             webaudioQuantumBadge.hidden = true;
             webaudioQuantumBadge.textContent = '';
@@ -3268,27 +3423,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             webaudioContextInfoElement.hidden = true;
             webaudioContextInfoElement.textContent = '';
           }
-          if (webAudioContext) {
-            webAudioContext.close();
-            webAudioContext = null;
-          }
-          logLifecycleEvent('WebAudio:Play', `Failed to start AudioContext playback (${err.message})`);
+          await closeWebAudioPlaybackContext();
+          logLifecycleEvent('WebAudio:Play', `Failed to start AudioContext playback (${err.message})`, 'error');
         }
       } else {
-        if (webAudioContext) {
-          await webAudioContext.close();
-          webAudioContext = null;
-          webAudioSource = null;
-        }
+        await closeWebAudioPlaybackContext();
         snapshotState.webAudioContext = null;
         if (webaudioContextInfoElement) {
           webaudioContextInfoElement.hidden = true;
           webaudioContextInfoElement.textContent = '';
         }
-        latencyHintSelect.disabled = false;
-        sampleRateSelect.disabled = false;
-        if (renderSizeHintSelect) renderSizeHintSelect.disabled = false;
-        if (renderSizeHintCustomInput) renderSizeHintCustomInput.disabled = false;
+        setWebAudioSettingsLocked(false);
         if (webaudioQuantumBadge) {
           webaudioQuantumBadge.hidden = true;
           webaudioQuantumBadge.textContent = '';
@@ -3345,7 +3490,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       previousWebAudioSinkValue = webaudioOutputDeviceSelect.value;
       logLifecycleEvent('WebAudio:Play', `AudioContext.setSinkId() switched output to ${label}`);
       // 'sinkchange' also triggers a re-render; this covers same-sink no-ops.
-      await renderWebAudioContextInfo();
+      await renderWebAudioContextInfo({ refreshSink: true });
     } catch (err) {
       console.error('AudioContext.setSinkId() failed:', err);
       errorMessageElement.textContent = `AudioContext.setSinkId() Error: ${err.name} - ${err.message}`;
@@ -3355,6 +3500,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  if (webaudioPresetSelect) {
+    webaudioPresetSelect.addEventListener('change', () => {
+      applyWebAudioPreset(webaudioPresetSelect.value);
+    });
+  }
+  for (const el of [latencyHintSelect, sampleRateSelect, webaudioWorkletCheckbox]) {
+    if (el) {
+      el.addEventListener('change', syncWebAudioPresetFromControls);
+    }
+  }
   if (renderSizeHintSelect) {
     renderSizeHintSelect.addEventListener('change', () => {
       if (renderSizeHintSelect.value === 'custom') {
@@ -3363,7 +3518,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         renderSizeHintCustomInput.hidden = true;
       }
+      syncWebAudioPresetFromControls();
     });
+  }
+
+  function rewireWebAudioPlaybackSource() {
+    if (!webAudioContext || webAudioContext.state === 'closed' || !streamForPlaybackAndVisualizer) {
+      return;
+    }
+    if (webAudioSource) {
+      try { webAudioSource.disconnect(); } catch {}
+    }
+    webAudioSource = webAudioContext.createMediaStreamSource(streamForPlaybackAndVisualizer);
+    webAudioSource.connect(webAudioWorkletNode || webAudioContext.destination);
   }
 
   sineToneCheckbox.addEventListener('change', async () => {
@@ -3388,6 +3555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         streamForPlaybackAndVisualizer = toneStream;
         audioPlayback.srcObject = toneStream;
+        rewireWebAudioPlaybackSource();
         visualizeAudio(toneStream);
       }
     } else {
@@ -3401,6 +3569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         streamForPlaybackAndVisualizer = localStream;
         audioPlayback.srcObject = localStream;
+        rewireWebAudioPlaybackSource();
         visualizeAudio(localStream);
       }
       // Keep the tone running while MediaRecorder records it (see startRecording).
@@ -3523,11 +3692,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (autoPlayCheckbox && autoPlayCheckbox.checked) {
       params.set('autoPlay', 'true');
-      if (autoPlayModeName() === 'WebAudio:Play') params.set('autoPlayMode', 'webaudio');
+      if (autoPlayModeSelect && autoPlayModeSelect.value !== 'html') {
+        params.set('autoPlayMode', autoPlayModeSelect.value);
+      }
     }
     if (sineToneCheckbox && sineToneCheckbox.checked) {
       params.set('sineTone', 'true');
     }
+    if (webaudioPresetSelect && webaudioPresetSelect.value !== 'custom') {
+      params.set('webaudioPreset', webaudioPresetSelect.value);
+    } else {
+      addParam('latencyHint', latencyHintSelect);
+      addParam('webaudioSampleRate', sampleRateSelect);
+      if (renderSizeHintSelect && renderSizeHintSelect.value !== 'undefined') {
+        const rshVal = renderSizeHintSelect.value === 'custom'
+            ? renderSizeHintCustomInput.value
+            : renderSizeHintSelect.value;
+        if (rshVal) params.set('renderSizeHint', rshVal);
+      }
+      if (webaudioWorkletCheckbox && webaudioWorkletCheckbox.checked) {
+        params.set('webaudioWorklet', 'true');
+      }
+    }
+    addParam('webaudioSinkId', webaudioOutputDeviceSelect);
     appendFarEndBookmarkParams(params);
 
     const queryString = params.toString();
@@ -4013,6 +4200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'Active far-end audio': getFarEndSnapshot(),
       'Active audio output device': snapshotState.audioOutput,
       'Active WebAudio Context': snapshotState.webAudioContext,
+      'WebAudio preset': webaudioPresetSelect ? webaudioPresetSelect.value : undefined,
+      'WebAudio AudioWorklet': webaudioWorkletCheckbox ? webaudioWorkletCheckbox.checked : undefined,
       'WebAudio latencyHint': latencyHintSelect.value,
       'WebAudio sampleRate': sampleRateSelect.value,
       'WebAudio renderSizeHint': renderSizeHintSelect ? (renderSizeHintSelect.value === 'custom' ? renderSizeHintCustomInput.value : renderSizeHintSelect.value) : undefined,

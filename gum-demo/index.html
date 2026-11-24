@@ -9,13 +9,13 @@
   <!-- ?v= cache busters are content hashes. Run tools/bump-version.sh before
        pushing (or tools/bump-version.sh --check to verify). Do not edit by hand.
        The import map gives each ES module imported by main.js its own hash. -->
-  <link rel="stylesheet" href="css/style.css?v=c12a07a9">
+  <link rel="stylesheet" href="css/style.css?v=dd3f2c5c">
   <script type="importmap">
   {
     "imports": {
       "./js/a11y.js": "./js/a11y.js?v=b5de2807",
       "./js/compute-pressure.js": "./js/compute-pressure.js?v=8442155d",
-      "./js/far-end.js": "./js/far-end.js?v=efe26466",
+      "./js/far-end.js": "./js/far-end.js?v=042c4ad0",
       "./js/fold-activity.js": "./js/fold-activity.js?v=209dd6ae",
       "./js/fold-state.js": "./js/fold-state.js?v=020cd5ec",
       "./js/lifecycle-log.js": "./js/lifecycle-log.js?v=b65637c3",
@@ -23,7 +23,8 @@
       "./js/sysinfo.js": "./js/sysinfo.js?v=a14f9dfb",
       "./js/util.js": "./js/util.js?v=1494de53",
       "./js/visualizer.js": "./js/visualizer.js?v=1a02a84d",
-      "./js/wav.js": "./js/wav.js?v=f89ffdba"
+      "./js/wav.js": "./js/wav.js?v=f89ffdba",
+      "./js/worklet-processor.js": "./js/worklet-processor.js?v=45ce3ec7"
     }
   }
   </script>
@@ -181,11 +182,17 @@
                 <label for="farend-path">Playback path:</label>
                 <select id="farend-path">
                   <option value="html" selected>&lt;audio&gt; element</option>
-                  <option value="webaudio-playback">Web Audio (latencyHint: playback)</option>
-                  <option value="webaudio-interactive">Web Audio (latencyHint: interactive)</option>
+                  <optgroup label="RTC WebAudio (balanced, 48 kHz, AudioWorklet)">
+                    <option value="webaudio-rtc-480">RTC WebAudio (quantum 480 / 10ms)</option>
+                    <option value="webaudio-rtc-128">RTC WebAudio (quantum 128)</option>
+                  </optgroup>
+                  <optgroup label="Standard Web Audio (SingleThread)">
+                    <option value="webaudio-playback">Web Audio (latencyHint: playback)</option>
+                    <option value="webaudio-interactive">Web Audio (latencyHint: interactive)</option>
+                  </optgroup>
                   <option value="webrtc">WebRTC loopback (remote track in &lt;audio&gt;)</option>
                 </select>
-                <span class="info-icon" tabindex="0" role="img" data-tooltip="How Chrome renders far-end audio to drive EchoCanceller3 reverse-stream analysis. &lt;audio&gt; element loops an HTMLAudioElement with zero AudioContext overhead.">i</span>
+                <span class="info-icon" tabindex="0" role="img" data-tooltip="How Chrome renders far-end audio to drive EchoCanceller3 reverse-stream analysis. RTC WebAudio uses latencyHint: 'balanced' (kRtc), sampleRate: 48000, explicit sinkId in AudioContextOptions, and a DualThread AudioWorkletNode.">i</span>
               </div>
               <div class="farend-row">
                 <label for="farend-file">WAV file:</label>
@@ -471,6 +478,8 @@
                   <select id="auto-play-mode" class="check-select" aria-label="Auto-Play mode">
                     <option value="html" selected>HTML</option>
                     <option value="webaudio">WebAudio</option>
+                    <option value="webaudio-rtc-480">WebAudio (RTC 480)</option>
+                    <option value="webaudio-rtc-128">WebAudio (RTC 128)</option>
                   </select>
                 </span>
               </div>
@@ -508,6 +517,15 @@
               <div class="webaudio-settings-group play-row subgroup">
                 <span class="sub-title">WebAudio:Play</span>
                 <span class="field">
+                  <label for="webaudioPreset">preset:</label>
+                  <select id="webaudioPreset">
+                    <option value="custom" selected>Custom</option>
+                    <option value="rtc-480">RTC (480 / 10ms)</option>
+                    <option value="rtc-128">RTC (128)</option>
+                  </select>
+                  <span class="info-icon" tabindex="0" role="img" data-tooltip="Configures WebAudio:Play for real-time communication (as in Google Meet): latencyHint: 'balanced' (maps to kRtc), sampleRate: 48000, explicit sinkId in AudioContext constructor (logs WebAudio.AudioDestination.OutputDeviceStatus and updates AEC reference), renderSizeHint 480 (10 ms) or 128, and DualThread AudioWorkletNode (logs DualThread.*.LatencyBalanced UMAs).">i</span>
+                </span>
+                <span class="field">
                   <label for="webaudioOutputDevice">sinkId:</label>
                   <select id="webaudioOutputDevice">
                     <option value="undefined" selected>undefined</option>
@@ -522,7 +540,7 @@
                     <option value="balanced">balanced</option>
                     <option value="playback">playback</option>
                   </select>
-                  <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback).">i</span>
+                  <span class="info-icon" tabindex="0" role="img" data-tooltip="AudioContext latency trade-off mode (interactive, balanced, playback). 'balanced' maps to Chrome's kRtc audio latency class.">i</span>
                 </span>
                 <span class="field">
                   <label for="sampleRate">sampleRate:</label>
@@ -556,6 +574,10 @@
                   <input type="number" id="renderSizeHintCustom" placeholder="size" min="1" max="288000" hidden>
                   <span class="info-icon" tabindex="0" role="img" data-tooltip="Configurable Render Quantum (W3C Web Audio API): renderSizeHint selects the batch size processed by AudioContext. Supports integers (e.g. 480 for 10ms at 48kHz), 'hardware' (matches OS audio buffer), or 'default' (128 frames). The negotiated size is exposed as audioContext.renderQuantumSize.">i</span>
                 </span>
+                <span class="check check-play-opt">
+                  <input type="checkbox" id="webaudio-worklet-checkbox">
+                  <label for="webaudio-worklet-checkbox" data-tooltip="Insert an AudioWorkletNode into the WebAudio:Play graph so Chrome runs DualThread AudioDestination (AudioDeviceThread + AudioWorkletThread) and logs WebAudio.AudioDestination.DualThread.* UMAs.">AudioWorklet</label>
+                </span>
                 <span id="webaudio-quantum-badge" hidden data-tooltip="Negotiated audioContext.renderQuantumSize."></span>
               </div>
             </div>
@@ -584,7 +606,7 @@
   <audio id="audio-playback"></audio>
   <audio id="file-source-audio" hidden loop></audio>
   <div id="toast-notification" class="toast-notification" role="status"></div>
-  <script type="module" src="js/main.js?v=a93116ab"></script>
+  <script type="module" src="js/main.js?v=4368a8ce"></script>
   <!-- Remembers folded cards across reloads (localStorage). -->
   <script type="module" src="js/fold-state.js?v=020cd5ec"></script>
   <script type="module" src="js/fold-activity.js?v=209dd6ae"></script>

@@ -39,8 +39,9 @@ audio.
         soon as `getUserMedia()` acquires the track, capturing the very first
         audio buffers without UI interaction delay.
     *   **Auto-Play:** Automatically renders the audio track in loopback as
-        soon as the stream is acquired. Select **HTML** (`<audio>` element) or
-        **WebAudio** (`AudioContext`) next to the checkbox.
+        soon as the stream is acquired. Select **HTML** (`<audio>` element),
+        **WebAudio** (`AudioContext`), or **WebAudio (RTC 480 / 128)** next to
+        the checkbox.
     *   **440Hz Sine:** Replaces microphone audio with a clean, continuous 440
         Hz sine tone via Web Audio while keeping physical microphone capture
         active (critical for keeping Bluetooth headsets in bidirectional
@@ -49,13 +50,15 @@ audio.
         only.
     *   **Far-end audio (`echo source`):** Collapsed by default above the
         **getUserMedia** / **Source** card (click its header or pass
-        `?farEndOpen=1` to expand). Opens an independent looped far-end render stream using `.wav` files from
-        `/echo-demo/audio/` (or a local file) via `<audio>` element, Web Audio
-        (`playback` / `interactive`), or WebRTC loopback, with `setSinkId()`
-        speaker selection, page volume (default `0.60`), and `Create & play` /
-        `Pause` / `Resume` / `Switch device` / `Destroy` controls so
-        `EchoCanceller3` reverse-stream processing runs during `getUserMedia()`
-        capture.
+        `?farEndOpen=1` to expand). Opens an independent looped far-end render
+        stream using `.wav` files from `/echo-demo/audio/` (or a local file) via
+        `<audio>` element, **RTC WebAudio** (`latencyHint: 'balanced'`, `48 kHz`,
+        explicit constructor `sinkId`, and DualThread `AudioWorkletNode` at
+        quantum `480` / 10 ms or `128`), standard Web Audio (`playback` /
+        `interactive`), or WebRTC loopback, with `setSinkId()` speaker
+        selection, page volume (default `0.60`), and `Create & play` / `Pause` /
+        `Resume` / `Switch device` / `Destroy` controls so `EchoCanceller3`
+        reverse-stream processing runs during `getUserMedia()` capture.
 4.  **Start the Stream:** Click **getUserMedia** (or **captureStream** for an
     audio file) at the top of the **Source** card. A sticky live bar appears
     below the diagnostic cards with the level meter and stream controls, staying
@@ -69,13 +72,18 @@ audio.
     *   **HTML:Play** (live bar): Plays stream via an HTML `<audio>` tag with
         `sinkId` output device routing.
     *   **WebAudio:Play** (live bar): Routes stream through Web Audio API
-        (`AudioContext`) with custom `latencyHint`, `sampleRate`, and W3C
-        **Configurable Render Quantum** (`renderSizeHint`). Displays negotiated
-        `audioContext.renderQuantumSize` (samples and ms duration), sample rate,
-        and base latency in a dedicated status card and interactive badge.
-        Has its own `sinkId` selector that uses `AudioContext.setSinkId()`
-        (Chrome 110+). You can change it during playback, and it supports
-        `{type: 'none'}`. The active sink shows in the WebAudio Context pane.
+        (`AudioContext`) with custom `latencyHint`, `sampleRate`, W3C
+        **Configurable Render Quantum** (`renderSizeHint`), an **AudioWorklet**
+        toggle (switching Chromium into `DualThread` `AudioDestination`), and
+        one-click **RTC (`480 / 10ms` or `128`)** presets (`latencyHint:
+        'balanced'`, `48000 Hz`, explicit constructor `sinkId`, and
+        `AudioWorkletNode`, logging `WebAudio.AudioDestination.OutputDeviceStatus`
+        and `WebAudio.AudioDestination.DualThread.*.LatencyBalanced`). Displays
+        mode (`SingleThread` vs `DualThread`), negotiated
+        `audioContext.renderQuantumSize`, sample rate, `baseLatency`,
+        `outputLatency`, active `sinkId`, and `audioContext.playbackStats`
+        (`averageLatency`, `minimumLatency`, `maximumLatency`, `underrunEvents`,
+        `underrunDuration`) in the WebAudio Context pane.
     *   **Rec / Stop Rec** (live bar): Records an Opus WebM snippet using
         `MediaRecorder`. The button turns solid red while recording. Play the
         recording with the same level meter as the live stream, optionally with

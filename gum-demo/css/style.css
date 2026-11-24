@@ -485,6 +485,9 @@ select:disabled { color: var(--text-3); background: var(--surface-code); }
 /* No width cap on the sinkId selects: they size to the longest device name and
    only shrink (with ellipsis) when the row is narrower than that name. */
 .play-row .field { max-width: 100%; }
+.check-play-opt { font-size: 12.5px; }
+.check-play-opt input { margin-left: 8px; }
+.check-play-opt label { padding: 3px 8px 3px 6px; }
 #renderSizeHintCustom { width: 80px; }
 #webaudio-quantum-badge {
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; white-space: nowrap;
