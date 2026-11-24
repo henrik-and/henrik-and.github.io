@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const audioFiles = [
     'concatenate_female.wav',
+    'near_end_clapping.wav',
     'harvard.wav',
     'stereo_knocking.wav',
     'music_beat.wav',
