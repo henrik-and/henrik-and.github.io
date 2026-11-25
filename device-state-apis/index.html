@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Device and session state Web APIs</title>
+  <meta name="description" content="Test pages for Web APIs that expose device or session state to web pages: Battery Status, Network Information, Compute Pressure, Idle Detection, Audio Session, and more.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="./"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Device and session state Web APIs</h1>
+      <p>Test pages for Web APIs that expose read-only device or session state to a page. Each page checks support, shows the live values, and logs change events. Pick an API to open its demo. Add <code>?debug=1</code> to any demo URL for detailed DevTools console logs.</p>
+    </section>
+
+    <nav class="card-grid" aria-label="API demos">
+      <a class="api-card" id="card-battery" href="battery/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">battery_horiz_075</span></span>
+          <h2 class="api-card-title">Battery Status</h2>
+        </div>
+        <p class="api-card-desc">Battery level, charging state, and time to full or empty, with change events.</p>
+        <div class="api-card-meta">
+          <span class="chip">Device</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-netinfo" href="netinfo/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">network_check</span></span>
+          <h2 class="api-card-title">Network Information</h2>
+        </div>
+        <p class="api-card-desc">Effective connection type, rounded downlink and RTT, and Save-Data.</p>
+        <div class="api-card-meta">
+          <span class="chip">Device</span>
+          <span class="chip warn" title="type, downlinkMax, and typechange need the experimental flag on Windows, macOS, and Linux"><span class="icon" aria-hidden="true">flag</span>Partly behind flag</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-pressure" href="pressure/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">speed</span></span>
+          <h2 class="api-card-title">Compute Pressure</h2>
+        </div>
+        <p class="api-card-desc">CPU pressure as four coarse states: nominal, fair, serious, critical.</p>
+        <div class="api-card-meta">
+          <span class="chip">Device</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-idle" href="idle/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">bedtime</span></span>
+          <h2 class="api-card-title">Idle Detection</h2>
+        </div>
+        <p class="api-card-desc">User idle state and screen lock, behind a permission and a 60 s threshold.</p>
+        <div class="api-card-meta">
+          <span class="chip">OS session</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-audio-session" href="audio-session/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">graphic_eq</span></span>
+          <h2 class="api-card-title">Audio Session</h2>
+        </div>
+        <p class="api-card-desc">The page's audio session type and state: active, inactive, or interrupted.</p>
+        <div class="api-card-meta">
+          <span class="chip">Page session</span>
+          <span class="chip bad" title="Not implemented in Chromium; test in Safari">Not in Chrome</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-media-queries" href="media-queries/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">contrast</span></span>
+          <h2 class="api-card-title">User preference media queries</h2>
+        </div>
+        <p class="api-card-desc">OS settings such as reduced motion, contrast, and color scheme, with live updates.</p>
+        <div class="api-card-meta">
+          <span class="chip">OS setting</span>
+          <span class="chip warn" title="prefers-reduced-data and inverted-colors need the experimental flag; prefers-bold-text is not in Chrome"><span class="icon" aria-hidden="true">flag</span>Partly behind flag</span>
+        </div>
+      </a>
+
+      <a class="api-card" id="card-track-muted" href="track-muted/">
+        <span class="icon api-card-go" aria-hidden="true">arrow_forward</span>
+        <div class="api-card-head">
+          <span class="api-card-icon"><span class="icon" aria-hidden="true">mic_off</span></span>
+          <h2 class="api-card-title">MediaStreamTrack muted</h2>
+        </div>
+        <p class="api-card-desc">OS or hardware microphone mute on a capture track, with mute and unmute events.</p>
+        <div class="api-card-meta">
+          <span class="chip">Device / track</span>
+        </div>
+      </a>
+    </nav>
+
+    <details class="panel disclosure flags-panel" id="chrome-flags">
+      <summary>
+        <span class="icon" aria-hidden="true">flag</span>
+        <span class="disclosure-text"><strong>Chrome flag for experimental features</strong><span class="disclosure-sub">Some features need <code>enable-experimental-web-platform-features</code>. Show which APIs and how to enable it.</span></span>
+        <span class="icon disclosure-chevron" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="disclosure-body">
+      <p>Some parts of these APIs are off in Chrome by default and turn on with <strong>Experimental Web Platform features</strong>. Pages can't link to <code>chrome://</code> URLs, so copy this into the address bar, set the flag to <em>Enabled</em>, and relaunch Chrome:</p>
+      <p class="flag-url"><code id="flag-url">chrome://flags/#enable-experimental-web-platform-features</code>
+        <button class="btn" id="copy-flag-btn" type="button"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button></p>
+      <p>Or start Chrome with <code>--enable-experimental-web-platform-features</code>.</p>
+      <table class="flag-table">
+        <thead><tr><th scope="col">API</th><th scope="col">Needs the flag?</th><th scope="col">Details</th></tr></thead>
+        <tbody>
+          <tr><td>Battery Status</td><td><span class="chip ok">No</span></td><td>Shipped.</td></tr>
+          <tr><td>Network Information</td><td><span class="chip warn">Partly</span></td><td><code>effectiveType</code>, <code>downlink</code>, <code>rtt</code>, <code>saveData</code> are shipped. <code>type</code>, <code>downlinkMax</code>, and <code>typechange</code> are on by default only on Android and ChromeOS; on Windows, macOS, and Linux they need the flag.</td></tr>
+          <tr><td>Compute Pressure</td><td><span class="chip ok">No</span></td><td>Shipped on desktop. Not available on Android, even with the flag.</td></tr>
+          <tr><td>Idle Detection</td><td><span class="chip ok">No</span></td><td>Shipped. Needs the <code>idle-detection</code> permission instead.</td></tr>
+          <tr><td>Audio Session</td><td><span class="chip bad">Not in Chrome</span></td><td>Not implemented in Chromium, so the flag doesn't help. Test in Safari. See <a href="audio-session/#why-not-chrome">why it isn't in Chrome</a>.</td></tr>
+          <tr><td>User preference media queries</td><td><span class="chip warn">Partly</span></td><td><code>prefers-color-scheme</code>, <code>prefers-contrast</code>, <code>prefers-reduced-motion</code>, and <code>prefers-reduced-transparency</code> are shipped. <code>prefers-reduced-data</code> and <code>inverted-colors</code> need the flag. <code>prefers-bold-text</code> (new in the spec) is not implemented.</td></tr>
+          <tr><td>MediaStreamTrack muted</td><td><span class="chip ok">No</span></td><td>Shipped.</td></tr>
+        </tbody>
+      </table>
+      <p class="panel-hint">Based on Blink's runtime feature list (<code>runtime_enabled_features.json5</code>) in a recent Chromium checkout. Other Chromium-based browsers may differ.</p>
+      </div>
+    </details>
+
+    <div id="system-diagnostics-mount"></div>
+  </main>
+
+  <script src="js/demo-kit.js?v=2"></script>
+  <script>
+    window.DemoKit.mountSystemDiagnostics(window.DemoKit.createDebug('hub'));
+    const flagsEl = document.getElementById('chrome-flags');
+    const openFromHash = () => { if (location.hash === '#chrome-flags') flagsEl.open = true; };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    document.getElementById('copy-flag-btn').addEventListener('click', async (ev) => {
+      const label = ev.currentTarget.querySelector('.label');
+      try {
+        await navigator.clipboard.writeText(document.getElementById('flag-url').textContent);
+        label.textContent = 'Copied';
+      } catch {
+        label.textContent = 'Copy failed';
+      }
+      setTimeout(() => { label.textContent = 'Copy'; }, 1500);
+    });
+  </script>
+
+  <footer>Related: <a href="../gum-demo/">gum-demo</a> · <a href="../audio-session-demo/">audio-session-demo</a></footer>
+</body>
+</html>

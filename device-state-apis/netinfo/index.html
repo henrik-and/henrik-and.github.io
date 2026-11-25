@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network Information API demo</title>
+  <meta name="description" content="Test page for the Network Information API: support checks, live effectiveType, downlink, RTT, and Save-Data, rounding checks, and an exportable change event log.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">Network Information</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Network Information API</h1>
+      <p>Reads the browser's estimate of the current connection through <code>navigator.connection</code>, and logs these events:</p>
+      <ul class="event-list">
+        <li><code>change</code> on <code>navigator.connection</code> – any of <code>effectiveType</code>, <code>downlink</code>, <code>rtt</code>, <code>saveData</code>, <code>type</code>, or <code>downlinkMax</code> changes.</li>
+        <li><code>online</code> / <code>offline</code> on <code>window</code> – related events from <code>navigator.onLine</code>, logged for context.</li>
+      </ul>
+      <p>To see events, switch networks, turn Wi-Fi off and on, or pick a throttling preset in DevTools (Network panel).</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://wicg.github.io/netinfo/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>WICG specification</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/Network_Information_API" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: support checks, every raw event with its full state, render snapshots, and export actions. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="readout-title">
+        <h2 id="readout-title">Current state</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span id="ect-value">—</span><span class="unit" id="ect-unit"></span></div>
+          <div class="meter" id="ect-meter" role="meter" aria-label="Effective connection type" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><span id="ect-bar"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>effectiveType</dt><dd id="v-ect">—</dd>
+          <dt>downlink</dt><dd id="v-downlink">—</dd>
+          <dt>rtt</dt><dd id="v-rtt">—</dd>
+          <dt>saveData</dt><dd id="v-save-data">—</dd>
+          <dt>type</dt><dd id="v-type">—</dd>
+          <dt>downlinkMax</dt><dd id="v-downlink-max">—</dd>
+          <dt>navigator.onLine</dt><dd id="v-online">—</dd>
+          <dt>downlink rounding</dt><dd id="v-downlink-round">—</dd>
+          <dt>rtt rounding</dt><dd id="v-rtt-round">—</dd>
+          <dt>Last update</dt><dd id="v-updated">—</dd>
+        </dl>
+        <p class="panel-hint">Updated only when the browser fires one of the events above. The page does not poll.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-title">
+        <h2 id="log-title">Event log
+          <span class="actions">
+            <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+            <button class="btn" id="download-log-btn" type="button" title="Download the log, rounding data, and browser info as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+            <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+          </span>
+        </h2>
+        <p class="empty" id="log-empty">No events yet. Change the network or use DevTools throttling to trigger <code>change</code>.</p>
+        <ol class="log" id="event-log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>The spec reduces precision to limit fingerprinting: <code>downlink</code> rounded to 25 kbit/s and <code>rtt</code> to 25 ms. Chrome is coarser: 50 kbit/s and 50 ms steps, capped at 10 Mbit/s and 3 s, with a fixed per-site random factor of 0.90–1.10. When it has no estimate yet, Chrome reports <code>rtt</code> 0 and <code>downlink</code> 10. <strong>downlink rounding</strong> and <strong>rtt rounding</strong> show the coarsest step that all values seen fit. Chrome exposes <code>type</code> (for example <code>wifi</code>), <code>downlinkMax</code>, and <code>typechange</code> by default only on Android and ChromeOS. On Windows, macOS, and Linux, enable <code>chrome://flags/#enable-experimental-web-platform-features</code> (copy it into the address bar) and relaunch Chrome; see <a href="../#chrome-flags">which APIs need the flag</a>. On desktop, Chrome reports <code>type</code> <code>unknown</code> unless every active network adapter has the same type, Hidden adapters count too: on corp Windows, Wi-Fi plus the <em>Microsoft IP-HTTPS Platform Interface</em> (a DirectAccess tunnel, adapter type 131) gives <code>unknown</code> rather than <code>wifi</code>. To list the adapters Chrome considers, run in PowerShell: <code>$ifs = Get-NetIPAddress -AddressState Preferred | Select-Object -ExpandProperty InterfaceIndex -Unique; Get-NetAdapter -IncludeHidden | Where-Object { $_.Status -eq 'Up' -and $ifs -contains $_.ifIndex } | Format-Table Name, InterfaceDescription, InterfaceType</code>. The values are estimates from recent traffic, not a speed test. Only Chromium-based browsers ship this API.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="netinfo.js?v=2"></script>
+</body>
+</html>

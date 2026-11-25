@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User preference media queries demo</title>
+  <meta name="description" content="Test page for user preference media features: prefers-color-scheme, prefers-contrast, prefers-reduced-motion, prefers-reduced-transparency, prefers-reduced-data, forced-colors, inverted-colors, and prefers-bold-text, with live change events.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">User preference media queries</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>User preference media queries</h1>
+      <p>Reads OS display and accessibility settings through CSS media features with <code>window.matchMedia()</code>, and logs this event:</p>
+      <ul class="event-list">
+        <li><code>change</code> on each <code>MediaQueryList</code> – a setting changed, for example dark mode turned on or reduced motion switched off.</li>
+      </ul>
+      <p>To see events, change the setting in the OS (Windows: Settings › Accessibility › Visual effects or Contrast themes, and Personalization › Colors; macOS: System Settings › Accessibility › Display), or emulate it in DevTools (Rendering panel, "Emulate CSS media feature").</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://drafts.csswg.org/mediaqueries-5/#mf-user-preferences" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>Media Queries Level 5</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_media_queries/Using_media_queries" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: which features this browser recognizes, the match result for every value, and every raw <code>change</code> event. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <section class="panel mq-panel" aria-labelledby="readout-title">
+      <h2 id="readout-title">Current values</h2>
+      <table class="flag-table mq-table">
+        <thead><tr><th scope="col">Media feature</th><th scope="col">Current value</th><th scope="col">Possible values</th><th scope="col">Support</th><th scope="col">Docs</th></tr></thead>
+        <tbody id="mq-rows"></tbody>
+      </table>
+      <p class="panel-hint">Updated only when a <code>MediaQueryList</code> fires <code>change</code>. The page does not poll. A known feature always matches exactly one of its values; if none match, the browser doesn't recognize the feature.</p>
+    </section>
+
+    <section class="panel log-panel" aria-labelledby="log-title">
+      <h2 id="log-title">Event log
+        <span class="actions">
+          <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+          <button class="btn" id="download-log-btn" type="button" title="Download the log, current values, and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+          <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+        </span>
+      </h2>
+      <p class="empty" id="log-empty">No changes yet. Change an OS setting or use DevTools emulation.</p>
+      <ol class="log" id="event-log" aria-live="polite"></ol>
+    </section>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>These features expose OS settings to every page without a permission, which adds a little to fingerprinting. Browsers accept that because pages need them to respect accessibility settings. In Chrome, <code>prefers-reduced-data</code> and <code>inverted-colors</code> need the <a href="../#chrome-flags">experimental flag</a>, and <code>prefers-bold-text</code> is not implemented.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="media-queries.js?v=2"></script>
+</body>
+</html>

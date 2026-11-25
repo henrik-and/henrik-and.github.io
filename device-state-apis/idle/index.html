@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Detection API demo</title>
+  <meta name="description" content="Test page for the Idle Detection API: permission request, IdleDetector user and screen state, threshold control, and an exportable change log.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">Idle Detection</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Idle Detection API</h1>
+      <p>Uses an <code>IdleDetector</code> to report whether the user is active and whether the screen is locked. It needs the <code>idle-detection</code> permission and logs this event:</p>
+      <ul class="event-list">
+        <li><code>change</code> on the <code>IdleDetector</code> – <code>userState</code> (<code>active</code> / <code>idle</code>) or <code>screenState</code> (<code>unlocked</code> / <code>locked</code>) changed.</li>
+      </ul>
+      <p>Click <strong>Request permission</strong>, then <strong>Start detector</strong>. Leave keyboard and mouse alone for longer than the threshold, or lock the screen (Win+L, Ctrl+Cmd+Q on macOS), to see events. DevTools can also emulate the state (Sensors panel, "Emulate Idle Detector state").</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://wicg.github.io/idle-detection/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>WICG specification</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/Idle_Detection_API" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: support checks, permission requests and results, <code>start()</code> calls, every raw <code>change</code> event with its full state, and visibility changes. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Controls</h2>
+      <div class="controls">
+        <button class="btn" id="permission-btn" type="button"><span class="icon" aria-hidden="true">verified_user</span><span class="label">Request permission</span></button>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <label class="field">threshold
+          <span class="field-input"><input type="number" id="threshold" min="60" step="10" value="60"><span class="field-unit">s (minimum 60)</span></span>
+        </label>
+        <button class="btn btn-filled" id="start-btn" type="button"><span class="icon" aria-hidden="true">play_arrow</span><span class="label">Start detector</span></button>
+      </div>
+      <p class="panel-hint"><code>IdleDetector.requestPermission()</code> must be called from a click. <code>start()</code> rejects a <code>threshold</code> below 60 000 ms. Stop uses an <code>AbortSignal</code>.</p>
+    </section>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="readout-title">
+        <h2 id="readout-title">Current state</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span class="icon state-icon" id="user-icon" aria-hidden="true">person</span><span id="user-value">—</span><span class="unit" id="user-unit"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>userState</dt><dd id="v-user">—</dd>
+          <dt>screenState</dt><dd id="v-screen">—</dd>
+          <dt>In this state for</dt><dd id="v-since" data-no-highlight>—</dd>
+          <dt>Changes received</dt><dd id="v-count">0</dd>
+          <dt>threshold</dt><dd id="v-threshold">—</dd>
+          <dt>Permission</dt><dd id="v-permission">—</dd>
+          <dt>Page visibility</dt><dd id="v-visibility">—</dd>
+          <dt>Detector</dt><dd id="v-detector">not started</dd>
+        </dl>
+        <p class="panel-hint">Values change only when the detector fires <code>change</code>. "In this state for" is counted by the page once per second while the detector runs; the page never polls the API.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-title">
+        <h2 id="log-title">Event log
+          <span class="actions">
+            <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+            <button class="btn" id="download-log-btn" type="button" title="Download the log and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+            <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+          </span>
+        </h2>
+        <p class="empty" id="log-empty">No events yet. Request permission and start the detector.</p>
+        <ol class="log" id="event-log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>Knowing when a user is idle or has locked the screen can reveal habits and help link visits across sites. The spec limits this with a permission, a minimum threshold of 60 seconds, and the <code>idle-detection</code> permissions policy. Chrome ships the API; Firefox and Safari don't.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="idle.js?v=2"></script>
+</body>
+</html>

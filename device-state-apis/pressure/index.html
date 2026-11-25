@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compute Pressure API demo</title>
+  <meta name="description" content="Test page for the Compute Pressure API: PressureObserver on the cpu source, live pressure state, history chart, CPU load generator, simulation, and an exportable record log.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">Compute Pressure</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Compute Pressure API</h1>
+      <p>Observes CPU pressure with a <code>PressureObserver</code> on the <code>cpu</code> source. The browser reports one of four coarse states and calls the observer with <code>PressureRecord</code>s:</p>
+      <ul class="event-list">
+        <li><code>nominal</code> – light load. <code>fair</code> – moderate. <code>serious</code> – high. <code>critical</code> – heavy, close to the limit.</li>
+        <li>Records arrive only when the state changes, at most once per <code>sampleInterval</code>, and only while this page has focus (or is capturing media, or owns a Picture-in-Picture window).</li>
+      </ul>
+      <p>Click <strong>Start observing</strong>, then use <strong>Generate CPU load</strong> or another heavy app to see the state change.</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://w3c.github.io/compute-pressure/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>W3C specification</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/Compute_Pressure_API" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: support checks, every raw <code>PressureRecord</code>, observer calls, focus changes, load generator and simulation actions. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Controls</h2>
+      <div class="controls">
+        <label class="field">sampleInterval
+          <span class="field-input"><input type="number" id="sample-interval" min="0" step="100" value="1000"><span class="field-unit">ms</span></span>
+        </label>
+        <button class="btn btn-filled" id="observe-btn" type="button"><span class="icon" aria-hidden="true">play_arrow</span><span class="label">Start observing</span></button>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <label class="field">Load workers
+          <span class="field-input"><input type="number" id="load-workers" min="1" step="1" value="2"><span class="field-unit" id="load-workers-max"></span></span>
+        </label>
+        <button class="btn" id="load-btn" type="button"><span class="icon" aria-hidden="true">local_fire_department</span><span class="label">Generate CPU load</span></button>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <button class="btn" id="simulate-btn" type="button" title="Shows a fake nominal → critical → nominal cycle in the UI without real CPU load. Simulated entries are marked in the log."><span class="icon" aria-hidden="true">science</span><span class="label">Simulate cycle</span></button>
+      </div>
+      <p class="panel-hint">Generate CPU load starts Web Workers that run busy loops until you stop them. Simulate cycle changes only the page's display, not real pressure; Chrome DevTools may also offer CPU pressure emulation in the Sensors panel.</p>
+    </section>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="readout-title">
+        <h2 id="readout-title">Current state</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span id="state-value">—</span><span class="unit" id="state-unit"></span></div>
+          <div class="meter pressure-meter" id="state-meter" role="meter" aria-label="CPU pressure" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"><span id="state-bar"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>state</dt><dd id="v-state">—</dd>
+          <dt>source</dt><dd id="v-source">—</dd>
+          <dt>time</dt><dd id="v-time" data-no-highlight>—</dd>
+          <dt>ownContributionEstimate</dt><dd id="v-own">—</dd>
+          <dt>Records received</dt><dd id="v-count">0</dd>
+          <dt>Time between records</dt><dd id="v-interval" data-no-highlight>—</dd>
+          <dt>Page focus</dt><dd id="v-focus">—</dd>
+          <dt>Observer</dt><dd id="v-observer">not started</dd>
+        </dl>
+        <p class="panel-hint"><code>sampleInterval</code> is not a page timer: it asks the browser how often to sample the CPU, and the browser calls the observer only when the state changes. The values above change only then. The page's own timer just redraws the chart once per second so the line keeps moving.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-title">
+        <h2 id="log-title">Record log
+          <span class="actions">
+            <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+            <button class="btn" id="download-log-btn" type="button" title="Download the log, history, and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+            <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+          </span>
+        </h2>
+        <p class="empty" id="log-empty">No records yet. Click Start observing.</p>
+        <ol class="log" id="event-log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <section class="panel chart-panel" aria-labelledby="chart-title">
+      <h2 id="chart-title">Pressure history (last 60 s)
+        <span class="legend" aria-hidden="true">
+          <span class="dot nominal"></span>nominal <span class="dot fair"></span>fair <span class="dot serious"></span>serious <span class="dot critical"></span>critical
+        </span>
+      </h2>
+      <canvas id="history-canvas" height="140" role="img" aria-label="Step chart of CPU pressure state over the last 60 seconds"></canvas>
+    </section>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>The API exposes only four states to limit what pages can learn about the device. The spec also adds <em>rate obfuscation</em> and non-deterministic state changes (<em>break calibration</em>) so that sites can't use pressure as a covert channel. Chrome ships the API on desktop but not on Android. <code>ownContributionEstimate</code> is newer in the spec and may be undefined in your browser.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="pressure.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battery Status API demo</title>
+  <meta name="description" content="Test page for the Battery Status API: support checks, live battery level, charging state, charging and discharging time, and a change event log.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">Battery Status</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Battery Status API</h1>
+      <p>Reads the device battery level and charging state through <code>navigator.getBattery()</code>, and logs the four change events of the <code>BatteryManager</code>:</p>
+      <ul class="event-list">
+        <li><code>chargingchange</code> – the charger is plugged in or unplugged (<code>charging</code>).</li>
+        <li><code>levelchange</code> – the battery level changes (<code>level</code>).</li>
+        <li><code>chargingtimechange</code> – the estimated time until full changes (<code>chargingTime</code>).</li>
+        <li><code>dischargingtimechange</code> – the estimated time until empty changes (<code>dischargingTime</code>).</li>
+      </ul>
+      <p>Unplug or plug in the charger to see events.</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://w3c.github.io/battery/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>W3C specification</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/Battery_Status_API" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: support checks, every raw event with its full state, render snapshots, and export actions. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="readout-title">
+        <h2 id="readout-title">Current state</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span id="level-pct">—</span><span class="unit" id="level-unit"></span></div>
+          <div class="meter" id="level-meter" role="progressbar" aria-label="Battery level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="level-bar"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>level</dt><dd id="v-level">—</dd>
+          <dt>charging</dt><dd id="v-charging">—</dd>
+          <dt>chargingTime</dt><dd id="v-charging-time">—</dd>
+          <dt>dischargingTime</dt><dd id="v-discharging-time">—</dd>
+          <dt>Precision of level</dt><dd id="v-decimals">—</dd>
+          <dt>Smallest level step seen</dt><dd id="v-min-step">—</dd>
+          <dt>Last update</dt><dd id="v-updated">—</dd>
+        </dl>
+        <p class="panel-hint">Updated only when the browser fires one of the four events. The page does not poll.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-title">
+        <h2 id="log-title">Event log
+          <span class="actions">
+            <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+            <button class="btn" id="download-log-btn" type="button" title="Download the log, precision data, and browser info as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+            <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+          </span>
+        </h2>
+        <p class="empty" id="log-empty">No events yet. Change the charger state to trigger <code>chargingchange</code>.</p>
+        <ol class="log" id="event-log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>Exact battery values can help identify a device across sites. For this reason Firefox removed the API for web content and Safari never shipped it. <strong>Precision of level</strong> shows the most decimals seen in any <code>level</code> value, and <strong>Smallest level step seen</strong> shows the smallest change between two <code>levelchange</code> events. Run on battery (below 100 %) for a while to fill them in; both are also in the JSON export.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="battery.js?v=2"></script>
+</body>
+</html>

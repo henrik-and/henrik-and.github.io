@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediaStreamTrack muted demo</title>
+  <meta name="description" content="Test page for MediaStreamTrack muted, enabled, and readyState on a microphone track and on a WebRTC loopback track, with mute, unmute, and ended events and an audio level meter.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">MediaStreamTrack muted</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>MediaStreamTrack muted</h1>
+      <p>Shows the three track states on a microphone track from <code>getUserMedia()</code>, and on the received track of an optional WebRTC loopback. It logs these events:</p>
+      <ul class="event-list">
+        <li><code>mute</code> / <code>unmute</code> on the track – the source temporarily can't provide audio (<code>muted</code>), for example an OS or hardware microphone mute.</li>
+        <li><code>ended</code> on the track – the source is gone for good (<code>readyState</code> <code>ended</code>), for example the microphone was unplugged.</li>
+        <li><code>devicechange</code> on <code>navigator.mediaDevices</code> – a device was added or removed, logged for context.</li>
+      </ul>
+      <p>Start the microphone, then press the hardware mute key or mute the microphone in the OS, unplug a USB microphone, or click <strong>Disable track</strong> to compare with the app-side <code>enabled</code> switch.</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://w3c.github.io/mediacapture-main/#dom-mediastreamtrack-muted" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>Media Capture and Streams</a>
+        <a class="link-btn" id="webrtc-spec-link" href="https://w3c.github.io/webrtc-pc/#process-remote-track-removal" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>WebRTC (remote tracks)</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/muted" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: <code>getUserMedia()</code> results and track settings, every raw <code>mute</code>, <code>unmute</code>, and <code>ended</code> event on both tracks, loopback setup, and device changes. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <details class="panel disclosure who-panel" id="who-changes-what">
+      <summary>
+        <span class="icon" aria-hidden="true">manage_accounts</span>
+        <span class="disclosure-text"><strong>Who changes what</strong><span class="disclosure-sub">enabled: this page only · muted: browser only · readyState: browser, or the page with stop(). Show details.</span></span>
+        <span class="icon disclosure-chevron" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="disclosure-body">
+      <table class="flag-table who-table">
+        <thead><tr><th scope="col">Attribute</th><th scope="col">Who can change it</th><th scope="col">On the microphone track</th><th scope="col">On the received (loopback) track</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>enabled</code></td>
+            <td><span class="chip owner-page"><span class="icon" aria-hidden="true">code</span>This page</span><div class="row-hint">by setting <code>track.enabled</code>; the browser never changes it</div></td>
+            <td><code>false</code>: the page sends silence. <code>muted</code> doesn't change.</td>
+            <td><code>false</code>: silences playout on this page only. RTP keeps arriving and the sender isn't told.</td>
+          </tr>
+          <tr>
+            <td><code>muted</code></td>
+            <td><span class="chip owner-browser"><span class="icon" aria-hidden="true">public</span>Browser only</span><div class="row-hint">read-only for the page; fires <code>mute</code> / <code>unmute</code></div></td>
+            <td><code>true</code> while the microphone can't deliver audio, for example an OS or hardware mute (depends on platform and driver).</td>
+            <td><code>true</code> until the first RTP packet arrives, and again only when renegotiation stops reception. Never follows the sender's mute.</td>
+          </tr>
+          <tr>
+            <td><code>readyState</code></td>
+            <td><span class="chip owner-browser"><span class="icon" aria-hidden="true">public</span>Browser</span> <span class="chip owner-page"><span class="icon" aria-hidden="true">code</span>This page</span><div class="row-hint">browser ends it with an <code>ended</code> event; the page can end it with <code>track.stop()</code> (no event)</div></td>
+            <td><code>ended</code> when the device is unplugged or permission is revoked. One way: it never goes back to <code>live</code>.</td>
+            <td><code>ended</code> when the connection closes or the transceiver stops.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </details>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Controls</h2>
+      <div class="controls">
+        <label class="field">Microphone
+          <span class="field-input"><select id="device-select"><option value="">Default microphone</option></select></span>
+        </label>
+        <button class="btn btn-filled" id="mic-btn" type="button"><span class="icon" aria-hidden="true">mic</span><span class="label">Start microphone</span></button>
+        <button class="btn" id="enable-btn" type="button" disabled><span class="icon" aria-hidden="true">toggle_on</span><span class="label">Disable track</span></button>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <button class="btn" id="loopback-btn" type="button" disabled><span class="icon" aria-hidden="true">sync_alt</span><span class="label">Start WebRTC loopback</span></button>
+      </div>
+      <p class="panel-hint">Disable track sets <code>track.enabled = false</code>: the app's own mute. The track sends silence, but <code>muted</code> stays <code>false</code> because the source still works. The loopback sends the track from one <code>RTCPeerConnection</code> to another on this page so you can see the received track's states.</p>
+    </section>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="local-title">
+        <h2 id="local-title">Microphone track</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span class="icon state-icon" id="local-icon" aria-hidden="true">mic_off</span><span id="local-value">—</span><span class="unit" id="local-unit"></span></div>
+        </div>
+        <div class="scope-wrap">
+          <canvas class="scope" id="local-scope" height="90" role="img" aria-label="Waveform of the audio the page receives from the microphone track"></canvas>
+          <div class="scope-readout" id="local-readout">no audio</div>
+        </div>
+        <dl class="kv">
+          <dt>muted <span class="owner-tag owner-browser">browser</span></dt><dd id="v-muted">—</dd>
+          <dt>enabled <span class="owner-tag owner-page">page</span></dt><dd id="v-enabled">—</dd>
+          <dt>readyState <span class="owner-tag owner-browser">browser</span> <span class="owner-tag owner-page">page</span></dt><dd id="v-ready">—</dd>
+          <dt>label</dt><dd id="v-label">—</dd>
+          <dt>Events fired</dt><dd id="v-mute-count">0 mute, 0 unmute</dd>
+          <dt>Last event</dt><dd id="v-updated">—</dd>
+        </dl>
+        <p class="panel-hint">Track values change only on events or your clicks. The waveform shows the audio the page actually gets from the track: with <code>enabled = false</code> or <code>muted = true</code> it is flat, and the readout says whether it is <em>digital silence</em> (exact zeros).</p>
+      </section>
+
+      <section class="panel" aria-labelledby="remote-title">
+        <h2 id="remote-title">Loopback received track</h2>
+        <div class="scope-wrap">
+          <canvas class="scope" id="remote-scope" height="90" role="img" aria-label="Waveform of the audio arriving on the received track"></canvas>
+          <div class="scope-readout" id="remote-readout">no audio</div>
+        </div>
+        <div class="controls remote-controls">
+          <button class="btn" id="r-enable-btn" type="button" disabled title="Sets enabled on the received track. Only this page's playout is affected; the sender isn't told."><span class="icon" aria-hidden="true">toggle_on</span><span class="label">Disable received track</span></button>
+          <button class="btn" id="r-pause-btn" type="button" disabled title="Renegotiates with the sender's transceiver set to inactive, so no RTP is sent. The received track fires mute."><span class="icon" aria-hidden="true">pause</span><span class="label">Stop sending (renegotiate)</span></button>
+          <label class="check" title="Plays the received track through your speakers. Use headphones to avoid feedback."><input type="checkbox" id="r-listen" disabled> Listen (use headphones)</label>
+        </div>
+        <dl class="kv">
+          <dt>muted <span class="owner-tag owner-browser">browser</span></dt><dd id="r-muted">—</dd>
+          <dt>enabled <span class="owner-tag owner-page">page</span></dt><dd id="r-enabled">—</dd>
+          <dt>readyState <span class="owner-tag owner-browser">browser</span></dt><dd id="r-ready">—</dd>
+          <dt>Events fired</dt><dd id="r-mute-count">0 mute, 0 unmute</dd>
+          <dt>Connection</dt><dd id="r-conn">not started</dd>
+        </dl>
+        <h3 class="sub-title">RTP from <code>getStats()</code></h3>
+        <div class="scope-wrap">
+          <canvas class="scope spark" id="rtp-spark" height="60" role="img" aria-label="Received bitrate over the last 30 seconds"></canvas>
+          <div class="scope-readout" id="rtp-signal">no stats</div>
+        </div>
+        <dl class="kv">
+          <dt>Signal</dt><dd id="s-signal">—</dd>
+          <dt>Received bitrate</dt><dd id="s-recv-bitrate" data-no-highlight>—</dd>
+          <dt>Packets per second</dt><dd id="s-pps" data-no-highlight>—</dd>
+          <dt>Sent bitrate</dt><dd id="s-sent-bitrate" data-no-highlight>—</dd>
+          <dt>Average level (last second)</dt><dd id="s-level" data-no-highlight>—</dd>
+          <dt>Concealed samples</dt><dd id="s-concealed" data-no-highlight>—</dd>
+        </dl>
+        <p class="panel-hint">A received track starts <code>muted</code>, unmutes on the first RTP packet, and mutes again only when renegotiation stops reception: try <strong>Stop sending (renegotiate)</strong>. Disabling the microphone track above makes this waveform flat too, but the received track stays <code>muted = false</code>, because RTP with silence still arrives. The <code>getStats()</code> section separates the cases: <em>no RTP</em> (no packets), <em>RTP with silence</em> (packets but no level), and <em>RTP with audio</em>. Stats are read once per second while the loopback runs.</p>
+      </section>
+    </div>
+
+    <section class="panel log-panel" aria-labelledby="log-title">
+      <h2 id="log-title">Event log
+        <span class="actions">
+          <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+          <button class="btn" id="download-log-btn" type="button" title="Download the log, track settings, and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+          <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+        </span>
+      </h2>
+      <p class="empty" id="log-empty">No events yet. Start the microphone.</p>
+      <ol class="log" id="event-log" aria-live="polite"></ol>
+    </section>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p><code>muted</code> describes the track's source: the microphone for a capture track, the incoming RTP stream for a received track. Only the browser changes <code>muted</code> and <code>readyState</code>; only the page changes <code>enabled</code>. Whether a hardware or OS mute shows up as <code>muted</code> depends on the platform and driver.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="track-muted.js?v=2"></script>
+</body>
+</html>

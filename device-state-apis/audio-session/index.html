@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Session API demo</title>
+  <meta name="description" content="Test page for the Audio Session API: navigator.audioSession type and state, statechange events, audio and microphone test sources, and why the API is not in Chrome.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="../css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">Audio Session</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>Audio Session API</h1>
+      <p>Lets a page say what kind of audio it plays through <code>navigator.audioSession.type</code>, and reports what the OS did to the page's audio through <code>navigator.audioSession.state</code>. It logs this event:</p>
+      <ul class="event-list">
+        <li><code>statechange</code> on <code>navigator.audioSession</code> – <code>state</code> changed between <code>inactive</code>, <code>active</code>, and <code>interrupted</code> (for example a phone call or another app taking audio focus).</li>
+      </ul>
+      <p>Pick a type, then play audio or start the microphone to make the session active. Interruptions are easiest to test on iOS or macOS Safari.</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://w3c.github.io/audio-session/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>W3C specification</a>
+        <a class="link-btn" id="explainer-link" href="https://github.com/w3c/audio-session/blob/main/explainer.md" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">article</span>Explainer</a>
+        <a class="link-btn" id="mdn-link" href="https://developer.mozilla.org/en-US/docs/Web/API/Audio_Session_API" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">menu_book</span>MDN</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: support checks, every <code>type</code> change, every raw <code>statechange</code> event with its full state, and audio and microphone actions. Open the console with F12 or Ctrl+Shift+J (Cmd+Option+J on macOS).</p>
+
+    <details class="panel disclosure why-panel" id="why-not-chrome">
+      <summary>
+        <span class="icon" aria-hidden="true">help</span>
+        <span class="disclosure-text"><strong>Why isn't it in Chrome?</strong><span class="disclosure-sub">Not implemented in Chromium. Safari 16.4+ only; Firefox Nightly. Show details and links.</span></span>
+        <span class="icon disclosure-chevron" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="disclosure-body">
+      <p>We found no official Chrome statement. These are the most relevant facts and discussions:</p>
+      <ul class="why-list">
+        <li><strong>Not implemented in Chromium.</strong> There is no Chrome Platform Status entry for the API and no <code>navigator.audioSession</code> in Blink, so no flag turns it on. Browser support (MDN): Safari 16.4+ on macOS and iOS, Firefox Nightly only, Chrome and Edge no. <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioSession#browser_compatibility" target="_blank" rel="noopener">MDN compatibility table</a></li>
+        <li><strong>What "Firefox Nightly" means.</strong> <a href="https://www.mozilla.org/firefox/channel/desktop/#nightly" target="_blank" rel="noopener">Nightly</a> is Firefox's daily development build, similar to Chrome Canary. The API exists there but hasn't shipped in any released Firefox, so regular Firefox users don't have it. MDN doesn't say whether Nightly also needs an <code>about:config</code> setting, and marks the API as experimental. For testing today, Safari 16.4+ is the only released browser with the API.</li>
+        <li><strong>Audio focus on desktop.</strong> In <a href="https://github.com/w3c/audio-session/issues/12" target="_blank" rel="noopener">w3c/audio-session#12, "Audio focus enforcement on desktop platforms"</a> (2023), a Chrome media engineer notes that Chrome on desktop deliberately does not enforce audio focus, because desktop users multitask and don't expect one tab's audio to stop another. Types such as <code>transient-solo</code> assume that kind of enforcement. The issue is still open.</li>
+        <li><strong>Related work that did ship.</strong> Chrome shipped the <a href="https://chromestatus.com/feature/5172068166139904" target="_blank" rel="noopener">AudioContext "interrupted" state</a>, which lets the browser report OS interruptions on Web Audio, one of the problems this API also addresses.</li>
+      </ul>
+      </div>
+    </details>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Controls</h2>
+      <div class="controls">
+        <label class="field">navigator.audioSession.type
+          <span class="field-input">
+            <select id="type-select">
+              <option value="auto">auto</option>
+              <option value="playback">playback</option>
+              <option value="transient">transient</option>
+              <option value="transient-solo">transient-solo</option>
+              <option value="ambient">ambient</option>
+              <option value="play-and-record">play-and-record</option>
+            </select>
+          </span>
+        </label>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <button class="btn" id="play-btn" type="button"><span class="icon" aria-hidden="true">play_arrow</span><span class="label">Play audio</span></button>
+        <button class="btn" id="mic-btn" type="button"><span class="icon" aria-hidden="true">mic</span><span class="label">Start microphone</span></button>
+      </div>
+      <p class="panel-hint">Play audio loops <code>far_end_speech.wav</code> in an <code>&lt;audio&gt;</code> element. Start microphone calls <code>getUserMedia({audio: true})</code>; with type <code>auto</code>, Safari may switch the session to <code>play-and-record</code>. Both work in every browser, but only change <code>state</code> where the API exists.</p>
+      <audio id="test-audio" src="../../echo-demo/audio/far_end_speech.wav" loop preload="none"></audio>
+    </section>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="readout-title">
+        <h2 id="readout-title">Current state</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span class="icon state-icon" id="state-icon" aria-hidden="true">graphic_eq</span><span id="state-value">—</span><span class="unit" id="state-unit"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>state</dt><dd id="v-state">—</dd>
+          <dt>type</dt><dd id="v-type">—</dd>
+          <dt>State changes</dt><dd id="v-count">0</dd>
+          <dt>Test audio</dt><dd id="v-audio">stopped</dd>
+          <dt>Microphone</dt><dd id="v-mic">off</dd>
+          <dt>Last update</dt><dd id="v-updated">—</dd>
+        </dl>
+        <p class="panel-hint">Updated only on <code>statechange</code> or when you change the type or a test source. The page does not poll.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="log-title">
+        <h2 id="log-title">Event log
+          <span class="actions">
+            <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+            <button class="btn" id="download-log-btn" type="button" title="Download the log and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+            <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+          </span>
+        </h2>
+        <p class="empty" id="log-empty">No events yet.</p>
+        <ol class="log" id="event-log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>The API already reports what the OS did to the page's audio, so an output mute or volume state would fit naturally next to <code>state</code>.</p>
+    </div>
+  </main>
+
+  <script src="../js/demo-kit.js?v=2"></script>
+  <script src="audio-session.js?v=2"></script>
+  <script>
+    // Open the panel when linked to #why-not-chrome (for example from the start page).
+    const whyEl = document.getElementById('why-not-chrome');
+    const openWhy = () => { if (location.hash === '#why-not-chrome') { whyEl.open = true; whyEl.scrollIntoView(); } };
+    openWhy();
+    window.addEventListener('hashchange', openWhy);
+  </script>
+</body>
+</html>
