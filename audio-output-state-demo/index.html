@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>navigator.audioOutput demo</title>
+  <meta name="description" content="Test page for the navigator.audioOutput prototype: coarse OS output volume state (audible, quiet, muted, unknown), level in 10 dB steps, and mute, unmute, and change events for a selected output device.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230b57d0'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..500&family=Google+Sans+Flex:opsz,wght@6..144,400..500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,-25..0&display=block">
+  <link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body>
+  <header class="app-bar">
+    <a class="brand" href="../device-state-apis/"><span class="icon" aria-hidden="true">devices</span>State API demos</a>
+    <span class="icon crumb-sep" aria-hidden="true">chevron_right</span>
+    <span class="crumb-current">navigator.audioOutput</span>
+  </header>
+
+  <main>
+    <section class="page-head">
+      <h1>navigator.audioOutput (prototype)</h1>
+      <p>Shows if audio played by this page would be heard on the selected speaker, and roughly how loud. Windows sets this with the speaker volume and Chrome's own volume in the Volume mixer. It is the same whether or not anything is playing. It logs these events on <code>navigator.audioOutput</code>:</p>
+      <ul class="event-list">
+        <li><code>mute</code> / <code>unmute</code> – <code>muted</code> changed: the device or Chrome's Volume mixer row was muted or unmuted, or a volume went to zero.</li>
+        <li><code>change</code> – <code>state</code> (<code>audible</code>, <code>quiet</code>, <code>muted</code>, <code>unknown</code>) or <code>level</code> (10 dB steps) changed.</li>
+      </ul>
+      <p>Chrome checks the OS values about once per second, so an event can arrive up to a second after you move a control.</p>
+      <div class="link-row">
+        <a class="link-btn" id="spec-link" href="https://artifacts.corp.google.com/SNEYZFIW3B" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">description</span>API sketch</a>
+        <a class="link-btn" href="https://henrik-and.github.io/audio-session-demo/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">speaker_group</span>Audio output session demo</a>
+        <a class="link-btn" href="https://henrik-and.github.io/device-state-apis/" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">devices</span>Device state API demos</a>
+      </div>
+    </section>
+
+    <div class="support-row" id="support-row" aria-label="Support checks"></div>
+    <div class="note warn-note" id="flag-note" hidden>
+      <span class="icon" aria-hidden="true">flag</span>
+      <p><code>navigator.audioOutput</code> is not available in this browser. Run Chrome with <code>--enable-blink-features=AudioOutputState</code> (prototype branch <code>audio-output-state</code>, Windows only).</p>
+    </div>
+    <p class="debug-hint" id="debug-hint">Debug version: add <code>?debug=1</code> to the URL (or click the bug chip above) to write detailed logs to the DevTools console: every raw <code>mute</code>, <code>unmute</code>, and <code>change</code> event, <code>setSinkId()</code> results, and the device list. Open the console with F12 or Ctrl+Shift+J.</p>
+
+    <details class="panel disclosure who-panel" id="how-to">
+      <summary>
+        <span class="icon" aria-hidden="true">tune</span>
+        <span class="disclosure-text"><strong>How to test</strong><span class="disclosure-sub">Which Windows controls to move and which events to expect. Show details.</span></span>
+        <span class="icon disclosure-chevron" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="disclosure-body">
+      <p>This page combines the audio side of the <a href="https://henrik-and.github.io/audio-session-demo/" target="_blank" rel="noopener">audio output session demo</a> (playback paths, device list, Chrome log lines) with the live readout and event log of the <a href="https://henrik-and.github.io/device-state-apis/" target="_blank" rel="noopener">device state API demos</a>.</p>
+      <table class="flag-table who-table">
+        <thead><tr><th scope="col">Do this</th><th scope="col">Where</th><th scope="col">Expected</th></tr></thead>
+        <tbody>
+          <tr><td>Mute and unmute the device</td><td>Taskbar speaker icon or the keyboard mute key</td><td><code>mute</code> then <code>unmute</code>, each with a <code>change</code></td></tr>
+          <tr><td>Mute Chrome's row</td><td>Settings &gt; System &gt; Sound &gt; Volume mixer</td><td><code>mute</code> / <code>unmute</code></td></tr>
+          <tr><td>Move the device slider down and up</td><td>Taskbar or Sound settings</td><td>One <code>change</code> per 10 dB <code>level</code> step or <code>state</code> change, not one per slider step; <code>quiet</code> at or below −30 dB</td></tr>
+          <tr><td>Move Chrome's slider</td><td>Volume mixer</td><td>Same as the device slider</td></tr>
+          <tr><td>Move the page volume</td><td>Player below</td><td>No event: page volume is Chrome's own volume, not the Windows session</td></tr>
+          <tr><td>Set −36 dB per-channel volume</td><td>E.2c script in the crbug.com/584258005 analysis</td><td><code>quiet</code>, <code>level</code> −40; a full left/right balance stays <code>audible</code></td></tr>
+          <tr><td>Pick another device</td><td>Show device names first, then choose it below</td><td><code>change</code> if the new device differs</td></tr>
+          <tr><td>Pick "communications"</td><td>Show device names first, then choose it below</td><td><code>state</code> follows Chrome's communications session (its own Volume mixer row)</td></tr>
+          <tr><td>Nothing playing</td><td>Volume mixer</td><td>Same <code>state</code> as while playing; check whether Chrome shows as an inactive row while this page observes</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </details>
+
+    <section class="panel" aria-labelledby="devices-title">
+      <h2 id="devices-title">Output devices
+        <span class="actions">
+          <span class="chip" id="devices-chip">Not loaded</span>
+        </span>
+      </h2>
+      <div class="controls">
+        <button class="btn btn-filled" id="grant-labels-btn" type="button" title="Ask for microphone permission once so that enumerateDevices() returns device names. The microphone is stopped right away."><span class="icon" aria-hidden="true">mic</span><span class="label">Show device names</span></button>
+        <button class="btn" id="refresh-devices-btn" type="button" title="Read the output device list again (also done on devicechange)"><span class="icon" aria-hidden="true">refresh</span><span class="label">Refresh</span></button>
+      </div>
+      <p class="panel-hint">Device names are only shown after a microphone permission grant; the microphone is released right away. Devices other than the default (including "communications") need this permission, as for <code>HTMLMediaElement.setSinkId()</code>.</p>
+      <div class="table-scroll">
+        <table class="data-table" id="devices-table">
+          <thead><tr><th scope="col">Label</th><th scope="col">deviceId</th><th scope="col">groupId</th></tr></thead>
+          <tbody id="devices-tbody"><tr><td colspan="3" class="empty-table-msg">No devices loaded yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <h2 id="controls-title">Device and player</h2>
+      <div class="controls">
+        <label class="field">Output device
+          <span class="field-input"><select id="device-select"></select></span>
+        </label>
+        <button class="btn btn-filled" id="apply-btn" type="button" title="setSinkId() on the player (if running) and on navigator.audioOutput"><span class="icon" aria-hidden="true">speaker</span><span class="label">Use this device</span></button>
+        <span class="controls-sep" aria-hidden="true"></span>
+        <label class="field">Playback path
+          <span class="field-input"><select id="path-select">
+            <option value="html">&lt;audio&gt; element</option>
+            <option value="webaudio-playback">Web Audio (latencyHint: playback)</option>
+            <option value="webaudio-interactive">Web Audio (latencyHint: interactive)</option>
+          </select></span>
+        </label>
+        <label class="field">Tone
+          <span class="field-input"><select id="freq-select">
+            <option value="330">330 Hz</option>
+            <option value="440" selected>440 Hz</option>
+            <option value="550">550 Hz</option>
+            <option value="660">660 Hz</option>
+          </select></span>
+        </label>
+        <label class="field">Page volume <span id="volume-value">0.30</span>
+          <span class="field-input"><input id="volume-input" type="range" min="0" max="1" step="0.05" value="0.3" title="Chrome's own volume for this player (HTMLMediaElement.volume or a GainNode), not the Windows session volume"></span>
+        </label>
+        <button class="btn" id="play-btn" type="button"><span class="icon" aria-hidden="true">play_arrow</span><span class="label">Create &amp; play</span></button>
+      </div>
+      <p class="panel-hint"><strong>Use this device</strong> calls <code>setSinkId()</code> on the player and on <code>navigator.audioOutput</code>, so what you hear and what the page reports describe the same device. Playing is not needed for the state. The page volume scales the samples in Chrome and does not change <code>state</code> or <code>level</code>.</p>
+    </section>
+
+    <div class="demo-grid">
+      <section class="panel" aria-labelledby="state-title">
+        <h2 id="state-title">navigator.audioOutput</h2>
+        <div class="meter-wrap">
+          <div class="meter-value"><span class="icon state-icon" id="state-icon" aria-hidden="true">help</span><span id="state-value">—</span><span class="unit" id="level-unit"></span></div>
+        </div>
+        <dl class="kv">
+          <dt>sinkId</dt><dd id="v-sink">—</dd>
+          <dt>state</dt><dd id="v-state">—</dd>
+          <dt>muted</dt><dd id="v-muted">—</dd>
+          <dt>level</dt><dd id="v-level">—</dd>
+          <dt>Events fired</dt><dd id="v-counts">0 mute, 0 unmute, 0 change</dd>
+          <dt>Last event</dt><dd id="v-updated">—</dd>
+        </dl>
+        <p class="panel-hint"><code>level</code> is the total OS and Chrome attenuation in 10 dB steps (0, −10, −20, …), or <code>null</code> when <code>state</code> is <code>unknown</code> or <code>muted</code>. <code>unknown</code> also means Chrome could not read its own saved values for this device; it never guesses them from the device volume.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="player-title">
+        <h2 id="player-title">Player</h2>
+        <dl class="kv">
+          <dt>Status</dt><dd id="p-status">Idle</dd>
+          <dt>Path</dt><dd id="p-path">—</dd>
+          <dt>Player sinkId</dt><dd id="p-sink">—</dd>
+          <dt>Page volume</dt><dd id="p-volume">—</dd>
+        </dl>
+        <p class="panel-hint">Chrome opens an output stream on the selected device while the player runs. That stream joins the same Windows session that <code>navigator.audioOutput</code> reads.</p>
+      </section>
+    </div>
+
+    <section class="panel log-panel" aria-labelledby="log-title">
+      <h2 id="log-title">Event log
+        <span class="actions">
+          <button class="btn" id="copy-log-btn" type="button" title="Copy the log as tab-separated text"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+          <button class="btn" id="download-log-btn" type="button" title="Download the log, the device list, and system diagnostics as JSON"><span class="icon" aria-hidden="true">download</span><span class="label">Download JSON</span></button>
+          <button class="btn" id="clear-log-btn" type="button"><span class="icon" aria-hidden="true">delete_sweep</span><span class="label">Clear</span></button>
+        </span>
+      </h2>
+      <p class="panel-hint">The time column uses the <code>chrome_debug.log</code> prefix format (<code>MMDD/HHMMSS.mmm</code>, local time), so each event can be matched to the <code>AudioOutputState:</code> line Chrome writes for the same change.</p>
+      <p class="empty" id="log-empty">No events yet. Move a volume control or mute the device.</p>
+      <ol class="log" id="event-log" aria-live="polite"></ol>
+    </section>
+
+    <section class="panel" aria-labelledby="cmd-title">
+      <h2 id="cmd-title">Find the matching Chrome log lines
+        <span class="actions">
+          <button class="btn" id="copy-cmd-btn" type="button" title="Copy the PowerShell command"><span class="icon" aria-hidden="true">content_copy</span><span class="label">Copy</span></button>
+        </span>
+      </h2>
+      <p class="panel-hint">Start the build with <code>--user-data-dir=C:\tmp\cr-audioout --enable-blink-features=AudioOutputState --enable-logging --vmodule=media_stream_manager=1</code>, then run this in PowerShell. Chrome writes one line per change with all raw values (device dB and mute, Chrome's session volume, mute, and per-channel volumes) and the resulting <code>state</code> and <code>level</code>.</p>
+      <pre id="ps-cmd" class="code-block">Select-String -Path C:\tmp\cr-audioout\chrome_debug.log -Pattern 'AudioOutputState:' | Select-Object -Last 10 | ForEach-Object { $_.Line }</pre>
+    </section>
+
+    <div id="system-diagnostics-mount"></div>
+
+    <div class="note">
+      <span class="icon" aria-hidden="true">info</span>
+      <p>The state covers only what Windows and Chrome do to the signal (device volume and mute, Chrome's Volume mixer row, and Chrome's hidden per-channel volume), not the speaker hardware. Temporary ducking during calls may not show before playback starts. Other platforms report <code>unknown</code> in this prototype.</p>
+    </div>
+  </main>
+
+  <script src="js/demo-kit.js?v=2"></script>
+  <script src="js/audio-output-state.js?v=2"></script>
+</body>
+</html>
